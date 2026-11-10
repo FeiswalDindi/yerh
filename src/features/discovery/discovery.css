@@ -1,0 +1,465 @@
+.content-with-sidebar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: clamp(28px, 3.5vw, 52px);
+  align-items: start;
+}
+.article-layout.content-with-sidebar,
+.article-header.article-header-with-sidebar {
+  max-width: var(--yerh-width);
+}
+.content-with-sidebar > *,
+.discovery-main {
+  min-width: 0;
+}
+.content-with-sidebar .content-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.discovery-sidebar {
+  display: grid;
+  gap: 26px;
+  min-width: 0;
+  border-left: 1px solid var(--yerh-border);
+  padding-left: 24px;
+}
+.discovery-widget {
+  min-width: 0;
+  border: 1px solid var(--yerh-border);
+  background: var(--yerh-white);
+  border-radius: 5px;
+  padding: 20px;
+}
+.discovery-widget > h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 6px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--yerh-border);
+  font-size: 19px;
+  line-height: 1.35;
+  letter-spacing: -0.3px;
+}
+.discovery-widget > h2 > span {
+  display: inline-flex;
+  color: #927613;
+}
+.discovery-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.discovery-list > li {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--yerh-border);
+}
+.discovery-list > li:last-child {
+  border-bottom: 0;
+  padding-bottom: 6px;
+}
+.discovery-content-row {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.discovery-content-row > img,
+.discovery-thumbnail {
+  width: 62px;
+  height: 68px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+.discovery-thumbnail {
+  display: grid;
+  place-items: center;
+  color: var(--yerh-navy);
+  background: var(--yerh-gold-light);
+}
+.discovery-row-copy {
+  display: block;
+  min-width: 0;
+}
+.discovery-category {
+  display: block;
+  color: #806715;
+  font-size: 9px;
+  line-height: 1.5;
+  letter-spacing: 0.9px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+.discovery-row-copy > strong,
+.discovery-forum-row strong,
+.discovery-course strong {
+  display: block;
+  color: var(--yerh-navy);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  margin: 3px 0 6px;
+  overflow-wrap: anywhere;
+}
+.discovery-content-row:hover strong,
+.discovery-forum-row > a:hover,
+.discovery-comment-link:hover small,
+.discovery-course:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.discovery-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--yerh-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.discovery-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.discovery-footer-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 0 0;
+  margin-top: 14px;
+  border-top: 1px solid var(--yerh-border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--yerh-navy);
+}
+.discovery-note,
+.discovery-empty {
+  font-size: 11px;
+  line-height: 1.65;
+  color: var(--yerh-muted);
+  margin-top: 16px;
+}
+.discovery-comment {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.discovery-comment > div {
+  min-width: 0;
+  flex: 1;
+}
+.discovery-comment .avatar-initials {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  font-size: 10px;
+  margin-top: 2px;
+}
+.discovery-comment .member-link {
+  font-size: 12px;
+}
+.discovery-comment-link > p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--yerh-ink);
+  margin: 5px 0 7px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.discovery-comment-link > small {
+  display: block;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--yerh-muted);
+}
+.discovery-forum-row > p {
+  font-size: 11px;
+  color: var(--yerh-muted);
+  margin: 7px 0;
+}
+.discovery-forum-row > p .member-link {
+  font-weight: 500;
+}
+.discovery-course {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.discovery-course > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.discovery-course > svg {
+  color: var(--yerh-muted);
+  margin-top: 4px;
+}
+.discovery-course-number {
+  width: 30px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  border-radius: 3px;
+  background: var(--yerh-gold-light);
+  color: var(--yerh-navy);
+  font-size: 12px;
+  font-weight: 650;
+}
+.discovery-course small {
+  display: block;
+  font-size: 10px;
+  color: var(--yerh-muted);
+  line-height: 1.6;
+}
+.discovery-ad {
+  margin-top: 18px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--yerh-navy);
+  color: white;
+}
+.discovery-ad > img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+}
+.discovery-ad > div {
+  padding: 18px;
+}
+.discovery-ad .discovery-category {
+  color: #e4ce6f;
+}
+.discovery-ad h3 {
+  color: white;
+  font-size: 20px;
+  line-height: 1.35;
+  margin: 8px 0 12px;
+}
+.discovery-ad p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #e1e5ee;
+  margin-bottom: 18px;
+}
+.discovery-ad .button {
+  padding: 11px 13px;
+  font-size: 12px;
+  width: 100%;
+  justify-content: space-between;
+  gap: 8px;
+}
+.discovery-community-callout {
+  background: var(--yerh-navy);
+  border-radius: 5px;
+  padding: 24px;
+  color: white;
+}
+.discovery-community-callout .eyebrow {
+  color: #e4ce6f;
+  font-size: 9px;
+}
+.discovery-community-callout h2 {
+  color: white;
+  font-size: 26px;
+  line-height: 1.25;
+  margin: 12px 0;
+}
+.discovery-community-callout p:not(.eyebrow) {
+  font-size: 13px;
+  color: #e1e5ee;
+  line-height: 1.7;
+}
+.discovery-community-callout .button {
+  font-size: 12px;
+  padding: 12px 15px;
+  margin: 20px 0 16px;
+}
+.discovery-community-callout > .text-link {
+  color: white;
+  font-size: 12px;
+}
+.discovery-sidebar > .profile-panel {
+  margin-bottom: 0;
+}
+.article-comments {
+  margin-top: 40px;
+  border-top: 1px solid var(--yerh-border);
+  padding-top: 15px;
+}
+.article-related {
+  padding-block: 32px;
+}
+.article-comments .discussion-post {
+  margin-bottom: 18px;
+  scroll-margin-top: 130px;
+}
+.discussion-date-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  margin-bottom: 22px;
+  background: var(--yerh-gold-light);
+  color: var(--yerh-navy);
+  border-left: 3px solid var(--yerh-gold);
+  font-size: 13px;
+}
+.calendar-month-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  margin: 15px 0;
+}
+.calendar-month-nav p {
+  color: var(--yerh-navy);
+  font-size: 14px;
+  font-weight: 600;
+}
+.calendar-month-nav button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 3px;
+  background: var(--yerh-surface);
+  color: var(--yerh-navy);
+}
+.calendar-month-nav button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.forum-calendar table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.forum-calendar th {
+  font-size: 10px;
+  color: var(--yerh-muted);
+  font-weight: 500;
+  padding-bottom: 12px;
+}
+.forum-calendar abbr {
+  text-decoration: none;
+}
+.forum-calendar td {
+  padding: 2px 0;
+  text-align: center;
+}
+.forum-calendar td button {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 33px;
+  border-radius: 3px;
+  padding: 5px 1px 9px;
+  background: white;
+  color: var(--yerh-ink);
+  font-size: 12px;
+}
+.forum-calendar td button:hover {
+  background: var(--yerh-gold-light);
+}
+.forum-calendar td button[aria-current='date'] {
+  box-shadow: inset 0 0 0 1px var(--yerh-gold);
+}
+.forum-calendar td button[aria-pressed='true'] {
+  background: var(--yerh-navy);
+  color: white;
+}
+.calendar-dot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--yerh-gold);
+  flex-shrink: 0;
+}
+.forum-calendar td .calendar-dot {
+  position: absolute;
+  bottom: 4px;
+  left: calc(50% - 2px);
+}
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 10px;
+  color: var(--yerh-muted);
+}
+.calendar-selected {
+  padding-top: 13px;
+  margin-top: 13px;
+  border-top: 1px solid var(--yerh-border);
+  font-size: 11px;
+  color: var(--yerh-navy);
+}
+.calendar-selected .text-link {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+}
+@media (max-width: 1150px) {
+  .content-with-sidebar {
+    grid-template-columns: minmax(0, 1fr) 290px;
+    gap: 26px;
+  }
+  .discovery-sidebar {
+    padding-left: 18px;
+    gap: 20px;
+  }
+  .discovery-widget {
+    padding: 17px;
+  }
+  .forum-with-sidebar .forum-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .content-with-sidebar,
+  .article-layout.content-with-sidebar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .discovery-sidebar {
+    padding-left: 0;
+    padding-top: 30px;
+    border-left: 0;
+    border-top: 1px solid var(--yerh-border);
+  }
+  .discovery-content-row {
+    grid-template-columns: 74px minmax(0, 1fr);
+  }
+  .discovery-content-row > img,
+  .discovery-thumbnail {
+    width: 74px;
+    height: 74px;
+  }
+  .discovery-ad > img {
+    height: 180px;
+  }
+  .forum-calendar td button {
+    min-height: 40px;
+  }
+}
+@media (max-width: 600px) {
+  .content-with-sidebar .content-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .discovery-sidebar {
+    gap: 20px;
+  }
+  .discovery-widget {
+    padding: 20px;
+  }
+  .discovery-row-copy > strong {
+    font-size: 14px;
+  }
+}

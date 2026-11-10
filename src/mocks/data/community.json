@@ -1,0 +1,127 @@
+{
+  "forums": [
+    {
+      "id": "entrepreneurship",
+      "name": "Entrepreneurship Forums",
+      "description": "Ask questions about starting and growing a business.",
+      "groupId": "green-founders",
+      "memberIds": ["demo-founder", "demo-mentor"]
+    },
+    {
+      "id": "startups",
+      "name": "Group Startup Forums",
+      "description": "Validate ideas, share early lessons, and find accountability.",
+      "groupId": "first-venture",
+      "memberIds": ["demo-founder", "demo-mentee"]
+    },
+    {
+      "id": "technology",
+      "name": "Technology",
+      "description": "Discuss digital tools and building useful technology.",
+      "groupId": "digital-builders",
+      "memberIds": ["demo-mentee", "demo-editor"]
+    }
+  ],
+  "threads": [
+    {
+      "id": "demo-topic-1",
+      "forumId": "entrepreneurship",
+      "authorId": "demo-founder",
+      "title": "How do you validate an idea before investing?",
+      "body": "I am testing a refill service. What would you ask potential customers in your first interviews? This is a fictional discussion for testing.",
+      "createdAt": "2026-11-01T09:00:00Z",
+      "hidden": false,
+      "replies": [
+        {
+          "id": "demo-reply-1",
+          "authorId": "demo-mentor",
+          "body": "Start with their current habits and frustrations. Try a small test before committing to a large launch.",
+          "createdAt": "2026-11-01T10:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "demo-topic-2",
+      "forumId": "technology",
+      "authorId": "demo-mentee",
+      "title": "Which tools help you organise your first business?",
+      "body": "Looking for ideas for tracking enquiries and tasks. Fictional demo discussion.",
+      "createdAt": "2026-11-02T09:00:00Z",
+      "hidden": false,
+      "replies": []
+    }
+  ],
+  "groups": [
+    {
+      "id": "green-founders",
+      "name": "Green Founders Circle",
+      "category": "Sustainability",
+      "description": "A fictional demo group for discussing sustainable ventures.",
+      "memberIds": ["demo-founder", "demo-mentor"]
+    },
+    {
+      "id": "digital-builders",
+      "name": "Digital Builders",
+      "category": "Technology",
+      "description": "A fictional demo group for sharing tools, experiments, and feedback.",
+      "memberIds": ["demo-mentee", "demo-editor"]
+    },
+    {
+      "id": "first-venture",
+      "name": "My First Venture",
+      "category": "Startups",
+      "description": "A fictional demo peer group for taking the first step.",
+      "memberIds": ["demo-founder", "demo-mentee"]
+    }
+  ],
+  "requests": [
+    {
+      "id": "demo-request-1",
+      "menteeId": "demo-mentee",
+      "mentorId": "demo-mentor",
+      "goal": "Improve my first business plan.",
+      "status": "pending"
+    }
+  ],
+  "activity": [
+    {
+      "id": "activity-1",
+      "actorId": "demo-founder",
+      "text": "Started a discussion about validating a business idea.",
+      "createdAt": "2026-11-01T09:00:00Z"
+    },
+    {
+      "id": "activity-2",
+      "actorId": "demo-mentee",
+      "text": "Joined the Digital Builders group.",
+      "createdAt": "2026-11-02T09:00:00Z",
+      "groupId": "digital-builders"
+    }
+  ],
+  "connections": [
+    {
+      "requesterId": "demo-founder",
+      "recipientId": "demo-mentor",
+      "status": "accepted"
+    },
+    {
+      "requesterId": "demo-mentee",
+      "recipientId": "demo-founder",
+      "status": "pending"
+    }
+  ],
+  "registrations": [
+    {
+      "sessionId": "demo-customer-discovery",
+      "memberId": "demo-mentee",
+      "status": "registered"
+    }
+  ],
+  "pointRules": {
+    "topic": 10,
+    "reply": 5,
+    "blog": 25,
+    "lesson": 5,
+    "attendance": 15
+  }
+}

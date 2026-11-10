@@ -1,0 +1,52 @@
+[
+  {
+    "id": "demo-blog-customer-learning",
+    "slug": "demo-blog-customer-learning",
+    "kind": "article",
+    "title": "What my first customer interviews taught me",
+    "authorId": "demo-founder",
+    "category": "Member perspectives",
+    "excerpt": "This fictional member story explores a small customer discovery exercise. Start with the problem people already face, listen carefully to their current habits, ",
+    "image": null,
+    "imageAlt": "",
+    "publishedAt": "2026-11-03",
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "This fictional member story explores a small customer discovery exercise. Start with the problem people already face, listen carefully to their current habits, and write down what you learn before proposing a solution. Share your next experiment with the community and invite feedback."
+      }
+    ],
+    "downloads": [],
+    "videos": [],
+    "source": {
+      "path": "mock-member",
+      "url": "",
+      "sha256": ""
+    }
+  },
+  {
+    "id": "demo-blog-first-plan",
+    "slug": "demo-blog-first-plan",
+    "kind": "article",
+    "title": "A practical starting point for your business plan",
+    "authorId": "demo-mentor",
+    "category": "Member perspectives",
+    "excerpt": "This fictional mentoring article offers a simple starting point: describe your customer, the problem you solve, the resources you need, and one measurable next ",
+    "image": null,
+    "imageAlt": "",
+    "publishedAt": "2026-11-03",
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "This fictional mentoring article offers a simple starting point: describe your customer, the problem you solve, the resources you need, and one measurable next step. Keep assumptions visible and review them with evidence from real conversations before investing further."
+      }
+    ],
+    "downloads": [],
+    "videos": [],
+    "source": {
+      "path": "mock-member",
+      "url": "",
+      "sha256": ""
+    }
+  }
+]

@@ -1,0 +1,153 @@
+{
+  "applications": [],
+  "opportunities": [
+    {
+      "id": "demo-seed-grant",
+      "slug": "demo-seed-grant",
+      "ownerId": "demo-investor",
+      "title": "Youth venture seed grant",
+      "summary": "A fictional opportunity for testing the YERH application workflow.",
+      "description": "Connect with ecosystem supporters, develop your venture and receive structured feedback. This is a fictional development listing.",
+      "category": "Grant",
+      "organiser": "Demo Enterprise Network",
+      "type": "internal",
+      "mode": "hybrid",
+      "location": "Nairobi, Kenya",
+      "sectors": ["Technology", "Agribusiness"],
+      "stages": ["Idea", "Early stage"],
+      "eligibility": "An approved entrepreneur account and an approved venture profile are required.",
+      "benefits": "Practical guidance, market introductions and feedback on your business plan.",
+      "documents": ["Venture summary", "Pitch deck"],
+      "opensAt": "2026-11-01T00:00:00+03:00",
+      "deadline": "2026-12-20T17:00:00+03:00",
+      "rolling": false,
+      "externalUrl": "",
+      "status": "published",
+      "featured": true,
+      "image": "/media/be-part-of-the-team-3382b8d1.jpg",
+      "capacity": 10,
+      "publishedAt": "2026-11-01T09:00:00Z"
+    },
+    {
+      "id": "demo-market-access",
+      "slug": "demo-market-access",
+      "ownerId": "demo-partner",
+      "title": "Market access and technical support",
+      "summary": "A fictional opportunity for testing the YERH application workflow.",
+      "description": "Connect with ecosystem supporters, develop your venture and receive structured feedback. This is a fictional development listing.",
+      "category": "Technical assistance",
+      "organiser": "Demo Enterprise Network",
+      "type": "internal",
+      "mode": "hybrid",
+      "location": "Nairobi, Kenya",
+      "sectors": ["Technology", "Agribusiness"],
+      "stages": ["Idea", "Early stage"],
+      "eligibility": "An approved entrepreneur account and an approved venture profile are required.",
+      "benefits": "Practical guidance, market introductions and feedback on your business plan.",
+      "documents": ["Venture summary", "Pitch deck"],
+      "opensAt": "2026-11-01T00:00:00+03:00",
+      "deadline": null,
+      "rolling": true,
+      "externalUrl": "",
+      "status": "published",
+      "featured": false,
+      "image": "/media/be-part-of-the-team-3382b8d1.jpg",
+      "capacity": 10,
+      "publishedAt": "2026-11-01T09:00:00Z"
+    },
+    {
+      "id": "demo-pitch",
+      "slug": "demo-pitch",
+      "ownerId": "demo-partner",
+      "title": "Youth innovation pitch challenge",
+      "summary": "A fictional opportunity for testing the YERH application workflow.",
+      "description": "Connect with ecosystem supporters, develop your venture and receive structured feedback. This is a fictional development listing.",
+      "category": "Competition",
+      "organiser": "Demo Enterprise Network",
+      "type": "external",
+      "mode": "hybrid",
+      "location": "Nairobi, Kenya",
+      "sectors": ["Technology", "Agribusiness"],
+      "stages": ["Idea", "Early stage"],
+      "eligibility": "An approved entrepreneur account and an approved venture profile are required.",
+      "benefits": "Practical guidance, market introductions and feedback on your business plan.",
+      "documents": ["Venture summary", "Pitch deck"],
+      "opensAt": "2026-10-01T00:00:00+03:00",
+      "deadline": "2026-10-30T17:00:00+03:00",
+      "rolling": false,
+      "externalUrl": "https://example.com/opportunity",
+      "status": "closed",
+      "featured": false,
+      "image": "/media/be-part-of-the-team-3382b8d1.jpg",
+      "capacity": 10,
+      "publishedAt": "2026-11-01T09:00:00Z"
+    }
+  ],
+  "opportunityApplications": [],
+  "ventures": [
+    {
+      "id": "demo-venture-green",
+      "ownerId": "demo-founder",
+      "name": "Demo Green Basket",
+      "sector": "Agribusiness",
+      "stage": "Early stage",
+      "description": "A fictional sustainable retail venture.",
+      "location": "Nairobi",
+      "status": "approved"
+    }
+  ],
+  "products": [],
+  "incubations": [],
+  "mentors": [
+    {
+      "accountId": "demo-mentor",
+      "expertise": "Business planning, Finance",
+      "availability": "Tuesday and Thursday afternoons \u00c2\u00b7 EAT",
+      "bio": "Practical guidance for early-stage founders."
+    }
+  ],
+  "organisations": [
+    {
+      "accountId": "demo-partner",
+      "name": "Demo Enterprise Network",
+      "type": "Programme partner",
+      "sectors": "Technology, Agribusiness",
+      "contact": "Riley Achieng",
+      "website": "https://example.com",
+      "status": "approved"
+    },
+    {
+      "accountId": "demo-investor",
+      "name": "Demo Seed Network",
+      "type": "Angel investor",
+      "sectors": "Technology, Agribusiness",
+      "contact": "Casey Mutua",
+      "website": "https://example.com",
+      "status": "approved"
+    }
+  ],
+  "enrollments": {},
+  "audit": [],
+  "cmsDrafts": [],
+  "cmsReleases": [],
+  "cmsRevision": 0,
+  "certificates": [],
+  "courseLessons": {
+    "business-foundations": [
+      "business-opportunities-mapping-and-idea-generation",
+      "basic-record-keeping-in-business",
+      "business-registration-and-licensing",
+      "introduction-to-business-planning",
+      "sources-of-business-financing-introduction-to-youth-fund",
+      "effective-marketing-strategies-for-msmes"
+    ],
+    "growing-your-business": [
+      "advanced-leveraging-ict-for-growth-of-small-businesses",
+      "advanced-employee-management-in-small-business",
+      "advanced-sources-of-business-financing-introduction-to-youth-fund",
+      "advanced-effective-marketing-strategies-for-msmes",
+      "advanced-introduction-to-business-ethics",
+      "advanced-access-to-government-procurement-opportunities"
+    ]
+  }
+}

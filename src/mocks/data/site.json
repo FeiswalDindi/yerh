@@ -1,0 +1,199 @@
+{
+  "name": "Youth Entrepreneurship Resource Hub",
+  "slogan": "Empower young people to become entrepreneurs",
+  "contact": {
+    "email": "yerhdev@gmail.com",
+    "phone": "+254768980297",
+    "whatsapp": "+254768980297",
+    "address": "Nairobi, Kenya"
+  },
+  "socials": [
+    {
+      "label": "YouTube",
+      "href": "https://www.youtube.com/channel/UCTZJEmbJzJPVJ4lHQ43ApqA"
+    },
+    {
+      "label": "WhatsApp",
+      "href": "https://wa.me/254768980297"
+    },
+    {
+      "label": "Facebook",
+      "href": "https://www.facebook.com/P.Copyek"
+    },
+    {
+      "label": "Instagram",
+      "href": "https://www.instagram.com/copyek/"
+    }
+  ],
+  "navigation": [
+    {
+      "id": "home",
+      "label": "Home",
+      "href": "/",
+      "children": [
+        {
+          "id": "about",
+          "label": "About Us",
+          "href": "/about"
+        },
+        {
+          "id": "faq",
+          "label": "FAQ",
+          "href": "/faq"
+        }
+      ]
+    },
+    {
+      "id": "resources",
+      "label": "Resources",
+      "href": "/resources",
+      "children": [
+        {
+          "id": "marketplace",
+          "label": "Market Place",
+          "href": "/marketplace"
+        },
+        {
+          "id": "entrepreneurship",
+          "label": "Entrepreneurship",
+          "href": "/entrepreneurship/startups",
+          "children": [
+            {
+              "id": "startups",
+              "label": "New Start-Ups",
+              "href": "/entrepreneurship/startups"
+            },
+            {
+              "id": "advanced",
+              "label": "Intermediate / Advanced Business",
+              "href": "/entrepreneurship/advanced"
+            },
+            {
+              "id": "wellbeing",
+              "label": "General and Well-Being",
+              "href": "/entrepreneurship/wellbeing"
+            },
+            {
+              "id": "funding",
+              "label": "Funding",
+              "href": "/entrepreneurship/funding"
+            }
+          ]
+        },
+        {
+          "id": "workshops",
+          "label": "Workshops",
+          "href": "/workshops"
+        },
+        {
+          "id": "webinars",
+          "label": "Webinars",
+          "href": "/webinars"
+        },
+        {
+          "id": "forums",
+          "label": "Forums",
+          "href": "/forums"
+        },
+        {
+          "id": "learn",
+          "label": "Learn",
+          "href": "/learn"
+        },
+        {
+          "id": "yem",
+          "label": "YEM",
+          "href": "/yem/mentors",
+          "children": [
+            {
+              "id": "mentor",
+              "label": "Mentor",
+              "href": "/yem/mentors"
+            },
+            {
+              "id": "mentee",
+              "label": "Mentee",
+              "href": "/yem/mentees"
+            }
+          ]
+        },
+        {
+          "id": "network",
+          "label": "YERH - Network",
+          "href": "/network"
+        }
+      ]
+    },
+    {
+      "id": "benefits",
+      "label": "Benefits",
+      "href": "/opportunities",
+      "children": [
+        {
+          "id": "opportunities",
+          "label": "Opportunities",
+          "href": "/opportunities"
+        },
+        {
+          "id": "events-benefits",
+          "label": "Events",
+          "href": "/events"
+        }
+      ]
+    },
+    {
+      "id": "publications",
+      "label": "Publications",
+      "href": "/publications",
+      "children": [
+        {
+          "id": "stories",
+          "label": "Success Stories",
+          "href": "/publications/stories"
+        },
+        {
+          "id": "blogs",
+          "label": "Blogs",
+          "href": "/publications/blogs"
+        },
+        {
+          "id": "reports",
+          "label": "Reports & Briefs",
+          "href": "/publications/reports"
+        }
+      ]
+    },
+    {
+      "id": "contact",
+      "label": "Contact Us",
+      "href": "/contact"
+    }
+  ],
+  "pages": {
+    "/opportunities": {
+      "title": "Your next opportunity starts here.",
+      "eyebrow": "Benefits \u00b7 Opportunities",
+      "description": "Discover funding, market access and practical support for your venture.",
+      "sections": []
+    },
+    "/events": {
+      "title": "Connect. Learn. Put ideas into action.",
+      "eyebrow": "Benefits \u00b7 Events",
+      "description": "Explore upcoming sessions, meet their hosts and reserve your place.",
+      "sections": []
+    },
+    "/about": {
+      "title": "Ideas grow when people connect.",
+      "eyebrow": "About YERH",
+      "description": "A resource hub for young entrepreneurs and the people supporting them.",
+      "sections": []
+    }
+  },
+  "homeSections": {
+    "stories": true,
+    "businesses": true,
+    "blogs": true,
+    "updates": true,
+    "partners": true
+  }
+}

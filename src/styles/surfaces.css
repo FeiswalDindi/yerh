@@ -1,0 +1,28 @@
+/* Shared neutral surfaces keep content cards distinct from the white page. */
+:is(
+  .content-card,
+  .collection-card,
+  .demo-account-card,
+  .review-card,
+  .request-card,
+  .profile-card,
+  .profile-panel,
+  .discussion-post,
+  .forum-post,
+  .business-item-card,
+  .update-item-card,
+  .sidebar-widget,
+  .social-card-pane,
+  .discovery-widget,
+  .member-panel,
+  .pathway-result,
+  .member-roster,
+  .activity-timeline
+),
+.sidebar-widget.widget-news-feed,
+.workspace-links > a,
+.workspace-stats > div,
+.pathway-options > button:not(.selected),
+.community-feed article {
+  background-color: var(--yerh-card-surface);
+}

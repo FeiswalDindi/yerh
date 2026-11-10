@@ -1,0 +1,49 @@
+{
+  "featuredIds": [
+    "paul-wambua-entrepreneur-associate-at-brooklyn-farm",
+    "case-study-kenyas-leap-forward-creating-a-dynamic-youth-entrepreneurship-curriculum"
+  ],
+  "featuredCourseIds": ["business-foundations", "growing-your-business"],
+  "popularity": [
+    {
+      "contentId": "capacity-building-in-cyber-security-kca-university",
+      "likes": 189
+    },
+    {
+      "contentId": "my-story-as-a-yerh-developer-jecinta-kazenzi",
+      "likes": 91
+    },
+    {
+      "contentId": "youth-enterprise-resource-hub-development-journey-take-from-the-yerh-developers",
+      "likes": 32
+    }
+  ],
+  "popularitySource": "Historical like counts from the original YERH blog sidebar; not live engagement.",
+  "comments": [
+    {
+      "id": "demo-comment-customer",
+      "contentId": "demo-blog-customer-learning",
+      "authorId": "demo-mentor",
+      "body": "A useful reminder to listen before proposing a solution. What would you change in your next interview?",
+      "createdAt": "2026-11-04T10:00:00+03:00"
+    },
+    {
+      "id": "demo-comment-business-plan",
+      "contentId": "demo-blog-first-plan",
+      "authorId": "demo-mentee",
+      "body": "Breaking the plan into one measurable next step makes it easier to begin. I am trying this with my first venture.",
+      "createdAt": "2026-11-05T14:30:00+03:00"
+    }
+  ],
+  "advertisements": [
+    {
+      "id": "hub-learning-promotion",
+      "title": "Give your next idea a strong foundation.",
+      "text": "Build practical business skills with the YERH learning pathways.",
+      "action": "Explore courses",
+      "href": "/learn",
+      "image": "/media/be-part-of-the-team-3382b8d1.jpg",
+      "imageAlt": "Young people learning together at computers"
+    }
+  ]
+}

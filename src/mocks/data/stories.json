@@ -1,0 +1,401 @@
+[
+  {
+    "id": "debbie-gitonga-entrepreneur",
+    "slug": "debbie-gitonga-entrepreneur",
+    "kind": "story",
+    "title": "Debbie Gitonga",
+    "category": "Creative enterprise",
+    "excerpt": "DWG sole proprietor. Discover the journey behind the business.",
+    "image": "/media/debbie-gitonga-entrepreneur-4ed48ba6.jpg",
+    "imageAlt": "Debbie Gitonga – Entrepreneur, DWG Sole Proprietor",
+    "publishedAt": null,
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "Meet Debbie Gitonga. Debbie is a Student at KCA University and the sole proprietor of DWG Beauty."
+      }
+    ],
+    "downloads": [],
+    "videos": ["https://www.youtube.com/watch?v=r7iUL0kHBgM"],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/debbie-gitonga-entrepreneur/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/debbie-gitonga-entrepreneur/",
+      "sha256": "2f7a29cf404b686e9a84c0bbefc42b28524ba3c72680a3df191b7430c42e08c5"
+    },
+    "storyGroups": ["Entrepreneur"],
+    "displayLines": {
+      "line1": "Debbie Gitonga - Entrepreneur",
+      "line2": "DWG Sole Proprietor"
+    }
+  },
+  {
+    "id": "isaac-kamau-entrepreneur-founder-koikoi-group-software-solutions-company",
+    "slug": "isaac-kamau-entrepreneur-founder-koikoi-group-software-solutions-company",
+    "kind": "story",
+    "title": "Isaac Kamau",
+    "category": "Technology",
+    "excerpt": "Founder of Koikoi Group, a software solutions company.",
+    "image": "/media/img-5789-min-1-960x540-1-62de2cf9.jpg",
+    "imageAlt": "Isaac Kamau – Entrepreneur, Founder Koikoi group (Software Solutions Company).",
+    "publishedAt": null,
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "Meet Dennis Isaac Kamau. Isaac Kamau is a Founder of the Koikoi group. Koikoi group is a software solutions company in the property market. They build software solutions that connect the property market with the finance sector."
+      }
+    ],
+    "downloads": [],
+    "videos": ["https://youtu.be/dYqbb-ulUAE"],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/isaac-kamau-entrepreneur-founder-koikoi-group-software-solutions-company/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/isaac-kamau-entrepreneur-founder-koikoi-group-software-solutions-company/",
+      "sha256": "64c809d19839b8741a8435751ff029081218cb7b08ce6f87f4a8d53a60df69de"
+    },
+    "storyGroups": ["Startups"],
+    "displayLines": {
+      "line1": "Isaac Kamau - Entrepreneur",
+      "line2": "Founder Koikoi group (Software Solutions Company)"
+    }
+  },
+  {
+    "id": "my-story-as-a-yerh-developer-hope-wanjeri",
+    "slug": "my-story-as-a-yerh-developer-hope-wanjeri",
+    "kind": "story",
+    "title": "My Story as a YERH Developer – Hope Wanjeri",
+    "category": "Blogs",
+    "excerpt": "During these weeks the tension was getting worse because only a few members of my team could design. With teamwork and a lot of sacrifices, we were able to come up with designs using Figma…",
+    "image": "/media/hope-wanjeri-yerh-developer-887133bf.jpg",
+    "imageAlt": "My Story as a YERH Developer – Hope Wanjeri",
+    "publishedAt": null,
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "During these weeks the tension was getting worse because only a few members of my team could design. With teamwork and a lot of sacrifices, we were able to come up with designs using Figma as our tool. We had a great team leader who was able to organize the team and allocate roles in an efficient way. We presented the ideas that we had come up with and the day went well."
+      },
+      {
+        "type": "paragraph",
+        "text": "My hackathon journey started when my friends suggested that we apply for the Hackathon. I was in charge of the UI/UX design. I am a UI/UX designer and a cloud practitioner. For the application of this hackathon, I needed to avail my design portfolio and some of the projects that I had worked on. Fortunately, we got shortlisted and we were sent the day and date the event was to take place. We arrived at the hackathon grounds and surprisingly the first test was punctuality. If a team member arrived late the team was disqualified. We were a total of six teams but only four made it to the competition. The important lesson to learn here, you must always be available and punctual. At the hackathon, we were given the details pertaining to the website that was to be built. I liked the idea that was shared, it was very intriguing. The project was built to help young entrepreneurs find mentors using the web application. With mentorship, young people can grow their skills and become better entrepreneurs in the market. The idea was shared and we were to come up with designs of how the website was to look and feel basically the user experience was the test. The competition was to take place in two weeks and after the time given we were to present our designs to a number of judges."
+      },
+      {
+        "type": "paragraph",
+        "text": "During these weeks the tension was getting worse because only a few members of my team could design. With teamwork and a lot of sacrifices, we were able to come up with designs using Figma as our tool. We had a great team leader who was able to organize the team and allocate roles in an efficient way. We presented the ideas that we had come up with and the day went well. We won second runners up and that felt great since the competition was tough. We were to participate in the development of the website and we used WordPress for that. This journey was full of fun and the best part was getting to work with people. We were also given data stipends and they came in handy for the research."
+      }
+    ],
+    "downloads": [],
+    "videos": [],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/my-story-as-a-yerh-developer-hope-wanjeri/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/my-story-as-a-yerh-developer-hope-wanjeri/",
+      "sha256": "064e472536f5a639be78ee2028349de4b01d9af0cec5684a7a2aefbb81a191f8"
+    },
+    "storyGroups": [],
+    "displayLines": {
+      "line1": "My Story as a YERH Developer – Hope Wanjeri - Entrepreneur",
+      "line2": "During these weeks the tension was getting worse because only a few members of my team could design. With teamwork and a lot of sacrifices, we were able to come up with designs using Figma…"
+    }
+  },
+  {
+    "id": "my-story-as-a-yerh-developer-jecinta-kazenzi",
+    "slug": "my-story-as-a-yerh-developer-jecinta-kazenzi",
+    "kind": "story",
+    "title": "My Story as a YERH Developer – Jecinta Kazenzi",
+    "category": "Blogs",
+    "excerpt": "My whole hackathon journey was a learning experience, I learned more from my teammates the webmaster and Alexander, both socially and education wise. For the young and newbie in tech go…",
+    "image": "/media/jecinta-kazenz-i-yerh-developer-320c24c4.jpg",
+    "imageAlt": "My Story as a YERH Developer – Jecinta Kazenzi",
+    "publishedAt": null,
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "My whole hackathon journey was a learning experience, I learned more from my teammates the webmaster and Alexander, both socially and education wise. For the young and newbie in tech go outside there and let the world see what you have. It’s a learning process and teaching process. So whenever you have a chance to join or participate in any tech event just do it. If I had a chance to redo this am doing it again."
+      },
+      {
+        "type": "paragraph",
+        "text": "We all have heard hackathons and known how challenging they are and to others are interesting. This is not something someone just walks to it without believing in themselves. You just have to be sure of your skills and be sure of you."
+      },
+      {
+        "type": "paragraph",
+        "text": "Perfect Timing is what I can say when I heard of KCA holding a hackathon because it was the time of my life where I wanted to go outside and show the world the skills I had gained. I did not know how but I knew if I attended the functions on tech and hackathons events without participating in them I knew it would be a step further. Later that week emails were being sent announcing the KCA hackathon. The timing was right. But something funny I never got the email I only saw the documents in WhatsApp groups. My classmates showed me and even told me to take up the challenge."
+      },
+      {
+        "type": "paragraph",
+        "text": "I felt like this was my time and all I wanted was to form a group and do the application process. Did I mention am in a forensic class and all my friends don’t believe that a forensic person can also do software development. Well that was my situation. My friends were like let’s make the group and show them what we can do but the discussion ended from there."
+      },
+      {
+        "type": "paragraph",
+        "text": "It was heart breaking but who am I, I can’t force them to do what they don’t want to do. My inner thoughts began making me believe that it was not my time and more opportunities would come. And it was at the end of semester and I had to focus on making my grades better. I let it go and wished the best for those who wanted to participate in"
+      },
+      {
+        "type": "paragraph",
+        "text": "After some days, one of my friends, texted me if I won’t mind in joining their team for the school hackathon. This made me so happy and I said yes obviously. First of all, I never knew the members like in person but what’s the point it’s a learning experience and I got skills and I want to show them what I can do."
+      },
+      {
+        "type": "paragraph",
+        "text": "I went over the details and instructions on what the website we would be developing over a hundred times. You know that feeling of doing something for the first time and you just want to be perfect with it."
+      },
+      {
+        "type": "paragraph",
+        "text": "My team members were fourth year students and I was a second year going to my third year. This scared me a little but I never turned the opportunity down. My enthusiasm took the better part of me, I felt like we have to organize a meeting with the members and discuss the hackathon in details as we brainstorm on various ideas. Unluckily they kept postponing and I felt like I was overdoing it."
+      },
+      {
+        "type": "paragraph",
+        "text": "Who am I to back down I called the group leader and I explained to him my thoughts on the website. And the feedback he gave me was that I was thinking of the same ideas too. That was disheartening a little but maybe I never gave him a chance to explain himself. We just had to wait for the first meeting with sponsors of the hackathon. I convinced myself that I tried and I did not want my group members to feel like am draining them."
+      },
+      {
+        "type": "paragraph",
+        "text": "The day of the official meeting finally arrived. The meeting started late. In my mind I was asking if I was really meant to be in that place., I had to forget those thoughts and focus with what it is at hand. DR Muchiri, came and kicked off the meeting. He attended the meeting physically while other officials attended it online. He looked strict so he had to do some cleaning in the room."
+      },
+      {
+        "type": "paragraph",
+        "text": "An introduction was done by the team supporting the hackathon and we were taken over; the meaning of Youth Enterprise resource hub. The main agenda of the meeting was to take us through some basic things a website should have. We had a quick game play that made us know everyone’s thoughts about the website. We were taken through the requirements of the website and we were given time for us to discuss them in our groups."
+      },
+      {
+        "type": "paragraph",
+        "text": "After that, clear instructions were given to us that we should be doing our designs in a weeks’ time and come the following Tuesday for presentation. Almost everyone was confused about designing and development. That is when it hit me there is a difference between web design and web development. I was listening to my team debate on the difference between web design and development and this assured me that this was a whole learning process."
+      },
+      {
+        "type": "paragraph",
+        "text": "In my mind I knew there was much of learning for me. Learning never ends new things always come up. We had decided to use figma as our design tool so YouTube played its role. I went and downloaded beginner friendly videos and started making figma my own tool. We had an online meeting where everyone said they thoughts which were put into consideration. After the online meeting we had another physical meeting where we drew the designs we used both paper and digital wireframes. Brian one of my team mate found out another tool which was Mira. It was a good design and we decided to go with it. Its features are like for figma so it wasn’t hard when we began using it."
+      },
+      {
+        "type": "paragraph",
+        "text": "Time flew as our design grew. We wanted to touch each and every part from the guideline we even had to rethink our whole idea as we compared with other sites that had similar content with what we are creating. I also got some tricks on how they handled some issues when doing their projects. It was an interesting experience"
+      },
+      {
+        "type": "paragraph",
+        "text": "On the day before the presentation the tool we were using Mira had no feature to export to figma where we could make prototypes unless we went Pro.So we had to re do the design in figma. This was to be done quickly because we already knew what we were doing. At least we learnt from it, before choosing a tool we should have done a proper research on it. This was the lesson learnt. We also had to choose the color patterns themes and also the kind of pictures to add on it. We wanted to do our best. That night we worked overnight and on the final day we had to come to school early just to finalize on things and not to cross paths with DR Muchiri."
+      },
+      {
+        "type": "paragraph",
+        "text": "Presentation began. Teams had some nice work and I would say that all the teams did their best. It was our time of presentation. My heart was skipping a bit but with the organization we had I knew everything is going to be fine. We did our part and watched other teams present. After that we left the room and let the judges decide who had the best designs. After some time, we were called back and the results were said. We actually won. My team was happy and we gave thanks to God. It was the best feeling ever. The media team interviewed us. Actually, it was one of my best first moments being interviewed."
+      },
+      {
+        "type": "paragraph",
+        "text": "We had to be given a webmaster who will take us through implementing the design into an actual website. From all that I figured the gaps that I had in my web development career and decide that I would take some online courses in UI UX design. I never knew it was a thing and it should be considered every time when you want to create a website."
+      },
+      {
+        "type": "paragraph",
+        "text": "That’s when I knew were only laying the foundation and now we build. At times I felt had less knowledge than the others because of the terms they used and how they approached things. It was a learning process both knowledge wise and social wise."
+      },
+      {
+        "type": "paragraph",
+        "text": "The implementation of the website was to be done in one month so as to give my other team mates time to focus on their studies. Well meetings were to be held just to set the pace. In the first meeting we had to get familiar with the tools will be using for the website. We were not hard coding we were using the content management system one in particular WordPress. I had zero experience with this. Another learning journeys. This was the recommended one because of the inbuilt features and templates it came with. Luckily one of my team mates Brian had experience using it so he gave us a tutorial which was helpful and with no time we were pros using WordPress."
+      },
+      {
+        "type": "paragraph",
+        "text": "Our team leader, Kiragu broke down the pages so as everyone could have a particular page to work with. We worked at our pace with the help of Alex and the Webmaster. We had problems of communication but with time we worked on it and the website was coming into something nice"
+      },
+      {
+        "type": "paragraph",
+        "text": "We did this for two weeks and almost everything was set up and had to present what we had to DR Muchiri. We had the presentation. Luckily, he liked our work and he advised us on some areas to improve. We had to combine our landing page and home page. For me I learnt that it was an informative website since it was its first version so the homepage has to carry more information."
+      },
+      {
+        "type": "paragraph",
+        "text": "The one month was almost getting over and we had to present the real prototype to the organization. We had to make the website as good as we could. We had reached a point where we couldn’t add any features to it because any other thing needed a pro version. We had ideas but implementing them was kind of difficult luckily the web master came really handy in here. He transformed our website into a new whole thing it looked amazing we loved our work. He was the master and we were the pupils so he used his own ways to get what we want."
+      },
+      {
+        "type": "paragraph",
+        "text": "We had our last meeting which was 7 am and another 6pm just to be ready for presentation. Due to my busy schedule I could only choose one meeting to attend I chose the latter one. The meeting was perfect we familiarize with the website made some corrections and wished for the best feedback. Unluckily we as a team we are not meant to attend so we waited for feedback the next day. The feedback was good as we hoped. The team liked our final output so the media team had to add content to the website and launch it later on."
+      },
+      {
+        "type": "paragraph",
+        "text": "My whole hackathon journey was a learning experience, I learned more from my teammates the webmaster and Alex, both socially and education wise. For the young and newbie in tech go outside there and let the world see what you have. It’s a learning process and teaching process. So whenever you have a chance to join or participate in any tech event just do it. If I had a chance to redo this am doing it again"
+      }
+    ],
+    "downloads": [],
+    "videos": [],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/my-story-as-a-yerh-developer-jecinta-kazenzi/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/my-story-as-a-yerh-developer-jecinta-kazenzi/",
+      "sha256": "211740c02b6d717ab330fd609e908c20e5f02ea67a31ea2a8901eacdc715b34b"
+    },
+    "storyGroups": [],
+    "displayLines": {
+      "line1": "My Story as a YERH Developer – Jecinta Kazenzi - Entrepreneur",
+      "line2": "My whole hackathon journey was a learning experience, I learned more from my teammates the webmaster and Alexander, both socially and education wise. For the young and newbie in tech go…"
+    }
+  },
+  {
+    "id": "my-story-as-a-yerh-developer-nelson-njuguna",
+    "slug": "my-story-as-a-yerh-developer-nelson-njuguna",
+    "kind": "story",
+    "title": "My Story as a YERH Developer – Nelson Njuguna",
+    "category": "Blogs",
+    "excerpt": "My whole hackathon journey was a learning experience from both of the…",
+    "image": "/media/nelson-njuguna-yerh-developer-a022aae3.jpg",
+    "imageAlt": "My Story as a YERH Developer – Nelson Njuguna",
+    "publishedAt": null,
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "My whole hackathon journey was a learning experience from both of the teams."
+      },
+      {
+        "type": "paragraph",
+        "text": "When I came across KCA hackathon poster via WhatsApp, I had the confidence of applying, having a friend who I knew he will agree to my call, where we were supposed to apply in a group of 4-5 members, we made sure each one to try to convince two members. Specializing more in women in tech, thanks God we had a woman in our group, and she helped. We tried to understand the hackathon topic, which talked more on youth in entrepreneurship. We break down with factors that youths consider in majoring in entrepreneurship."
+      },
+      {
+        "type": "paragraph",
+        "text": "We had several physical and online meetings. The first meeting we met at school where we had all the hackathon’s group in a room being briefed what was being expected among us. We were given a 2 weeks period of web designing."
+      },
+      {
+        "type": "paragraph",
+        "text": "For us, steps to design a website requires 7 steps:"
+      },
+      {
+        "type": "list-item",
+        "text": "Goal identification: Where I work with the client to determine what goals the new website needs to fulfill. e., what its purpose is."
+      },
+      {
+        "type": "list-item",
+        "text": "Scope definition: Once we know the site’s goals, we can define the scope of the project. e., what web pages and features the site requires to fulfill the goal, and the timeline for building those out."
+      },
+      {
+        "type": "list-item",
+        "text": "Sitemap and wireframe creation: With the scope well-defined, we can start digging into the sitemap, defining how the content and features we defined in scope definition will"
+      },
+      {
+        "type": "list-item",
+        "text": "Content creation: Now that we have a bigger picture of the site in mind, we can start creating content for the individual pages, always keeping search engine optimization (SEO) in mind to help keep pages focused on a single It’s vital that you have real content to work with for our next stage:"
+      },
+      {
+        "type": "list-item",
+        "text": "Visual elements: With the site architecture and some content in place, we can start working on the visual brand. Depending on the client, this may already be well-defined, but you might also be defining the visual style from the ground Tools like style tiles, mood boards, and element collages can help with this process."
+      },
+      {
+        "type": "list-item",
+        "text": "Testing: By now, you’ve got all your pages and defined how they display to the site visitor, so it’s time to make sure it all works. Combine manual browsing of the site on a variety of devices with automated site crawlers to identify everything from user experience issues to simple broken links."
+      },
+      {
+        "type": "list-item",
+        "text": "Launch: Once everything’s working beautifully, it’s time to plan and execute your site launch! This should include planning both launch timing and communication strategies — e., when will you launch and how will you let the world know? After that, it’s time to break out the bubbly"
+      },
+      {
+        "type": "paragraph",
+        "text": "We later presented the web design, congratulations to all the team that made it to the final, all groups had lovely web designs each group having different components. we had the courage as a group, and we did our best, answering questions being asked by the Judges. The Judges gave their observations after we finished the presentations, each group being congratulated and highlighted main points, we wrote it down. The web master also gave his observations, and telling us features of a good website. The ranking was done among us, Thank God we emerged the winner! We were all in high spirit, we did the interview, being my first, haha!"
+      },
+      {
+        "type": "paragraph",
+        "text": "During the development phase, we used the CMS, WordPress! Yes, I had an entry-level experience, Thanks to my team members for the motivation, there were one who were experts. I find it hard sometimes to use WordPress components, it reaches a point when preferred coding because most of the components needed the Pro version, I find it expensive but it took a good time of my understanding everything, I feel like an expert now!"
+      },
+      {
+        "type": "paragraph",
+        "text": "Our team leader, Kiragu broke down the pages so as everyone could have a particular task to work one, having the help from Alex and the web master, without forgetting Dr. Muchiri for he gave us the advice on some areas we needed to improve."
+      },
+      {
+        "type": "paragraph",
+        "text": "After one month of implementation, we handed the website to the web master who did miracles to the success website application we are having, Hooray!"
+      },
+      {
+        "type": "paragraph",
+        "text": "We had our last meetings; I attended the one at 6 p.m. to familiarize with the changes made on the website. Alex and the web master presented the website to the investors, the investors feedback was positive, and this aligned to the hopes we had. The website was handed to the content creators, and is being launch soon!"
+      },
+      {
+        "type": "paragraph",
+        "text": "My whole hackathon journey was a learning experience from both of the teams."
+      }
+    ],
+    "downloads": [],
+    "videos": [],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/my-story-as-a-yerh-developer-nelson-njuguna/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/my-story-as-a-yerh-developer-nelson-njuguna/",
+      "sha256": "e79305939d6f173bac5440e13b7caf9314ea9cf708ff70ad0ad7683d3b7a4240"
+    },
+    "storyGroups": [],
+    "displayLines": {
+      "line1": "My Story as a YERH Developer – Nelson Njuguna - Entrepreneur",
+      "line2": "My whole hackathon journey was a learning experience from both of the…"
+    }
+  },
+  {
+    "id": "my-story-as-a-yerh-developer-samuel-kiragu",
+    "slug": "my-story-as-a-yerh-developer-samuel-kiragu",
+    "kind": "story",
+    "title": "My Story as a YERH Developer – Samuel Kiragu",
+    "category": "Blogs",
+    "excerpt": "Working together systematically, we specified what we had accomplished and what was pending. We were all united and some of us, slept late finishing up some pending…",
+    "image": "/media/samuel-kiragu-yerh-developer-8a7909fe.jpg",
+    "imageAlt": "My Story as a YERH Developer – Samuel Kiragu",
+    "publishedAt": null,
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "Working together systematically, we specified what we had accomplished and what was pending. We were all united and some of us, slept late finishing up some pending tasks."
+      },
+      {
+        "type": "paragraph",
+        "text": "From the very first day after being selected to participate in the hackathon, I started learning. On Day One, when we were getting the desired details, some participants and even groups in their entirety were disqualified. Dr. Benson then echoed one of the lessons that piqued my interest; availability. I can consciously acknowledge that if one of my team members wasn’t available at the specified time (making themselves unreliable), we would have even gotten the chance to attempt the hackathon."
+      },
+      {
+        "type": "paragraph",
+        "text": "With the onset of the hackathon, I also started a corresponding course on the technicalities required, by my teammates and myself. One of the strengths I commend my team for is how we took time and intentionally brainstormed on the possible course of action. I was particularly impressed by how my teammate Nelson contrasted the challenge’s requirements and see its correlation to Ajira, a government platform. Through this brainstorming, I unearthed skills I had previously downplayed. For example, it was second nature to me to take notes as I listened to my teammates’ ideas and organized them for brainstorming."
+      },
+      {
+        "type": "paragraph",
+        "text": "Working with my team was fun. Despite the challenges, I have to commend Jecinta who has her way of making the group lively. This brings me to a fundamental lesson I learned. Team members should not only work together but also encourage each other. At times, I remember hearing my teammates desiring to give up. However, I appreciate the fact that we encouraged each other."
+      },
+      {
+        "type": "paragraph",
+        "text": "Brain fascinated me with his technical know-how. I was impressed by the tools he had in mind for making wireframes and even the final UI and UX design. The team and I quickly adopted the tools he had suggested and started working on the ideas we had agreed on. It was enjoyable to work together in real-time remotely. (the devices Brian suggested supported this). Again, I used my organizational skills to cluster our tasks into three classes: Completed, in progress, and yet to start."
+      },
+      {
+        "type": "paragraph",
+        "text": "Working together systematically, we specified what we had accomplished and what was pending. We were all united and some of us, slept late finishing up some pending tasks."
+      },
+      {
+        "type": "paragraph",
+        "text": "On the presentation day, we met up and had a small discussion. We all had confidence in what we had done because we had actively participated in the entire process and knew exactly what we were presenting. Even if we never won, this was a win; I enjoyed working with my team and learned a lot along the way."
+      },
+      {
+        "type": "paragraph",
+        "text": "Winning the hackathon was a game changer but was also the beginning. The webmaster would help us to create the prototype. I wrote a plan on how we intended to develop the prototype without giving it much thought. This inadequate task analysis impacted our productivity. My lack of communication affected the effectiveness of the team."
+      },
+      {
+        "type": "paragraph",
+        "text": "However, I appreciate Brian, who helped the team. He was not only familiar with the technology used but was willing and ready to help us reach working proficiency. The webmaster intervened and I was amazed by the work he did. He made me realize that there is a lot to learn. All in all, I enjoyed working on the project in a team and learning from the webmaster. Through this experience, I’ve been able to polish up some technical skills, management skills, and communication skills. I’m now aware that there are more skills to learn, more self-discovery, and more solutions to be created."
+      }
+    ],
+    "downloads": [],
+    "videos": [],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/my-story-as-a-yerh-developer-samuel-kiragu/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/my-story-as-a-yerh-developer-samuel-kiragu/",
+      "sha256": "f2b96a51e2c0d2034498041b83ff016f52c4e0fcfa38880df6426bace3f146af"
+    },
+    "storyGroups": [],
+    "displayLines": {
+      "line1": "My Story as a YERH Developer – Samuel Kiragu - Entrepreneur",
+      "line2": "Working together systematically, we specified what we had accomplished and what was pending. We were all united and some of us, slept late finishing up some pending…"
+    }
+  },
+  {
+    "id": "paul-wambua-entrepreneur-associate-at-brooklyn-farm",
+    "slug": "paul-wambua-entrepreneur-associate-at-brooklyn-farm",
+    "kind": "story",
+    "title": "Paul Wambua",
+    "category": "Agribusiness",
+    "excerpt": "Entrepreneur and associate at Brooklyn Farm.",
+    "image": "/media/paul-wambua-b0982b08.png",
+    "imageAlt": "Paul Wambua – Entrepreneur, Associate at Brooklyn farm",
+    "publishedAt": null,
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "Meet Paul Wambua as he tells his story. Paul Wambua is an Entrereneur and Associate at Brooklyn Farm. Brooklyn Farm deals with exporting of Holticultural rpoducts."
+      }
+    ],
+    "downloads": [],
+    "videos": ["https://www.youtube.com/watch?v=T3SIgXBlttA"],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/paul-wambua-entrepreneur-associate-at-brooklyn-farm/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/paul-wambua-entrepreneur-associate-at-brooklyn-farm/",
+      "sha256": "539ac3a2a08a5953aadcf2d917fd12a7ff4381fc7d8ad84cbf4c1f30c4895f35"
+    },
+    "storyGroups": ["Entrepreneur"],
+    "displayLines": {
+      "line1": "Paul Wambua - Entrepreneur",
+      "line2": "Associate at Brooklyn farm"
+    }
+  }
+]

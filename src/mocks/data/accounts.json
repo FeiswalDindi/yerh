@@ -1,0 +1,98 @@
+[
+  {
+    "id": "demo-founder",
+    "name": "Amani Njeri",
+    "role": "entrepreneur",
+    "headline": "Founder Ã‚Â· Demo Green Basket",
+    "location": "Nairobi",
+    "bio": "Exploring sustainable retail and better routes to market. Fictional development profile.",
+    "skills": ["Retail", "Sustainability"],
+    "handle": "founder",
+    "joinedAt": "2026-10-01",
+    "email": "demo-founder@example.test"
+  },
+  {
+    "id": "demo-mentor",
+    "name": "Jordan Otieno",
+    "role": "mentor",
+    "headline": "Business mentor Ã‚Â· Strategy & finance",
+    "location": "Kisumu",
+    "bio": "Helping early-stage founders turn plans into measurable next steps. Fictional development profile.",
+    "skills": ["Business planning", "Finance"],
+    "handle": "mentor",
+    "joinedAt": "2026-10-01",
+    "email": "demo-mentor@example.test"
+  },
+  {
+    "id": "demo-mentee",
+    "name": "Sam Wanjiku",
+    "role": "entrepreneur",
+    "headline": "Aspiring entrepreneur Ã‚Â· Creative enterprise",
+    "location": "Nakuru",
+    "bio": "Building a first venture and learning the business essentials. Fictional development profile.",
+    "skills": ["Design", "Marketing"],
+    "handle": "mentee",
+    "joinedAt": "2026-10-01",
+    "email": "demo-mentee@example.test"
+  },
+  {
+    "id": "demo-editor",
+    "name": "Taylor Kamau",
+    "role": "content_manager",
+    "headline": "Content editor Ã‚Â· Community stories",
+    "location": "Mombasa",
+    "bio": "Curating blogs, resources, and stories in the local demo. Fictional development profile.",
+    "skills": ["Writing", "Research"],
+    "handle": "editor",
+    "joinedAt": "2026-10-01",
+    "email": "demo-editor@example.test"
+  },
+  {
+    "id": "demo-admin",
+    "name": "Alex Mwangi",
+    "role": "admin",
+    "headline": "Hub administrator Ã‚Â· Community support",
+    "location": "Nairobi",
+    "bio": "Testing moderation and member support workflows. Fictional development profile.",
+    "skills": ["Community management", "Operations"],
+    "handle": "admin",
+    "joinedAt": "2026-10-01",
+    "email": "demo-admin@example.test"
+  },
+  {
+    "id": "demo-guest",
+    "name": "Morgan Kariuki",
+    "role": "guest",
+    "headline": "New member · Find your pathway",
+    "location": "Nairobi",
+    "bio": "Fictional development profile for testing platform workflows.",
+    "skills": [],
+    "handle": "guest",
+    "joinedAt": "2026-11-01",
+    "email": "demo-guest@example.test"
+  },
+  {
+    "id": "demo-partner",
+    "name": "Riley Achieng",
+    "role": "partner",
+    "headline": "Partner · Enterprise programmes",
+    "location": "Nairobi",
+    "bio": "Fictional development profile for testing platform workflows.",
+    "skills": [],
+    "handle": "partner",
+    "joinedAt": "2026-11-01",
+    "email": "demo-partner@example.test"
+  },
+  {
+    "id": "demo-investor",
+    "name": "Casey Mutua",
+    "role": "investor",
+    "headline": "Investor · Early-stage ventures",
+    "location": "Nairobi",
+    "bio": "Fictional development profile for testing platform workflows.",
+    "skills": [],
+    "handle": "investor",
+    "joinedAt": "2026-11-01",
+    "email": "demo-investor@example.test"
+  }
+]

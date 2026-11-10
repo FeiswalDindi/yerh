@@ -1,0 +1,77 @@
+[
+  {
+    "id": "copyek-advocacy-briefs",
+    "slug": "copyek-advocacy-briefs",
+    "kind": "publication",
+    "title": "COPYEK Advocacy Briefs",
+    "category": "Publications",
+    "excerpt": "Research and advocacy for an environment where young entrepreneurs can thrive.",
+    "image": null,
+    "imageAlt": "COPYEK Advocacy Briefs",
+    "publishedAt": null,
+    "blocks": [],
+    "downloads": [
+      {
+        "label": "Read the publication",
+        "href": "https://yerh-kenya.kcau.ac.ke/wp-content/uploads/2024/02/COPYEK-Advocacy-Brief.pdf",
+        "availableLocally": false
+      }
+    ],
+    "videos": [],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/copyek-advocacy-briefs/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/copyek-advocacy-briefs/",
+      "sha256": "0bc968254da63abbec74f7fdf4c770afa31145f18ea22c58122640f4fefa8691"
+    }
+  },
+  {
+    "id": "copyek-final-report",
+    "slug": "copyek-final-report",
+    "kind": "publication",
+    "title": "COPYEK Final Report",
+    "category": "Publications",
+    "excerpt": "Explore the final report from the Co-Production for Youth Entrepreneurship in Kenya project.",
+    "image": null,
+    "imageAlt": "COPYEK Final Report",
+    "publishedAt": null,
+    "blocks": [],
+    "downloads": [
+      {
+        "label": "Read the publication",
+        "href": "https://yerh-kenya.kcau.ac.ke/wp-content/uploads/2024/02/COPYEK-FINAL-REPORT_YERH.pdf",
+        "availableLocally": false
+      }
+    ],
+    "videos": [],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/copyek-final-report/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/copyek-final-report/",
+      "sha256": "c312abd9ff9d9f231f150c57666c7fdf24f15e5acc4ae644f15602797e85a08f"
+    }
+  },
+  {
+    "id": "copyek-success-stories-and-impact",
+    "slug": "copyek-success-stories-and-impact",
+    "kind": "publication",
+    "title": "COPYEK Success Stories and Impact",
+    "category": "Publications",
+    "excerpt": "Discover the stories, learning, and impact of the COPYEK project.",
+    "image": null,
+    "imageAlt": "COPYEK Success Stories and Impact",
+    "publishedAt": null,
+    "blocks": [],
+    "downloads": [
+      {
+        "label": "Read the publication",
+        "href": "https://yerh-kenya.kcau.ac.ke/wp-content/uploads/2024/02/COPYEK-Success-stories-and-impact.pdf",
+        "availableLocally": false
+      }
+    ],
+    "videos": [],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/copyek-success-stories-and-impact/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/copyek-success-stories-and-impact/",
+      "sha256": "eba59a3ec8e4c979338163fcd52c2cbc0a440669704ce1188e1b47b533a00da4"
+    }
+  }
+]

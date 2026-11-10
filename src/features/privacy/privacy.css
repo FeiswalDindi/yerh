@@ -1,0 +1,252 @@
+/* ==========================================================================
+   COOKIE CONSENT FLOATING BANNER & POLICY PAGE
+   ========================================================================== */
+
+/* Floating non-blocking banner at bottom right of screen */
+.cookie-floating-banner {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  left: 24px;
+  max-width: 580px;
+  margin-left: auto;
+  margin-right: 0;
+  background: #ffffff;
+  border: 1px solid var(--yerh-border);
+  border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(25, 44, 87, 0.22);
+  padding: 18px 20px 16px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: slideUpConsent 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpConsent {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.cookie-banner-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.cookie-banner-close:hover {
+  color: var(--yerh-navy);
+  background: #f1f5f9;
+}
+
+.cookie-banner-content {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding-right: 20px;
+}
+
+.cookie-banner-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #fef3c7;
+  color: #b45309;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.cookie-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cookie-banner-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--yerh-navy);
+}
+
+.cookie-banner-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #475569;
+}
+
+.cookie-banner-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--yerh-border);
+  flex-wrap: wrap;
+}
+
+.cookie-banner-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #0284c7;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cookie-banner-link:hover {
+  text-decoration: underline;
+}
+
+.cookie-banner-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cookie-btn-sm {
+  padding: 7px 16px;
+  font-size: 12px;
+  font-weight: 650;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .cookie-floating-banner {
+    bottom: 12px;
+    right: 12px;
+    left: 12px;
+    max-width: none;
+    padding: 16px 16px 14px;
+  }
+  .cookie-banner-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .cookie-banner-buttons {
+    justify-content: flex-end;
+  }
+}
+
+/* Cookie Policy Page Styling */
+.cookie-policy-page {
+  max-width: 860px;
+}
+
+.cookie-control-panel {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 36px;
+}
+
+.control-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.control-icon {
+  width: 40px;
+  height: 40px;
+  background: #e0f2fe;
+  color: #0284c7;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+}
+
+.consent-status-box {
+  margin: 16px 0 20px;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  font-size: 13px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  margin-left: 6px;
+  font-size: 12px;
+}
+
+.status-all {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-essential {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status-none {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.consent-action-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cookie-table-container {
+  overflow-x: auto;
+  margin: 20px 0 30px;
+}
+
+.cookie-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.cookie-table th,
+.cookie-table td {
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.cookie-table th {
+  background: #f1f5f9;
+  font-weight: 700;
+  color: var(--yerh-navy);
+}
+
+.browser-list {
+  padding-left: 20px;
+  line-height: 1.8;
+  font-size: 14px;
+}

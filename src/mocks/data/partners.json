@@ -1,0 +1,22 @@
+[
+  {
+    "name": "KCA University",
+    "image": "/media/kca-university-logo-f7590b5e.png",
+    "url": "https://www.kcau.ac.ke/"
+  },
+  {
+    "name": "Youth Enterprise Development Fund",
+    "image": "/media/youth-enterprise-logo-4a4b6c51.jpg",
+    "url": "https://www.youthfund.go.ke/"
+  },
+  {
+    "name": "University of Nottingham",
+    "image": "/media/uonottingham-86f6b585.jpg",
+    "url": "https://www.nottingham.ac.uk/business/"
+  },
+  {
+    "name": "British Council",
+    "image": "/media/british-council-96198dad.png",
+    "url": "https://www.britishcouncil.co.ke/"
+  }
+]

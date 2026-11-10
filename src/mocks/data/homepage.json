@@ -1,0 +1,126 @@
+{
+  "featuredStories": [
+    "paul-wambua-entrepreneur-associate-at-brooklyn-farm",
+    "debbie-gitonga-entrepreneur",
+    "isaac-kamau-entrepreneur-founder-koikoi-group-software-solutions-company"
+  ],
+  "featuredBusinesses": ["joyride-medical-center", "mowrahs-designs", "comfort-worms-and-insects"],
+  "featuredBlogs": [
+    "from-dream-to-design-the-journey-of-kenyas-youth-in-building-an-entrepreneurial-web-resource",
+    "innovative-use-of-participatory-research-method-photo-elicitation-in-youth-entrepreneurship",
+    "case-study-kenyas-leap-forward-creating-a-dynamic-youth-entrepreneurship-curriculum",
+    "bridging-the-gap-the-power-of-north-south-cooperation-in-fostering-youth-entrepreneurship-in-kenya"
+  ],
+  "featuredGuides": [
+    "businessplanwriting",
+    "how-to-get-funding-for-your-business-startup",
+    "market-research-as-tool-for-business-success"
+  ],
+  "slides": [
+    {
+      "eyebrow": "YOUR ENTREPRENEURIAL JOURNEY STARTS HERE",
+      "title": "Idea to",
+      "secondLine": "",
+      "accent": "Business",
+      "text": "Turn your idea into a business. Build your skills, connect with mentors, and take your next step with the YERH community.",
+      "image": "/media/be-part-of-the-team-3382b8d1.jpg",
+      "alt": "Young people collaborating at computers",
+      "href": "/entrepreneurship/startups",
+      "action": "Start your journey",
+      "caption": "From your first idea to your next opportunity.",
+      "theme": "photo"
+    },
+    {
+      "eyebrow": "Forums",
+      "title": "Connect and",
+      "secondLine": "",
+      "accent": "Share",
+      "text": "Join forums to connect and share your experiences with fellow entrepreneurs. Drop a question in the forums and have it answered by experienced entrepreneurs.",
+      "image": "/media/connect.png",
+      "alt": "Connect and Share - YERH Forums",
+      "href": "/forums",
+      "action": "Join a Forum",
+      "caption": "Connect and share experiences with fellow entrepreneurs.",
+      "theme": "green"
+    },
+    {
+      "eyebrow": "LEARN. CONNECT. BUILD.",
+      "title": "A place for your",
+      "secondLine": "next",
+      "accent": "big idea.",
+      "text": "The knowledge, people, and inspiration to turn your ambition into a thriving enterprise.",
+      "image": "/media/be-part-of-the-team-3382b8d1.jpg",
+      "alt": "Young people collaborating at computers",
+      "href": "/resources",
+      "action": "Explore the resources",
+      "caption": "Building tomorrow, together.",
+      "theme": "photo"
+    },
+    {
+      "eyebrow": "REAL PEOPLE. REAL POSSIBILITIES.",
+      "title": "Every journey starts",
+      "secondLine": "with",
+      "accent": "a first step.",
+      "text": "Meet Kenyan entrepreneurs creating opportunities, solving problems, and making their mark.",
+      "image": "/media/youth-enterprise-resource-hub-development-journey---take-from-the-c52a8532.jpg",
+      "alt": "The YERH development team",
+      "href": "/publications/stories",
+      "action": "Discover their stories",
+      "caption": "Ideas grow when we share them.",
+      "theme": "photo"
+    },
+    {
+      "eyebrow": "GROW YOUR NETWORK",
+      "title": "Go further.",
+      "secondLine": "",
+      "accent": "Go together.",
+      "text": "Connect with peers and discover mentorship for the next chapter of your business.",
+      "image": "/media/image-2-bdce0363.png",
+      "alt": "Participants at a YERH workshop",
+      "href": "/network",
+      "action": "Find your community",
+      "caption": "There is strength in connection.",
+      "theme": "photo"
+    }
+  ],
+  "importantLinks": [
+    {
+      "label": "KCA University",
+      "href": "https://www.kcau.ac.ke/"
+    },
+    {
+      "label": "Youth Enterprise Development Fund",
+      "href": "https://www.youthfund.go.ke/"
+    },
+    {
+      "label": "University of Nottingham",
+      "href": "https://www.nottingham.ac.uk/business/"
+    },
+    {
+      "label": "Innovation for African Universities (IAU) Programme",
+      "href": "https://www.britishcouncil.co.ke/programmes/education/innovation-african-universities/co-production-entrepreneurship"
+    }
+  ],
+  "statistics": [
+    {
+      "label": "Mentors",
+      "value": "12",
+      "tone": "mentors"
+    },
+    {
+      "label": "Website Visits",
+      "value": "17,746",
+      "tone": "visits"
+    },
+    {
+      "label": "Registered Users",
+      "value": "2,546",
+      "tone": "users"
+    }
+  ],
+  "statisticsNote": "Sample figures for development; not live platform counts.",
+  "socialVideo": {
+    "url": "https://www.youtube.com/watch?v=MXLhGTEyZGc",
+    "title": "LEVERAGING ICT FOR GROWTH"
+  }
+}

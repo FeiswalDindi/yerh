@@ -1,0 +1,30 @@
+[
+  {
+    "id": "business-foundations",
+    "title": "Business foundations",
+    "description": "Work through the original six YERH introductory videos. Track your own progress in the local demo.",
+    "level": "Getting started",
+    "lessonIds": [
+      "business-opportunities-mapping-and-idea-generation",
+      "basic-record-keeping-in-business",
+      "business-registration-and-licensing",
+      "introduction-to-business-planning",
+      "sources-of-business-financing-introduction-to-youth-fund",
+      "effective-marketing-strategies-for-msmes"
+    ]
+  },
+  {
+    "id": "growing-your-business",
+    "title": "Growing your business",
+    "description": "Explore the original advanced collection covering people, finance, marketing, and business ethics.",
+    "level": "Intermediate / Advanced",
+    "lessonIds": [
+      "advanced-leveraging-ict-for-growth-of-small-businesses",
+      "advanced-employee-management-in-small-business",
+      "advanced-sources-of-business-financing-introduction-to-youth-fund",
+      "advanced-effective-marketing-strategies-for-msmes",
+      "advanced-introduction-to-business-ethics",
+      "advanced-access-to-government-procurement-opportunities"
+    ]
+  }
+]

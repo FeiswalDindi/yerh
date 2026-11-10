@@ -1,0 +1,17 @@
+/* Brand source: feiso/youth-venture-spark/src/styles.css, KCAU Brand Tokens.
+   Keep the named HEX values stable across browsers (the source's OKLCH override differs). */
+:root {
+  --yerh-navy: #192c57;
+  --yerh-navy-dark: #11203e;
+  --yerh-gold: #cbae2d;
+  --yerh-gold-light: #f5f0e0;
+  --yerh-surface: #f8f8fc;
+  --yerh-card-surface: #f3f4f6;
+  --yerh-white: #fff;
+  --yerh-ink: #1a1a2e;
+  --yerh-muted: #626678;
+  --yerh-border: #e5e5ef;
+  --yerh-font: 'Jost Variable', 'Segoe UI', sans-serif;
+  --yerh-width: 1320px;
+  --yerh-gutter: clamp(14px, 3.4vw, 52px);
+}
