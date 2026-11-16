@@ -37,6 +37,11 @@
           "href": "/about"
         },
         {
+          "id": "our-team",
+          "label": "Our Team",
+          "href": "/about#our-team"
+        },
+        {
           "id": "faq",
           "label": "FAQ",
           "href": "/faq"

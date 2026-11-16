@@ -87,6 +87,25 @@ export function assertOpportunity(value: Opportunity) {
 export function assertCmsSnapshot(value: CmsSnapshot, state?: DemoState) {
   demand(object(value) && object(value.catalog), 'A full catalog is required.');
   const c = value.catalog;
+  if (c.team !== undefined) {
+    const team = c.team;
+    demand(
+      fields(team, ['title', 'intro', 'sourceUrl']) &&
+        team.title.trim() &&
+        fields(team.groupPhoto, ['image', 'alt']) &&
+        Array.isArray(team.members),
+      'Team content is incomplete.',
+    );
+    demand(
+      team.members.every(
+        (member) =>
+          fields(member, ['id', 'name', 'role', 'positioning', 'bio', 'image', 'linkedinUrl']) &&
+          [member.id, member.name, member.role, member.bio].every((field) => field.trim()),
+      ),
+      'Each team member needs an ID, name, role and biography.',
+    );
+    demand(unique(team.members.map((member) => member.id)), 'Team member IDs must be unique.');
+  }
   for (const key of ['items', 'lessons', 'courses', 'topics', 'faqs'] as const)
     demand(Array.isArray(c[key]), `Missing ${key} collection.`);
   demand(
@@ -413,7 +432,10 @@ export function assertCmsSnapshot(value: CmsSnapshot, state?: DemoState) {
     );
   }
   function urls(node: unknown, key = '') {
-    if (typeof node === 'string' && /^(href|url|image|externalUrl|website)$/i.test(key))
+    if (
+      typeof node === 'string' &&
+      /^(href|url|image|externalUrl|website|sourceUrl|linkedinUrl)$/i.test(key)
+    )
       demand(safeUrl(node), `Unsafe URL in ${key}.`);
     else if (Array.isArray(node)) node.forEach((x) => urls(x, key === 'videos' ? 'url' : ''));
     else if (object(node)) Object.entries(node).forEach(([k, v]) => urls(v, k));

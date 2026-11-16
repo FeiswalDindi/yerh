@@ -94,36 +94,6 @@
   background: #f3e4e4;
   color: #8f3a3a;
 }
-.platform-workspace {
-  display: grid;
-  grid-template-columns: 230px minmax(0, 1fr);
-  gap: 32px;
-}
-.workspace-sidebar,
-.cms-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  background: var(--yerh-card-surface);
-  border: 1px solid var(--yerh-border);
-  border-radius: 6px;
-  padding: 16px;
-  align-self: start;
-}
-.workspace-sidebar > *,
-.cms-nav > * {
-  background: transparent;
-  padding: 12px;
-  text-align: left;
-  color: var(--yerh-navy);
-  border-radius: 3px;
-  font-size: 13px;
-}
-.workspace-sidebar > *.active,
-.cms-nav > *.active {
-  background: var(--yerh-navy);
-  color: white;
-}
 .workspace-main {
   min-width: 0;
 }
@@ -222,13 +192,43 @@
   color: var(--yerh-navy);
   border-radius: 4px;
 }
+.opportunity-section + .opportunity-section {
+  margin-top: 32px;
+}
+.opportunity-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--yerh-border);
+}
+.opportunity-section-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  font-size: 23px;
+}
+.opportunity-section-heading h2 svg {
+  color: var(--yerh-gold);
+  flex-shrink: 0;
+}
+.opportunity-section-heading > span {
+  font-size: 12px;
+  color: var(--yerh-muted);
+}
 .benefit-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-  margin-top: 30px;
+  gap: 20px;
+  margin-top: 18px;
 }
 .benefit-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   border: 1px solid var(--yerh-border);
   border-radius: 7px;
   overflow: hidden;
@@ -239,37 +239,79 @@
   box-shadow: 0 12px 32px #192c5717;
 }
 .benefit-card > a img {
+  display: block;
   width: 100%;
-  height: 210px;
+  height: 150px;
   object-fit: cover;
 }
 .benefit-card > div {
-  padding: 26px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 18px;
 }
-.benefit-card h2 {
-  font-size: 26px;
-  margin: 12px 0 16px;
+.benefit-card .tag-list {
+  gap: 5px;
+  margin: 0;
 }
-.benefit-card > div > p:not(.eyebrow) {
-  font-size: 14px;
+.benefit-card .tag-list > span {
+  font-size: 10px;
+  padding: 3px 7px;
+}
+.benefit-card .tag-list .opportunity-featured-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--yerh-gold-light);
+  color: var(--yerh-navy);
+}
+.benefit-card .eyebrow {
+  font-size: 10px;
+  line-height: 1.5;
+  margin: 10px 0 0;
+}
+.benefit-card h3 {
+  font-size: 21px;
+  line-height: 1.3;
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.benefit-card .opportunity-summary {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 13px;
   color: var(--yerh-muted);
-  line-height: 1.8;
-  margin: 12px 0;
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+.opportunity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: auto;
+  color: var(--yerh-muted);
+  font-size: 12px;
+}
+.opportunity-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.opportunity-meta svg {
+  flex-shrink: 0;
 }
 .benefit-card .text-link {
-  margin-top: 15px;
-  font-size: 13px;
+  margin-top: 12px;
+  font-size: 12px;
 }
 .benefit-featured {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-.benefit-featured > a img {
-  height: 100%;
-  min-height: 350px;
-}
-.benefit-featured h2 {
-  font-size: 35px;
+  border-color: var(--yerh-gold);
+  box-shadow: inset 0 -3px 0 var(--yerh-gold);
 }
 .benefit-card.is-closed {
   opacity: 0.76;
@@ -408,21 +450,6 @@
 .cms-actions .button {
   padding: 11px 15px;
   font-size: 12px;
-}
-.cms-layout {
-  display: grid;
-  grid-template-columns: 230px minmax(0, 1fr);
-  gap: 28px;
-  margin-top: 28px;
-}
-.cms-nav {
-  position: sticky;
-  top: 120px;
-}
-.cms-nav a {
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 .cms-main {
   min-width: 0;
@@ -695,10 +722,6 @@ button:disabled {
     align-items: flex-start;
     flex-direction: column;
   }
-  .cms-layout {
-    grid-template-columns: 190px minmax(0, 1fr);
-    gap: 18px;
-  }
   .cms-record-layout {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -710,21 +733,8 @@ button:disabled {
   }
 }
 @media (max-width: 800px) {
-  .platform-workspace,
-  .cms-layout,
   .benefit-detail {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .workspace-sidebar,
-  .cms-nav {
-    position: static;
-    display: flex;
-    flex-direction: row;
-    overflow-x: auto;
-  }
-  .workspace-sidebar > *,
-  .cms-nav > * {
-    flex-shrink: 0;
   }
   .event-filters {
     order: -1;
@@ -734,13 +744,6 @@ button:disabled {
   }
   .benefit-toolbar label:first-child {
     flex-basis: 100%;
-  }
-  .benefit-featured {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .benefit-featured > a img {
-    height: 260px;
-    min-height: 0;
   }
   .cms-stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

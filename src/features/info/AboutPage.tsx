@@ -1,12 +1,18 @@
-import { ArrowUpRight, BookOpen, Lightbulb, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ArrowDown, ArrowUpRight, BookOpen, Lightbulb, Users } from 'lucide-react';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useCatalog } from '../../app/useCatalog';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { PageIntro } from '../../shared/PageIntro';
 import { PartnerStrip } from '../home/PartnerStrip';
+import { TeamSection } from './TeamSection';
 export function AboutPage() {
-  const { media, faqs } = useCatalog();
+  const { media, faqs, team } = useCatalog();
+  const { hash } = useLocation();
   usePageTitle('About YERH');
+  useEffect(() => {
+    if (hash === '#our-team') document.getElementById('our-team')?.scrollIntoView();
+  }, [hash, team]);
   return (
     <>
       <PageIntro
@@ -37,10 +43,17 @@ export function AboutPage() {
             The hub brings together knowledge, opportunities for mentorship, and the experiences of
             youth-owned enterprises, helping ideas move from possibility to practice.
           </p>
-          <Link className="text-link" to="/publications">
-            Explore the project’s publications
-            <ArrowUpRight size={17} />
-          </Link>
+          <div className="about-story-links">
+            <Link className="text-link" to="/publications">
+              Explore the project’s publications
+              <ArrowUpRight size={17} />
+            </Link>
+            {!!team?.members.length && (
+              <Link className="text-link" to="#our-team">
+                Meet our team <ArrowDown size={17} aria-hidden="true" />
+              </Link>
+            )}
+          </div>
         </div>
       </section>
       <section className="container purpose-grid">
@@ -68,6 +81,7 @@ export function AboutPage() {
           </div>
         ))}
       </section>
+      {team && <TeamSection team={team} />}
       <PartnerStrip />
       <section id="faq" className="container section faq-section">
         <div>

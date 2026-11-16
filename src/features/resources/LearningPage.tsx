@@ -7,7 +7,7 @@ import { DemoNotice } from '../demo/DemoNotice';
 import { NotFoundPage } from '../info/NotFoundPage';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { can } from '../../domain/roles';
-export function LearningPage() {
+export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
   const { courseId } = useParams();
   const { courses, lessons } = useCatalog();
   const { state, account, execute, enabled } = useDemo();
@@ -29,8 +29,8 @@ export function LearningPage() {
         <DemoNotice />
         {course ? (
           <>
-            <Link className="text-link" to="/learn">
-              ← All learning pathways
+            <Link className="text-link" to={dashboard ? '/dashboard/learning' : '/learn'}>
+              {dashboard ? '← My learning' : '← All learning pathways'}
             </Link>
             {can(account, 'learn') && enabled ? (
               <div className="course-enrollment">

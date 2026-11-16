@@ -1,7 +1,7 @@
 import type { Course, EntrepreneurshipTopic, Faq, HomepageContent, Lesson } from './hub';
 import type { SidebarData } from './sidebar';
 import type { TermsDocument } from './legal';
-import type { SiteContent } from './site';
+import type { SiteContent, TeamContent } from './site';
 export type ContentKind = 'article' | 'story' | 'business' | 'event' | 'publication' | 'resource';
 export interface ContentBlock {
   type: 'heading' | 'paragraph' | 'list-item';
@@ -32,6 +32,7 @@ export interface ContentItem {
 }
 export interface Catalog {
   site: SiteContent;
+  team?: TeamContent;
   sidebar: SidebarData;
   terms: TermsDocument;
   items: ContentItem[];

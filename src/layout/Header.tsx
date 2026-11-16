@@ -1,7 +1,7 @@
 import { MobileNavigationDrawer } from './MobileNavigationDrawer';
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronRight, LogOut, Menu, Search, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Globe, LogOut, Menu, Search, X } from 'lucide-react';
 import { type NavigationItem } from '../config/navigation';
 import { roleLabels } from '../domain/roles';
 import { useCatalog } from '../app/useCatalog';
@@ -12,7 +12,7 @@ function NavigationBranch({ item, depth = 0 }: { item: NavigationItem; depth?: n
   const toggle = useRef<HTMLButtonElement>(null);
   const location = useLocation();
 
-  useEffect(() => setOpen(false), [location.pathname, location.search]);
+  useEffect(() => setOpen(false), [location.pathname, location.search, location.hash]);
   const id = `desktop-${item.id}-children`;
 
   return (
@@ -65,7 +65,11 @@ function NavigationBranch({ item, depth = 0 }: { item: NavigationItem; depth?: n
   );
 }
 
-export function Header() {
+export function Header({
+  dashboardMenu,
+}: {
+  dashboardMenu?: { expanded: boolean; onOpen: () => void };
+}) {
   const { media, site } = useCatalog();
   const navigation = site.navigation;
   const { account, enabled, execute } = useDemo();
@@ -76,7 +80,7 @@ export function Header() {
   // Close drawer on route change
   useEffect(() => {
     setOpen(false);
-  }, [location.pathname, location.search]);
+  }, [location.pathname, location.search, location.hash, account?.id, account?.role]);
 
   return (
     <>
@@ -107,7 +111,9 @@ export function Header() {
         </div>
       )}
 
-      <header className="site-header reference-header">
+      <header
+        className={`site-header reference-header${dashboardMenu ? ' site-header--in-flow' : ''}`}
+      >
         <div className="container header-inner">
           <Link className="reference-brand" to="/" aria-label="YERH home">
             <img src={media.wordmark} alt="Youth Entrepreneurship Resource Hub — YERH Kenya" />
@@ -151,18 +157,45 @@ export function Header() {
               </>
             )}
 
-            {/* Mobile Hamburger Menu Toggle Button */}
             <button
               ref={toggle}
               type="button"
-              className="menu-toggle icon-button"
-              aria-label={open ? 'Close navigation drawer' : 'Open navigation drawer'}
+              className={`menu-toggle icon-button${dashboardMenu ? ' site-menu-toggle' : ''}`}
+              aria-label={
+                dashboardMenu
+                  ? 'Site menu'
+                  : open
+                    ? 'Close navigation drawer'
+                    : 'Open navigation drawer'
+              }
+              aria-haspopup="dialog"
               aria-expanded={open}
               aria-controls="feiso-mobile-drawer"
               onClick={() => setOpen((v) => !v)}
             >
-              {open ? <X size={24} /> : <Menu size={24} />}
+              {dashboardMenu ? (
+                <>
+                  <Globe size={17} aria-hidden="true" /> Site menu
+                </>
+              ) : open ? (
+                <X size={24} aria-hidden="true" />
+              ) : (
+                <Menu size={24} aria-hidden="true" />
+              )}
             </button>
+            {dashboardMenu && (
+              <button
+                className="menu-toggle icon-button"
+                type="button"
+                aria-label="Open dashboard menu"
+                aria-haspopup="dialog"
+                aria-controls="dashboard-menu"
+                aria-expanded={dashboardMenu.expanded}
+                onClick={dashboardMenu.onOpen}
+              >
+                <Menu size={24} aria-hidden="true" />
+              </button>
+            )}
           </div>
         </div>
       </header>

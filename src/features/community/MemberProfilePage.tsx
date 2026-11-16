@@ -11,6 +11,7 @@ import {
   type FeedEntry,
 } from '../../domain/community';
 import { usePageTitle } from '../../shared/usePageTitle';
+import { Breadcrumb } from '../../shared/Breadcrumb';
 import { DemoNotice } from '../demo/DemoNotice';
 import { NotFoundPage } from '../info/NotFoundPage';
 import { ContentCard } from '../content/ContentCard';
@@ -81,13 +82,10 @@ export function MemberProfilePage() {
   );
   return (
     <section className="container section member-profile">
-      <nav className="profile-breadcrumb" aria-label="Breadcrumb">
-        <Link to="/">Home</Link>
-        <span>/</span>
-        <Link to="/network?tab=members">Members</Link>
-        <span>/</span>
-        <span>{member.name}</span>
-      </nav>
+      <Breadcrumb
+        current={member.name}
+        parents={[{ label: 'Members', to: '/network?tab=members' }]}
+      />
       <DemoNotice />
       <header className="member-cover">
         <div className="member-cover-decoration" aria-hidden="true">
@@ -96,10 +94,9 @@ export function MemberProfilePage() {
         <div className="member-identity">
           <MemberAvatar member={member} large />
           <div>
-            <p className="eyebrow">YERH COMMUNITY · {roleLabels[member.role]}</p>
             <h1>{member.name}</h1>
             <p>
-              @{member.handle} · {member.headline}
+              @{member.handle} · {roleLabels[member.role]} · {member.headline}
             </p>
             <div className="member-facts">
               <span>

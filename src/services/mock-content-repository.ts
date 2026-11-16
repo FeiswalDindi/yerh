@@ -21,6 +21,7 @@ export const mockContentRepository: ContentRepository = {
       sidebar,
       terms,
       site,
+      team,
     ] = await Promise.all([
       import('../mocks/data/blogs.json'),
       import('../mocks/data/stories.json'),
@@ -37,12 +38,14 @@ export const mockContentRepository: ContentRepository = {
       import('../mocks/data/sidebar.json'),
       import('../mocks/data/terms.json'),
       import('../mocks/data/site.json'),
+      import('../mocks/data/team.json'),
     ]);
     if (signal?.aborted) throw new DOMException('Request cancelled', 'AbortError');
     const catalog = {
       sidebar: sidebar.default,
       terms: terms.default,
       site: site.default,
+      team: team.default,
       items: [
         ...blogs.default,
         ...stories.default,

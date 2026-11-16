@@ -1,11 +1,3 @@
-.profile-breadcrumb {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  color: var(--yerh-muted);
-  font-size: 13px;
-  margin-bottom: 24px;
-}
 .member-cover {
   position: relative;
   overflow: hidden;

@@ -1,15 +1,13 @@
 import { useCarousel } from '../../shared/useCarousel';
-import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCatalog } from '../../app/useCatalog';
 
 export function FeatureCarousel() {
   const { homepage } = useCatalog();
   const slides = homepage.slides;
-  const { index, paused, rotating, setPaused, setHovered, setFocused, move, goTo } = useCarousel(
-    slides.length,
-  );
-  const slide = slides[index % slides.length];
+  const { index, rotating, setKeyboardFocused, move, goTo } = useCarousel(slides.length);
+  const slide = slides[index];
   if (!slide) return null;
 
   const isGreenBanner = slide.theme === 'green';
@@ -18,11 +16,9 @@ export function FeatureCarousel() {
       className={`hero-slider-container ${isGreenBanner ? 'is-green-theme' : 'is-photo-theme'}`}
       aria-roledescription="carousel"
       aria-label="Homepage Slider"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onFocusCapture={() => setFocused(true)}
+      onFocusCapture={(e) => setKeyboardFocused(e.target.matches(':focus-visible'))}
       onBlurCapture={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false);
+        if (!e.currentTarget.contains(e.relatedTarget)) setKeyboardFocused(false);
       }}
       aria-live={rotating ? 'off' : 'polite'}
     >
@@ -81,16 +77,7 @@ export function FeatureCarousel() {
         <ChevronRight size={24} />
       </button>
 
-      {/* Bottom Indicators (Bullets only, no play button) */}
       <div className="slider-bottom-bar">
-        <button
-          type="button"
-          className="slider-pause-btn"
-          aria-label={paused ? 'Play slideshow' : 'Pause slideshow'}
-          onClick={() => setPaused((p) => !p)}
-        >
-          {paused ? <Play size={16} /> : <Pause size={16} />}
-        </button>
         <div className="slider-bullets" role="group" aria-label="Slide indicators">
           {slides.map((_, i) => (
             <button

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { CalendarDays, ArrowUpRight, MapPin } from 'lucide-react';
+import { CalendarDays, ArrowUpRight, MapPin, Star } from 'lucide-react';
 import { useDemo } from '../../app/useDemo';
 import { can } from '../../domain/roles';
 import { opportunityProblem } from '../../domain/platform-actions';
@@ -9,47 +9,47 @@ import { PageIntro } from '../../shared/PageIntro';
 import { DemoNotice } from '../demo/DemoNotice';
 import { NotFoundPage } from '../info/NotFoundPage';
 import { usePageTitle } from '../../shared/usePageTitle';
-export function OpportunityCard({
-  opportunity: o,
-  featured = false,
-}: {
-  opportunity: Opportunity;
-  featured?: boolean;
-}) {
+export function OpportunityCard({ opportunity: o }: { opportunity: Opportunity }) {
   const closed = !!opportunityProblem(o, new Date().toISOString());
   const scheduled = o.status === 'published' && !!o.opensAt && Date.parse(o.opensAt) > Date.now();
   return (
     <article
-      className={`benefit-card ${featured ? 'benefit-featured' : ''} ${closed ? 'is-closed' : ''}`}
+      className={`benefit-card ${o.featured ? 'benefit-featured' : ''} ${closed ? 'is-closed' : ''}`}
     >
       <Link to={`/opportunities/${o.slug}`} tabIndex={-1} aria-hidden="true">
         <img src={o.image || '/media/be-part-of-the-team-3382b8d1.jpg'} alt="" loading="lazy" />
       </Link>
       <div>
         <div className="tag-list">
-          {o.featured && <span>Featured</span>}
+          {o.featured && (
+            <span className="opportunity-featured-badge">
+              <Star size={12} aria-hidden="true" /> Featured
+            </span>
+          )}
           <span>{scheduled ? 'Opening soon' : closed ? 'Closed' : 'Open'}</span>
           <span>{o.type}</span>
         </div>
         <p className="eyebrow">
           {o.organiser} · {o.category}
         </p>
-        <h2>
+        <h3>
           <Link to={`/opportunities/${o.slug}`}>{o.title}</Link>
-        </h2>
-        <p>{o.summary}</p>
-        <p className="session-meta">
-          <CalendarDays size={16} />
-          {o.rolling
-            ? 'Rolling applications'
-            : o.deadline
-              ? new Date(o.deadline).toLocaleDateString('en-KE')
-              : 'See details'}
-        </p>
-        <p className="session-meta">
-          <MapPin size={16} />
-          {o.mode === 'online' ? 'Online' : o.location}
-        </p>
+        </h3>
+        <p className="opportunity-summary">{o.summary}</p>
+        <div className="opportunity-meta">
+          <span>
+            <CalendarDays size={14} aria-hidden="true" />
+            {o.rolling
+              ? 'Rolling applications'
+              : o.deadline
+                ? new Date(o.deadline).toLocaleDateString('en-KE')
+                : 'See details'}
+          </span>
+          <span>
+            <MapPin size={14} aria-hidden="true" />
+            {o.mode === 'online' ? 'Online' : o.location}
+          </span>
+        </div>
         <Link className="text-link" to={`/opportunities/${o.slug}`}>
           View opportunity <ArrowUpRight size={15} />
         </Link>
@@ -95,7 +95,8 @@ export function OpportunitiesPage() {
           : (a.deadline ?? '9999').localeCompare(b.deadline ?? '9999'),
     );
 
-  const featured = results.find((o) => o.featured);
+  const featured = results.filter((o) => o.featured);
+  const remaining = results.filter((o) => !o.featured);
   function filter(key: string, value: string) {
     const next = new URLSearchParams(params);
     next.set(key, value);
@@ -161,14 +162,35 @@ export function OpportunitiesPage() {
         <p className="result-count" role="status">
           {results.length} opportunities
         </p>
-        {featured && <OpportunityCard opportunity={featured} featured />}
-        <div className="benefit-grid">
-          {results
-            .filter((o) => o.id !== featured?.id)
-            .map((o) => (
-              <OpportunityCard key={o.id} opportunity={o} />
-            ))}
-        </div>
+        {featured.length > 0 && (
+          <section className="opportunity-section" aria-labelledby="featured-opportunities">
+            <div className="opportunity-section-heading">
+              <h2 id="featured-opportunities">
+                <Star size={20} aria-hidden="true" /> Featured opportunities
+              </h2>
+              <span>{featured.length} featured</span>
+            </div>
+            <div className="benefit-grid">
+              {featured.map((o) => (
+                <OpportunityCard key={o.id} opportunity={o} />
+              ))}
+            </div>
+          </section>
+        )}
+        {remaining.length > 0 && (
+          <section className="opportunity-section" aria-labelledby="more-opportunities">
+            <div className="opportunity-section-heading">
+              <h2 id="more-opportunities">
+                {featured.length ? 'More opportunities' : 'All opportunities'}
+              </h2>
+            </div>
+            <div className="benefit-grid">
+              {remaining.map((o) => (
+                <OpportunityCard key={o.id} opportunity={o} />
+              ))}
+            </div>
+          </section>
+        )}
         {!results.length && <p className="empty-state">No opportunities match these filters.</p>}
       </section>
     </>

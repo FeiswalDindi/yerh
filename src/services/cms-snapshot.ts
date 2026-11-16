@@ -8,6 +8,7 @@ export function createCmsSnapshot(catalog: Catalog, state: DemoState): CmsSnapsh
   return structuredClone({
     catalog: {
       ...published,
+      team: published.team ?? catalog.team,
       items: [
         ...published.items.filter((i) => !i.source.path.startsWith('local-demo')),
         ...catalog.items.filter((i) => i.source.path.startsWith('local-demo')),

@@ -30,6 +30,7 @@ const catalog = (): Catalog => ({
   sidebar: fixture('sidebar'),
   terms: fixture('terms'),
   site: fixture('site'),
+  team: fixture('team'),
   media: { ...mediaAssets, partners: fixture('partners') },
 });
 const now = '2026-11-10T09:00:00Z';
@@ -204,6 +205,42 @@ test('CMS drafts do not publish, stale drafts cannot overwrite a release, and ro
   );
   assert.ok(isDemoState(s, fixture('accounts')));
 });
+test('CMS featured selections publish together, retain an audit and restore with their revision', () => {
+  let s = login(seed(), 'demo-editor');
+  const baseline = {
+    catalog: catalog(),
+    sessions: s.sessions,
+    opportunities: s.platform.opportunities,
+  };
+  const snapshot = structuredClone(baseline);
+  snapshot.opportunities[0]!.featured = false;
+  snapshot.opportunities[1]!.featured = true;
+  s = applyDemoAction(s, {
+    type: 'cms-save',
+    draft: {
+      id: 'featured-selection',
+      ownerId: 'demo-editor',
+      title: 'Update featured opportunities',
+      baseRevision: 0,
+      snapshot,
+      updatedAt: now,
+    },
+    baseline,
+    now,
+  });
+  assert.deepEqual(s.platform.opportunities, baseline.opportunities);
+  s = applyDemoAction(s, { type: 'cms-publish', id: 'featured-selection', now });
+  assert.deepEqual(s.platform.opportunities, snapshot.opportunities);
+  assert.deepEqual(s.platform.cmsReleases.at(-1)?.snapshot.opportunities, snapshot.opportunities);
+  assert.equal(s.platform.audit[0]?.action, 'cms-publish');
+  assert.equal(s.platform.audit[0]?.actorId, 'demo-editor');
+  assert.equal(s.platform.audit[0]?.targetId, 'release-1');
+  s = applyDemoAction(s, { type: 'cms-rollback', revision: 0, now });
+  assert.deepEqual(s.platform.opportunities, baseline.opportunities);
+  assert.equal(s.platform.audit[0]?.action, 'cms-rollback');
+  assert.ok(isDemoState(s, fixture('accounts')));
+});
+
 test('CMS rejects unsafe links, broken featured references and capacity below reservations', () => {
   const s = seed();
   const snapshot = {
@@ -213,6 +250,7 @@ test('CMS rejects unsafe links, broken featured references and capacity below re
   };
   for (const mutate of [
     (v: typeof snapshot) => (v.catalog.homepage.slides[0]!.href = 'javascript:alert(1)'),
+    (v: typeof snapshot) => (v.catalog.team!.members[0]!.linkedinUrl = 'javascript:alert(1)'),
     (v: typeof snapshot) => v.catalog.homepage.featuredStories.push('missing'),
     (v: typeof snapshot) => (v.sessions[0]!.capacity = 0),
   ]) {

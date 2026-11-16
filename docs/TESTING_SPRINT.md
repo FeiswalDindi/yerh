@@ -16,7 +16,7 @@ All test changes are saved in this browser's local storage. They survive refresh
 
 ## Demo accounts
 
-Open `/login` and select **Login as …** on a demo account card. No password is needed. The original YERH login and registration/pathway pages are restored; there is no animated login/signup form or local email/password form.
+Open `/demo` and select **Login as …** on a demo account card, or enter one of the test emails below on `/login`. Both options are development-only.
 
 | Account email                | Initial role                 | Useful test                                      |
 | ---------------------------- | ---------------------------- | ------------------------------------------------ |
@@ -29,7 +29,7 @@ Open `/login` and select **Login as …** on a demo account card. No password is
 | `demo-editor@example.test`   | Content Manager              | Full editorial studio and moderation             |
 | `demo-admin@example.test`    | Platform Administrator       | Roles, approvals, users, reporting, certificates |
 
-Use **Sign Out** to browse as a public visitor. Existing development accounts can be switched on `/login`. To start over, `/login` → **Reset demo data** → **Reset local demo**.
+Use **Sign Out** to browse as a public visitor. Existing development accounts can be switched on `/demo`. To start over, `/demo` → **Reset demo data** → **Reset local demo**.
 
 ## 1. Public browsing and navigation
 
@@ -39,15 +39,17 @@ Use **Sign Out** to browse as a public visitor. Existing development accounts ca
 4. Visit `/events`. Use the calendar arrows, a marked day, the date field and type filter. Clear filters. Expand **Details**, use **Load more events** when available, and expand **Past events**.
 5. Open a session. Public visitors see hosts and registration information without a personal reservation. Completed/past sessions refuse registration. Seeded future dates eventually become past naturally; edit a future session through the CMS if testing later.
 
-## 2. Original account pages, applications and role approval
+## 2. Account pages, applications and role approval
 
-1. Open `/login`. Confirm the original YERH heading and demo account cards appear, including Guest, Entrepreneur/Learner, Mentor, Partner, Investor, Content Manager and Administrator. There should be no sliding panels, Google buttons or password form.
-2. Open `/register` and `/join`. Confirm the original pathway choices appear. Select a path and use **Show my next step**. Real account creation is offered through the connected platform when `VITE_PLATFORM_URL` is configured.
-3. Return to `/login`, choose **Guest / Public Visitor**, then open `/apply`. The guest has no venture, enrollment or publishing permissions yet.
+1. Open `/register`. Enter a test name, an unused test email and a city or county. Open **Terms of use**, then accept the agreement and create the account. You should land on the Guest dashboard. Select **Choose a role** to apply.
+2. Sign out and use the same email on `/login`. Confirm your workspace opens. Repeat with a nonexistent email and confirm the form offers a way to create an account.
+3. Use `/demo` to switch to a seeded guest if needed. `/join` still offers pathway choices.
 4. Apply for **Youth Entrepreneur / Learner** with at least 30 characters of motivation. Confirm **pending** status and that a second pending application is blocked.
-5. Switch to the administrator on `/login`. Open **Administration** or `/dashboard/workspace?tab=approvals`.
-6. Review the guest's role application, add at least ten characters of feedback, and approve. Reopen the same account from `/login`; its card now reflects the approved role. Its dashboard exposes entrepreneur tools. Refresh to check persistence.
+5. Switch to the administrator on `/demo`. Open **Administration** or `/dashboard/workspace?tab=approvals`.
+6. Review the guest's role application, add at least ten characters of feedback, and approve. Reopen the same account from `/login`; its dashboard now reflects the approved role and exposes entrepreneur tools. Refresh to check persistence.
 7. Test rejection with another public-role application. The applicant sees feedback, retains its current role and can apply again. Mentor applications require expertise; Partner/Investor applications require an organisation name. Staff roles are absent from public applications.
+
+On a phone, use the hamburger to open the same role links shown in the desktop dashboard sidebar. **Site menu** opens the public navigation. In Content Studio, switch modules from the dashboard menu and verify that unsaved edits are retained when you return to the original module.
 
 ## 3. Ventures and products
 

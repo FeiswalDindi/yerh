@@ -238,7 +238,6 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 10px;
   z-index: 10;
 }
 
@@ -263,19 +262,6 @@
   width: 24px;
   border-radius: 9999px;
   background: #ffffff;
-}
-
-.slider-pause-btn {
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.7);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-}
-
-.slider-pause-btn:hover {
-  color: white;
 }
 
 /* 2. My Story Section */

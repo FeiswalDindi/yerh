@@ -25,7 +25,11 @@ test('navigation preserves the requested hierarchy without standalone news or st
   );
   assert.deepEqual(
     navigation[0]!.children?.map((n) => n.label),
-    ['About Us', 'FAQ'],
+    ['About Us', 'Our Team', 'FAQ'],
+  );
+  assert.equal(
+    navigation[0]!.children?.find((item) => item.id === 'our-team')?.href,
+    '/about#our-team',
   );
   assert.ok(navigation[3]!.children?.some((n) => n.href === '/publications/blogs'));
   assert.ok(navigation[3]!.children?.some((n) => n.href === '/publications/stories'));

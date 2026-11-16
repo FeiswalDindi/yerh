@@ -31,7 +31,7 @@ Open http://127.0.0.1:5173. Node 22.12+ is required. `npm run check` runs domain
 
 ## Try the demo
 
-Open `/login` and select a development account. Guest, Entrepreneur/Learner, Mentor, Partner, Investor, Content Manager and Administrator roles remain available. Login uses the original YERH demo account selector; `/register` and `/join` use the original pathway page. Real account creation can hand off to `VITE_PLATFORM_URL` when configured. Demo role applications remain at `/apply`. Changes persist in this browser and are shared when switching roles.
+Use `/login` and `/register` to try the member account forms in development. Create a test account or sign in with a test email. Use `/demo` for the ready-made Guest, Entrepreneur/Learner, Mentor, Partner, Investor, Content Manager and Administrator accounts. `/join` offers pathway advice and `/apply` handles role applications. Production account pages link to `VITE_PLATFORM_URL` when configured.
 
 - Entrepreneur/Learner: ventures/products, learning enrollment, community, mentorship, opportunities and incubation.
 - Mentor: profile/expertise/availability, guidance requests, assigned incubation notes and validated milestones.
@@ -41,7 +41,7 @@ Open `/login` and select a development account. Guest, Entrepreneur/Learner, Men
 
 **Start the full acceptance walkthrough in [docs/TESTING_SPRINT.md](docs/TESTING_SPRINT.md).** The running session uses http://127.0.0.1:5174; `npm run dev -- --port 5174` restarts that port. The default development command still uses 5173.
 
-Only published demo contributions appear in public listings. Use Reset demo data on `/login` to restore fixtures. Bookmarks use a separate browser key and are retained by the demo reset. Production builds disable demo sign-in and mutations. The backend must supply real authorization; frontend role checks are only a development simulation.
+Only published demo contributions appear in public listings. Use Reset demo data on `/demo` to restore fixtures. Bookmarks use a separate browser key and are retained by the demo reset. Production builds disable demo sign-in and mutations. The backend must supply real authorization; frontend role checks are only a development simulation.
 
 The hero begins with **Idea to Business**, then rotates every 5 seconds. Hover, keyboard focus, hidden tabs, and reduced-motion preferences pause rotation. Manual arrows pause it until Play is chosen. The user-added slide bullets are retained.
 

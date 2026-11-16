@@ -68,7 +68,7 @@ export function MentorshipPage({ mode = 'mentors' }: { mode?: 'mentors' | 'mente
               <li>Describe the outcome you want to work toward.</li>
               <li>Review the request from the mentor’s workspace.</li>
             </ol>
-            <Link className="button" to="/login">
+            <Link className="button" to="/demo">
               Try a different demo account
             </Link>
           </div>

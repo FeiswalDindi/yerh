@@ -7,7 +7,7 @@ export function DemoNotice() {
       <div className="demo-notice">
         <strong>{enabled ? 'Local development demo' : 'Community preview'}</strong>
         <span>Fictional profiles and local activity. No real requests or messages are sent.</span>
-        {!account && enabled && <Link to="/login">Choose a demo account →</Link>}
+        {!account && enabled && <Link to="/demo">Choose a demo account →</Link>}
       </div>
       {error && (
         <div className="form-error" role="alert">

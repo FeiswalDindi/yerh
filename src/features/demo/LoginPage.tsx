@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, LogOut, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { useDemo } from '../../app/useDemo';
@@ -7,16 +7,18 @@ import { usePageTitle } from '../../shared/usePageTitle';
 import { platformHref } from '../../config/site';
 import { DemoNotice } from './DemoNotice';
 import { roleLabels } from '../../domain/roles';
+import { accountDestination } from '../accounts/account-navigation';
 export function LoginPage() {
   const { state, account, enabled, execute, reset } = useDemo();
   const navigate = useNavigate();
+  const { search } = useLocation();
   const [confirm, setConfirm] = useState(false);
   const host = platformHref('/login');
-  usePageTitle('Login');
+  usePageTitle('Demo accounts');
   return (
     <>
       <PageIntro
-        eyebrow="Member login"
+        eyebrow="Development preview"
         title="Find your place in the hub."
         description="Explore the different member experiences with a development demo account."
       />
@@ -39,7 +41,8 @@ export function LoginPage() {
                   <button
                     className="button"
                     onClick={() => {
-                      if (execute({ type: 'login', accountId: person.id })) navigate('/dashboard');
+                      if (execute({ type: 'login', accountId: person.id }))
+                        navigate(accountDestination(search, '/dashboard'), { replace: true });
                     }}
                   >
                     Login as {roleLabels[person.role]}
@@ -49,6 +52,9 @@ export function LoginPage() {
               ))}
             </div>
             <div className="demo-controls">
+              <Link className="text-link" to={`/login${search}`}>
+                Member sign-in
+              </Link>
               {account && (
                 <button className="text-link" onClick={() => execute({ type: 'logout' })}>
                   <LogOut size={16} />

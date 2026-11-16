@@ -8,7 +8,10 @@ import { createDemoSeed } from '../src/services/demo-repository';
 import { mockContentRepository } from '../src/services/mock-content-repository';
 import { createCmsSnapshot } from '../src/services/cms-snapshot';
 import { LoginPage } from '../src/features/demo/LoginPage';
+import { AccountPage } from '../src/features/accounts/AccountPage';
+import { accountDestination } from '../src/features/accounts/account-navigation';
 import { JoinPage } from '../src/features/connect/JoinPage';
+import { AboutPage } from '../src/features/info/AboutPage';
 import { ApplicationsPage } from '../src/features/accounts/ApplicationsPage';
 import { EventsPage } from '../src/features/benefits/EventsPage';
 import { OpportunitiesPage, OpportunityDetail } from '../src/features/benefits/OpportunitiesPage';
@@ -20,7 +23,10 @@ import { CmsPreview } from '../src/features/cms/CmsPreview';
 import { RequireDemo } from '../src/features/demo/RequireDemo';
 import { LearningPage } from '../src/features/resources/LearningPage';
 import { useCatalog } from '../src/app/useCatalog';
-import type { DemoState } from '../src/domain/demo';
+import { applyDemoAction, type DemoState } from '../src/domain/demo';
+import { DashboardLayout } from '../src/features/dashboard/DashboardLayout';
+import { dashboardAccess } from '../src/features/dashboard/dashboard-navigation';
+import { dashboardTitles } from '../src/features/dashboard/dashboard-overview';
 import type { ReactNode } from 'react';
 
 export async function checkPlatformRendering() {
@@ -32,6 +38,7 @@ export async function checkPlatformRendering() {
     id: string | null = null,
     child?: ReactNode,
     custom: DemoState = state,
+    enabled = true,
   ) {
     const account = custom.accounts.find((a) => a.id === id) ?? null;
     return renderToStaticMarkup(
@@ -40,7 +47,7 @@ export async function checkPlatformRendering() {
           value={{
             state: { ...custom, activeAccountId: id },
             account,
-            enabled: true,
+            enabled,
             error: '',
             execute: () => false,
             reset: () => {},
@@ -50,9 +57,11 @@ export async function checkPlatformRendering() {
           <MemoryRouter initialEntries={[path]}>
             {child ?? (
               <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<JoinPage />} />
+                <Route path="/login" element={<AccountPage />} />
+                <Route path="/register" element={<AccountPage register />} />
+                <Route path="/demo" element={<LoginPage />} />
                 <Route path="/join" element={<JoinPage />} />
+                <Route path="/about" element={<AboutPage />} />
                 <Route path="/apply" element={<ApplicationsPage />} />
                 <Route path="/events" element={<EventsPage />} />
                 <Route path="/opportunities" element={<OpportunitiesPage />} />
@@ -61,26 +70,22 @@ export async function checkPlatformRendering() {
                   path="/dashboard"
                   element={
                     <RequireDemo>
-                      <RoleDashboard />
+                      <DashboardLayout />
                     </RequireDemo>
                   }
-                />
-                <Route
-                  path="/dashboard/workspace"
-                  element={
-                    <RequireDemo>
-                      <WorkspacePage />
-                    </RequireDemo>
-                  }
-                />
-                <Route
-                  path="/dashboard/cms"
-                  element={
-                    <RequireDemo roles={['content_manager', 'admin']}>
-                      <CmsPage />
-                    </RequireDemo>
-                  }
-                />
+                >
+                  <Route index element={<RoleDashboard />} />
+                  <Route path="applications" element={<ApplicationsPage />} />
+                  <Route path="workspace" element={<WorkspacePage />} />
+                  <Route
+                    path="cms"
+                    element={
+                      <RequireDemo capabilities={dashboardAccess.cms}>
+                        <CmsPage />
+                      </RequireDemo>
+                    }
+                  />
+                </Route>
                 <Route path="/learn/:courseId" element={<LearningPage />} />
               </Routes>
             )}
@@ -104,10 +109,54 @@ export async function checkPlatformRendering() {
     assert.ok(render(path).length > 400, path);
     count++;
   }
+  // Feature every matching CMS-selected listing once, never promote an unselected one.
+  const featuredState = structuredClone(state);
+  featuredState.platform.opportunities = featuredState.platform.opportunities.map((o) => ({
+    ...o,
+    featured: true,
+  }));
+  featuredState.platform.opportunities.push({
+    ...featuredState.platform.opportunities[0]!,
+    id: 'hidden-featured-draft',
+    slug: 'hidden-featured-draft',
+    title: 'Hidden featured draft',
+    status: 'draft',
+  });
+  const featuredHtml = render('/opportunities', null, undefined, featuredState);
+  assert.ok(featuredHtml.includes('Featured opportunities'));
+  assert.equal((featuredHtml.match(/class="benefit-card /g) ?? []).length, 2);
+  assert.equal((featuredHtml.match(/benefit-featured/g) ?? []).length, 2);
+  assert.ok(!featuredHtml.includes('Hidden featured draft'));
+  assert.ok(!featuredHtml.includes('Youth innovation pitch challenge'));
+  assert.ok(!featuredHtml.includes('More opportunities'));
+  const filteredHtml = render('/opportunities?category=Grant', null, undefined, featuredState);
+  assert.equal((filteredHtml.match(/class="benefit-card /g) ?? []).length, 1);
+  assert.ok(!filteredHtml.includes('Market access and technical support'));
+  const unfeaturedState = structuredClone(state);
+  unfeaturedState.platform.opportunities.forEach((o) => (o.featured = false));
+  const unfeaturedHtml = render('/opportunities', null, undefined, unfeaturedState);
+  assert.ok(!unfeaturedHtml.includes('Featured opportunities'));
+  assert.ok(unfeaturedHtml.includes('All opportunities'));
+  const emptyHtml = render('/opportunities?q=no-such-opportunity', null, undefined, featuredState);
+  assert.ok(emptyHtml.includes('No opportunities match these filters.'));
+  assert.ok(!emptyHtml.includes('Featured opportunities'));
+  const mixedHtml = render('/opportunities');
+  assert.ok(mixedHtml.includes('More opportunities'));
+  assert.equal((mixedHtml.match(/class="benefit-card /g) ?? []).length, 2);
+  count += 5;
   const login = render('/login');
   const register = render('/register');
-  assert.ok(login.includes('demo-account-grid'));
-  assert.ok(login.includes('Find your place in the hub.'));
+  const demo = render('/demo');
+  assert.ok(login.includes('Sign in to YERH'));
+  assert.ok(login.includes('name="email"'));
+  assert.ok(login.includes('href="/register"'));
+  assert.ok(login.includes('href="/demo"'));
+  assert.ok(!login.includes('demo-account-grid'));
+  assert.ok(register.includes('Create your account'));
+  for (const field of ['name', 'email', 'location', 'terms'])
+    assert.ok(register.includes(`name="${field}"`), field);
+  assert.ok(register.includes('href="/login"'));
+  assert.ok(demo.includes('demo-account-grid'));
   for (const role of [
     'Guest',
     'Youth Entrepreneur / Learner',
@@ -117,15 +166,38 @@ export async function checkPlatformRendering() {
     'Content Manager',
     'Platform Administrator',
   ])
-    assert.ok(login.includes(`Login as ${role}`), role);
-  assert.ok(register.includes('Where will your next step take you?'));
-  assert.ok(register.includes('pathway-options'));
+    assert.ok(demo.includes(`Login as ${role}`), role);
   assert.ok(render('/join').includes('pathway-options'));
-  for (const html of [login, register, render('/join')]) {
-    assert.ok(!html.includes('auth-shell'));
-    assert.ok(!html.includes('Continue with Google'));
-    assert.ok(!html.includes('name="password"'));
+  const team = catalog.team;
+  assert.ok(team);
+  const about = render('/about#our-team');
+  assert.ok(about.includes('id="our-team"'));
+  assert.ok(about.includes(team.groupPhoto.image));
+  assert.equal((about.match(/aria-haspopup="dialog"/g) ?? []).length, team.members.length);
+  for (const member of team.members) assert.ok(about.includes(`View profile for ${member.name}`));
+  for (const path of ['/login', '/register']) {
+    const production = render(path, null, undefined, state, false);
+    assert.ok(!production.includes('name="email"'));
+    assert.ok(!production.includes('href="/demo"'));
   }
+  assert.equal(
+    accountDestination('?redirect=%2Fopportunities%3Fstatus%3Dall%23results', '/dashboard'),
+    '/opportunities?status=all#results',
+  );
+  for (const target of [
+    'https://example.test',
+    '//example.test',
+    '/\\example.test',
+    '/_/..//example.test',
+    '/login',
+    '/register',
+    '/demo',
+  ])
+    assert.equal(
+      accountDestination(`?redirect=${encodeURIComponent(target)}`, '/dashboard'),
+      '/dashboard',
+      target,
+    );
   assert.ok(render('/apply').includes('Sign in before applying'));
   assert.ok(!render('/apply', 'demo-guest').includes('<option value="admin">'));
   assert.ok(render('/dashboard/cms', 'demo-guest').includes('different role'));
@@ -133,9 +205,61 @@ export async function checkPlatformRendering() {
   for (const account of state.accounts) {
     const html = render('/dashboard', account.id);
     assert.ok(html.includes(account.name.split(' ')[0]!));
+    assert.ok(html.includes(dashboardTitles[account.role]));
+    assert.ok(html.includes('aria-controls="dashboard-menu"'));
+    assert.ok(html.includes('aria-controls="feiso-mobile-drawer"'));
+    assert.ok(html.includes('aria-label="Dashboard navigation"'));
     count++;
   }
-  assert.ok(!render('/dashboard', 'demo-guest').includes('Content studio'));
+  assert.ok(!render('/dashboard', 'demo-guest').includes('/dashboard/cms'));
+  assert.ok(!render('/dashboard', 'demo-mentor').includes('tab=approvals'));
+  assert.ok(render('/dashboard', 'demo-partner').includes('Partner tools'));
+  assert.ok(render('/dashboard', 'demo-investor').includes('Investor tools'));
+  const teamEditor = render('/dashboard/cms?module=team', 'demo-editor');
+  assert.ok(teamEditor.includes('Members <small>8 entries'));
+  assert.match(
+    teamEditor,
+    /<a(?=[^>]*href="\/dashboard\/cms\?module=team")(?=[^>]*aria-current="page")[^>]*>/,
+  );
+
+  const now = '2026-11-16T10:00:00Z';
+  const memberId = 'member-dashboard-test';
+  const joined = applyDemoAction(state, {
+    type: 'signup',
+    id: memberId,
+    name: 'Dashboard Tester',
+    email: 'dash@example.test',
+    location: 'Nairobi',
+    phone: '',
+    ageRange: '',
+    consent: true,
+    now,
+  });
+  const pending = applyDemoAction(joined, {
+    type: 'role-apply',
+    id: 'test-role',
+    role: 'mentor',
+    motivation: 'Apply to guide entrepreneurs in developing viable ideas.',
+    organisation: '',
+    expertise: 'Business operations',
+    now,
+  });
+  const pendingOverview = render('/dashboard', memberId, undefined, pending);
+  assert.ok(pendingOverview.includes('Application under review'));
+  assert.ok(!pendingOverview.includes('tab=mentees'));
+  const admin = applyDemoAction(pending, { type: 'login', accountId: 'demo-admin' });
+  const approved = applyDemoAction(admin, {
+    type: 'role-review',
+    id: 'test-role',
+    decision: 'approved',
+    reason: 'Approved for the mentoring programme.',
+    now,
+  });
+  const approvedOverview = render('/dashboard', memberId, undefined, approved);
+  assert.ok(approvedOverview.includes('Mentor dashboard'));
+  assert.ok(approvedOverview.includes('tab=mentees'));
+  assert.ok(approvedOverview.includes('Approved for the mentoring programme.'));
+
   assert.ok(!render('/dashboard', 'demo-partner').includes('Administration'));
   for (const [id, tabs] of [
     ['demo-founder', ['ventures', 'products', 'incubation', 'applications']],

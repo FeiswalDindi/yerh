@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type Dispatch,
@@ -21,7 +22,78 @@ import {
 import { WhatsAppIcon } from '../shared/WhatsAppIcon';
 import { useCatalog } from '../app/useCatalog';
 import { roleLabels } from '../domain/roles';
+import type { SiteNavigation } from '../domain/site';
 import { useDemo } from '../app/useDemo';
+
+function MobileNavigationList({
+  items,
+  onNavigate,
+  parent,
+}: {
+  items: SiteNavigation[];
+  onNavigate: () => void;
+  parent?: SiteNavigation;
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const listId = useId();
+  const showOverview =
+    parent &&
+    !['resources', 'benefits'].includes(parent.id) &&
+    !items.some((item) => item.href === parent.href);
+
+  return (
+    <ul className={`feiso-menu-entries ${parent ? '' : 'feiso-menu-root'}`}>
+      {showOverview && (
+        <li>
+          <NavLink
+            to={parent.href}
+            end={parent.href === '/'}
+            onClick={onNavigate}
+            className="feiso-menu-link feiso-parent-link"
+          >
+            Overview: {parent.label}
+          </NavLink>
+        </li>
+      )}
+      {items.map((item) => {
+        const isExpanded = expandedId === item.id;
+        const panelId = `${listId}-${item.id}`;
+        return (
+          <li key={item.id}>
+            {item.children?.length ? (
+              <>
+                <button
+                  type="button"
+                  className="feiso-accordion-trigger"
+                  onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                  aria-expanded={isExpanded}
+                  aria-controls={panelId}
+                >
+                  <span>{item.label}</span>
+                  <ChevronDown size={18} className="feiso-chevron" aria-hidden="true" />
+                </button>
+                <div className="feiso-accordion-panel" id={panelId} hidden={!isExpanded}>
+                  {isExpanded && (
+                    <MobileNavigationList
+                      items={item.children}
+                      onNavigate={onNavigate}
+                      parent={item}
+                    />
+                  )}
+                </div>
+              </>
+            ) : (
+              <NavLink to={item.href} onClick={onNavigate} className="feiso-menu-link">
+                {item.label}
+              </NavLink>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export function MobileNavigationDrawer({
   open,
   setOpen,
@@ -36,11 +108,7 @@ export function MobileNavigationDrawer({
   const navigation = site.navigation;
   const socialLinks = Object.fromEntries(site.socials.map((s) => [s.label.toLowerCase(), s.href]));
   const drawer = useRef<HTMLElement>(null);
-  const [expandedMobileMenu, setExpandedMobileMenu] = useState<string | null>(null);
   const location = useLocation();
-  useEffect(() => {
-    setExpandedMobileMenu(null);
-  }, [location.pathname, location.search]);
   useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
@@ -76,10 +144,6 @@ export function MobileNavigationDrawer({
     };
   }, [open]);
 
-  const toggleSubmenu = (title: string) => {
-    setExpandedMobileMenu((curr) => (curr === title ? null : title));
-  };
-
   return (
     <>
       {/* Feiso-style Mobile Navigation Drawer rendered in portal to prevent any clipping */}
@@ -100,7 +164,7 @@ export function MobileNavigationDrawer({
               id="feiso-mobile-drawer"
               className={`feiso-mobile-drawer ${open ? 'open' : ''}`}
               role="dialog"
-              aria-label="Mobile navigation"
+              aria-label="Site navigation"
               aria-modal={open ? true : undefined}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
@@ -147,7 +211,7 @@ export function MobileNavigationDrawer({
                         </Link>
                         <div className="feiso-account-row-btns">
                           <Link
-                            to="/profile"
+                            to="/dashboard/profile"
                             onClick={() => setOpen(false)}
                             className="feiso-sub-btn"
                           >
@@ -195,81 +259,12 @@ export function MobileNavigationDrawer({
                   )}
                 </div>
 
-                {/* Navigation Menu Accordions (Feiso style) */}
-                <div className="feiso-menu-list">
-                  {navigation.map((item) => {
-                    const hasChildren = Boolean(item.children && item.children.length > 0);
-                    const isExpanded = expandedMobileMenu === item.id;
-
-                    if (!hasChildren) {
-                      return (
-                        <div key={item.id} className="feiso-menu-item">
-                          <NavLink
-                            to={item.href}
-                            onClick={() => setOpen(false)}
-                            className="feiso-menu-link"
-                          >
-                            {item.label}
-                          </NavLink>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div key={item.id} className="feiso-menu-item">
-                        <button
-                          type="button"
-                          className="feiso-accordion-trigger"
-                          onClick={() => toggleSubmenu(item.id)}
-                          aria-expanded={isExpanded}
-                        >
-                          <span>{item.label}</span>
-                          <ChevronDown
-                            size={18}
-                            className={`feiso-chevron ${isExpanded ? 'rotated' : ''}`}
-                          />
-                        </button>
-                        {isExpanded && (
-                          <div className="feiso-accordion-panel">
-                            <NavLink
-                              to={item.href}
-                              end={item.href === '/'}
-                              onClick={() => setOpen(false)}
-                              className="feiso-sublink feiso-parent-link"
-                            >
-                              Overview: {item.label}
-                            </NavLink>
-                            {item.children?.map((child) => (
-                              <div key={child.id} className="feiso-subitem-group">
-                                <NavLink
-                                  to={child.href}
-                                  onClick={() => setOpen(false)}
-                                  className="feiso-sublink"
-                                >
-                                  {child.label}
-                                </NavLink>
-                                {child.children && (
-                                  <div className="feiso-nested-children">
-                                    {child.children.map((nested) => (
-                                      <NavLink
-                                        key={nested.id}
-                                        to={nested.href}
-                                        onClick={() => setOpen(false)}
-                                        className="feiso-nested-link"
-                                      >
-                                        {nested.label}
-                                      </NavLink>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
+                <nav className="feiso-menu-list" aria-label="Main navigation">
+                  <MobileNavigationList
+                    key={location.key}
+                    items={navigation}
+                    onNavigate={() => setOpen(false)}
+                  />
                   <div className="feiso-menu-item">
                     <Link
                       to="/saved"
@@ -280,7 +275,7 @@ export function MobileNavigationDrawer({
                       Saved Resources
                     </Link>
                   </div>
-                </div>
+                </nav>
 
                 {/* Quick Action Button */}
                 <div className="feiso-cta-wrapper">

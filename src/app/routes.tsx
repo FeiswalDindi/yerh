@@ -5,6 +5,14 @@ import { SiteLayout } from '../layout/SiteLayout';
 import { HomePage } from '../features/home/HomePage';
 import { NotFoundPage } from '../features/info/NotFoundPage';
 import { RequireDemo } from '../features/demo/RequireDemo';
+import { useDemo } from './useDemo';
+import { dashboardAccess } from '../features/dashboard/dashboard-navigation';
+const DashboardLayout = lazy(() =>
+  import('../features/dashboard/DashboardLayout').then((m) => ({ default: m.DashboardLayout })),
+);
+const DashboardActivity = lazy(() =>
+  import('../features/dashboard/DashboardActivity').then((m) => ({ default: m.DashboardActivity })),
+);
 const ContentDirectory = lazy(() =>
   import('../features/content/ContentDirectory').then((m) => ({ default: m.ContentDirectory })),
 );
@@ -36,8 +44,11 @@ const AboutPage = lazy(() =>
 const FaqPage = lazy(() =>
   import('../features/info/FaqPage').then((m) => ({ default: m.FaqPage })),
 );
-const LoginPage = lazy(() =>
+const DemoLoginPage = lazy(() =>
   import('../features/demo/LoginPage').then((m) => ({ default: m.LoginPage })),
+);
+const AccountPage = lazy(() =>
+  import('../features/accounts/AccountPage').then((m) => ({ default: m.AccountPage })),
 );
 const ContactPage = lazy(() =>
   import('../features/contact/ContactPage').then((m) => ({ default: m.ContactPage })),
@@ -129,6 +140,11 @@ function CollectionRedirect({ to }: { to: string }) {
   const { search } = useLocation();
   return <Navigate to={`${to}${slug ? `/${encodeURIComponent(slug)}` : ''}${search}`} replace />;
 }
+function ApplicationEntry() {
+  const { account } = useDemo();
+  if (account?.suspended) return <Navigate to="/login" replace />;
+  return account ? <Navigate to="/dashboard/applications" replace /> : <ApplicationsPage />;
+}
 /** Compose under the host router; DemoProvider and ContentProvider are supplied at the app boundary. */
 export function createYerhRoutes(): RouteObject[] {
   return [
@@ -159,25 +175,9 @@ export function createYerhRoutes(): RouteObject[] {
         { path: 'events/archive', element: <ContentDirectory kind="event" /> },
         { path: 'opportunities', element: <OpportunitiesPage /> },
         { path: 'opportunities/:slug', element: <OpportunityDetail /> },
-        { path: 'apply', element: <ApplicationsPage /> },
+        { path: 'apply', element: <ApplicationEntry /> },
         { path: 'pages/:slug', element: <ManagedPage /> },
         { path: 'certificates/:id', element: <CertificatePage /> },
-        {
-          path: 'dashboard/workspace',
-          element: (
-            <RequireDemo>
-              <WorkspacePage />
-            </RequireDemo>
-          ),
-        },
-        {
-          path: 'dashboard/cms',
-          element: (
-            <RequireDemo roles={['content_manager', 'admin']}>
-              <CmsPage />
-            </RequireDemo>
-          ),
-        },
         ...[
           'publications/stories',
           'publications/blogs',
@@ -200,51 +200,10 @@ export function createYerhRoutes(): RouteObject[] {
         { path: 'yem/mentees', element: <MentorshipPage mode="mentees" /> },
         { path: 'community', element: <Navigate to="/network" replace /> },
         { path: 'join', element: <JoinPage /> },
-        { path: 'register', element: <JoinPage /> },
-        { path: 'login', element: <LoginPage /> },
-        { path: 'demo', element: <LoginPage /> },
-        {
-          path: 'dashboard',
-          element: (
-            <RequireDemo>
-              <RoleDashboard />
-            </RequireDemo>
-          ),
-        },
-        {
-          path: 'profile',
-          element: (
-            <RequireDemo>
-              <ProfilePage />
-            </RequireDemo>
-          ),
-        },
-        {
-          path: 'dashboard/mentorship',
-          element: (
-            <RequireDemo>
-              <MentorshipWorkspace />
-            </RequireDemo>
-          ),
-        },
-        {
-          path: 'dashboard/content',
-          element: (
-            <RequireDemo
-              roles={['entrepreneur', 'mentor', 'partner', 'investor', 'content_manager', 'admin']}
-            >
-              <ContentWorkspace />
-            </RequireDemo>
-          ),
-        },
-        {
-          path: 'dashboard/moderation',
-          element: (
-            <RequireDemo roles={['admin', 'content_manager']}>
-              <ModerationPage />
-            </RequireDemo>
-          ),
-        },
+        { path: 'register', element: <AccountPage key="register" register /> },
+        { path: 'login', element: <AccountPage key="login" /> },
+        { path: 'demo', element: <DemoLoginPage /> },
+        { path: 'profile', element: <Navigate to="/dashboard/profile" replace /> },
         { path: 'contact', element: <ContactPage /> },
         { path: 'search', element: <ContentDirectory search /> },
         { path: 'saved', element: <ContentDirectory savedOnly /> },
@@ -264,6 +223,85 @@ export function createYerhRoutes(): RouteObject[] {
         ]),
         { path: 'publications/:slug', element: <CollectionRedirect to="/publications/reports" /> },
         { path: '*', element: <LegacyRoute /> },
+      ],
+    },
+    {
+      path: 'dashboard',
+      element: (
+        <RequireDemo>
+          <Suspense
+            fallback={
+              <p className="status-page" role="status">
+                Loading your dashboard…
+              </p>
+            }
+          >
+            <DashboardLayout />
+          </Suspense>
+        </RequireDemo>
+      ),
+      children: [
+        { index: true, element: <RoleDashboard /> },
+        { path: 'profile', element: <ProfilePage /> },
+        { path: 'applications', element: <ApplicationsPage /> },
+        { path: 'workspace', element: <WorkspacePage /> },
+        {
+          path: 'mentorship',
+          element: (
+            <RequireDemo capabilities={dashboardAccess.mentorship}>
+              <MentorshipWorkspace />
+            </RequireDemo>
+          ),
+        },
+        {
+          path: 'content',
+          element: (
+            <RequireDemo capabilities={dashboardAccess.content}>
+              <ContentWorkspace />
+            </RequireDemo>
+          ),
+        },
+        {
+          path: 'cms',
+          element: (
+            <RequireDemo capabilities={dashboardAccess.cms}>
+              <CmsPage />
+            </RequireDemo>
+          ),
+        },
+        {
+          path: 'moderation',
+          element: (
+            <RequireDemo capabilities={dashboardAccess.moderation}>
+              <ModerationPage />
+            </RequireDemo>
+          ),
+        },
+        {
+          path: 'learning',
+          element: (
+            <RequireDemo capabilities={dashboardAccess.learning}>
+              <DashboardActivity kind="learning" />
+            </RequireDemo>
+          ),
+        },
+        {
+          path: 'learning/:courseId',
+          element: (
+            <RequireDemo capabilities={dashboardAccess.learning}>
+              <LearningPage dashboard />
+            </RequireDemo>
+          ),
+        },
+        {
+          path: 'events',
+          element: (
+            <RequireDemo capabilities={dashboardAccess.events}>
+              <DashboardActivity kind="events" />
+            </RequireDemo>
+          ),
+        },
+        { path: '*', element: <NotFoundPage /> },
       ],
     },
   ];

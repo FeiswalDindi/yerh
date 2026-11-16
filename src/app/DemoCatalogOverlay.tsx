@@ -60,6 +60,7 @@ export function DemoCatalogOverlay({ children }: { children: ReactNode }) {
       });
     return {
       ...published,
+      team: published.team ?? catalog.team,
       items: [
         ...new Map(entries.filter((i) => i.status !== 'archived').map((i) => [i.id, i])).values(),
       ],

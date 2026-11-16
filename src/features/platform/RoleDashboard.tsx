@@ -1,179 +1,109 @@
+import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
-import { can, roleLabels } from '../../domain/roles';
+import { roleLabels } from '../../domain/roles';
 import { PageIntro } from '../../shared/PageIntro';
-import { DemoNotice } from '../demo/DemoNotice';
 import { usePageTitle } from '../../shared/usePageTitle';
+import { dashboardGroups } from '../dashboard/dashboard-navigation';
+import { dashboardMetrics, dashboardTitles } from '../dashboard/dashboard-overview';
+import { DemoNotice } from '../demo/DemoNotice';
+
+const guestLinks = [
+  {
+    label: 'Explore courses',
+    to: '/learn',
+    description: 'Browse entrepreneurship courses and learning resources.',
+  },
+  {
+    label: 'Upcoming events',
+    to: '/events',
+    description: 'Find workshops, webinars and community events.',
+  },
+  {
+    label: 'Marketplace',
+    to: '/marketplace',
+    description: 'Discover products and services from youth ventures.',
+  },
+];
+
 export function RoleDashboard() {
   const { account, state } = useDemo();
-  usePageTitle('My dashboard');
+  const title = account ? dashboardTitles[account.role] : 'My dashboard';
+  usePageTitle(title);
   if (!account) return null;
-  const p = state.platform;
-  const links = [
-    {
-      title: 'My profile',
-      text: 'Keep your member profile up to date.',
-      to: '/profile',
-      show: true,
-    },
-    {
-      title: 'Role applications',
-      text: 'Apply for a role and track decisions.',
-      to: '/apply',
-      show: true,
-    },
-    {
-      title: 'My learning',
-      text: 'Enroll and track your course progress.',
-      to: '/learn',
-      show: can(account, 'learn'),
-    },
-    {
-      title: 'Ventures & products',
-      text: 'Manage your venture, listings and incubation.',
-      to: '/dashboard/workspace?tab=ventures',
-      show: can(account, 'venture'),
-    },
-    {
-      title: 'Mentor workspace',
-      text: 'Set availability and guide assigned founders.',
-      to: '/dashboard/workspace?tab=mentor',
-      show: can(account, 'mentor'),
-    },
-    {
-      title: 'Organisation workspace',
-      text: 'Manage opportunities, applicants and your profile.',
-      to: '/dashboard/workspace?tab=organisation',
-      show: can(account, 'organisation'),
-    },
-    {
-      title: 'Content studio',
-      text: 'Manage site content, media, pages and publishing.',
-      to: '/dashboard/cms',
-      show: can(account, 'cms'),
-    },
-    {
-      title: 'Administration',
-      text: 'Review applications, users and approvals.',
-      to: '/dashboard/workspace?tab=approvals',
-      show: can(account, 'admin'),
-    },
-    {
-      title: 'Analytics & reporting',
-      text: 'Current platform counts and audit export.',
-      to: '/dashboard/workspace?tab=reports',
-      show: can(account, 'admin'),
-    },
-    {
-      title: 'My event registrations',
-      text: 'Review your sessions and reserved places.',
-      to: `/network/members/${account.id}?tab=events`,
-      show: can(account, 'attend'),
-    },
-    {
-      title: 'Community',
-      text: 'Find your groups and participate in discussions.',
-      to: '/forums',
-      show: can(account, 'community'),
-    },
-    {
-      title: 'Mentorship',
-      text: 'Request guidance or respond to assigned requests.',
-      to: '/dashboard/mentorship',
-      show: can(account, 'apply') || can(account, 'mentor'),
-    },
-    {
-      title: 'My contributions',
-      text: 'Write and review blogs, stories and listings.',
-      to: '/dashboard/content',
-      show: account.role !== 'guest',
-    },
-    {
-      title: 'Content moderation',
-      text: 'Review community discussions.',
-      to: '/dashboard/moderation',
-      show: can(account, 'cms'),
-    },
-  ];
+
+  const isGuest = account.role === 'guest';
+  const applications = state.platform.applications
+    .filter((a) => a.accountId === account.id)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const pending = applications.find((a) => a.status === 'pending');
+  const recent = applications[0];
+  const metrics = dashboardMetrics(state, account);
+  const shortcuts = isGuest
+    ? guestLinks
+    : dashboardGroups(account)
+        .slice(1, -1)
+        .flatMap((group) => group.links)
+        .slice(0, 4);
+
   return (
     <>
       <PageIntro
-        eyebrow={roleLabels[account.role]}
+        eyebrow={title}
         title={`Welcome, ${account.name.split(' ')[0]}.`}
-        description={
-          account.role === 'guest'
-            ? 'Your account is ready. Choose a pathway and apply for role access.'
-            : 'Your approved role connects you to the tools and workflows below.'
-        }
+        description={`Signed in as ${roleLabels[account.role]}.`}
       />
-      <section className="container section">
+      <section className="container section dashboard-overview">
         <DemoNotice />
-        <div className="workspace-stats">
-          <div>
-            <strong>
-              {
-                p.applications.filter((a) => a.accountId === account.id && a.status === 'pending')
-                  .length
-              }
-            </strong>
-            <span>Pending role applications</span>
-          </div>
-          <div>
-            <strong>{p.enrollments[account.id]?.length ?? 0}</strong>
-            <span>Courses enrolled</span>
-          </div>
-          <div>
-            <strong>
-              {
-                state.registrations.filter(
-                  (r) => r.memberId === account.id && r.status === 'registered',
-                ).length
-              }
-            </strong>
-            <span>Reserved sessions</span>
-          </div>
-          <div>
-            <strong>
-              {can(account, 'cms')
-                ? p.cmsRevision
-                : p.ventures.filter((v) => v.ownerId === account.id).length}
-            </strong>
-            <span>{can(account, 'cms') ? 'Published site revision' : 'My ventures'}</span>
-          </div>
-        </div>
-        <div className="workspace-links">
-          {links
-            .filter((l) => l.show)
-            .map((l) => (
-              <Link className="collection-card" key={l.to} to={l.to}>
-                <h2>{l.title}</h2>
-                <p>{l.text}</p>
-                <span className="text-link">Open workspace →</span>
-              </Link>
-            ))}
-        </div>
-        {p.certificates.some((c) => c.accountId === account.id) && (
+        {isGuest && (
           <section className="profile-panel">
-            <h2>My completion records</h2>
-            {p.certificates
-              .filter((c) => c.accountId === account.id)
-              .map((c) => (
-                <Link className="profile-sidebar-link" to={`/certificates/${c.id}`} key={c.id}>
-                  View course completion record · {new Date(c.issuedAt).toLocaleDateString('en-KE')}{' '}
-                  →
-                </Link>
-              ))}
+            <h2>{pending ? 'Application under review' : 'Apply for a role'}</h2>
+            <p>
+              {pending
+                ? `Your ${roleLabels[pending.role]} application is pending review.`
+                : 'Choose Entrepreneur, Mentor, Investor or Partner to apply for access.'}
+            </p>
+            {recent?.status === 'rejected' && recent.reason && (
+              <p>Reviewer feedback: {recent.reason}</p>
+            )}
+            <Link className="button" to="/dashboard/applications">
+              {pending ? 'Track application' : 'Choose a role'}{' '}
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
           </section>
         )}
-        <h2 className="community-section-title">Recent role decisions</h2>
-        {p.applications
-          .filter((a) => a.accountId === account.id)
-          .map((a) => (
-            <p key={a.id}>
-              {roleLabels[a.role]} · {a.status}
-              {a.reason ? ` · ${a.reason}` : ''}
-            </p>
+        {!isGuest && (
+          <div className="workspace-stats" aria-label="Workspace activity">
+            {metrics.map((metric) => (
+              <Link key={metric.label} to={metric.to} className="dashboard-metric">
+                <strong>{metric.value}</strong>
+                <span>{metric.label}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+        <h2 className="dashboard-section-title">{isGuest ? 'Explore the hub' : 'Quick actions'}</h2>
+        <div className="workspace-links">
+          {shortcuts.map((link) => (
+            <Link className="collection-card" key={link.to} to={link.to}>
+              <h3>{link.label}</h3>
+              <p>{link.description}</p>
+              <ArrowRight size={18} aria-hidden="true" />
+            </Link>
           ))}
+        </div>
+        {!isGuest && recent && (
+          <section className="profile-panel">
+            <h2>Latest role application</h2>
+            <p>
+              {roleLabels[recent.role]} · {recent.status}
+            </p>
+            {recent.reason && <p>Reviewer feedback: {recent.reason}</p>}
+            <Link className="text-link" to="/dashboard/applications">
+              View application history <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          </section>
+        )}
       </section>
     </>
   );

@@ -10,6 +10,22 @@ export interface ManagedPage {
   description: string;
   sections: { title: string; body: string }[];
 }
+export interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  positioning: string;
+  bio: string;
+  image: string;
+  linkedinUrl: string;
+}
+export interface TeamContent {
+  title: string;
+  intro: string;
+  sourceUrl: string;
+  groupPhoto: { image: string; alt: string };
+  members: TeamMember[];
+}
 export interface SiteContent {
   name: string;
   slogan: string;

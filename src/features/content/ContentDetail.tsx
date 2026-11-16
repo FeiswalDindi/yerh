@@ -70,14 +70,13 @@ export function ContentDetail() {
                 ? 'businesses'
                 : `${item.kind}s`}
         </Link>
-        <p className="eyebrow">
-          {item.category}
-          {item.kind === 'event' ? ' · PAST EVENT' : ''}
-        </p>
         <h1>{item.title}</h1>
         <p className="article-deck">{item.excerpt}</p>
         <div className="article-tools">
           <span>
+            {item.category}
+            {item.kind === 'event' ? ' · Past event' : ''}
+            {' · '}
             {item.authorId ? <MemberLink id={item.authorId} /> : 'YERH Editorial'}
             {item.publishedAt
               ? ` · ${new Date(`${item.publishedAt}T12:00:00`).toLocaleDateString('en-KE', { dateStyle: 'long' })}`

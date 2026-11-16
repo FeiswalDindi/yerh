@@ -1,5 +1,6 @@
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useCatalog } from '../app/useCatalog';
+import { Breadcrumb } from './Breadcrumb';
 export function PageIntro({
   eyebrow,
   title,
@@ -12,18 +13,12 @@ export function PageIntro({
   const { site } = useCatalog();
   const { pathname } = useLocation();
   const override = site.pages[pathname];
-  eyebrow = override?.eyebrow ?? eyebrow;
   title = override?.title ?? title;
   description = override?.description ?? description;
   return (
     <header className="page-intro">
       <div className="container">
-        <div className="breadcrumb">
-          <Link to="/">Home</Link>
-          <span>/</span>
-          <span>{eyebrow}</span>
-        </div>
-        <p className="eyebrow">{eyebrow}</p>
+        <Breadcrumb current={override?.eyebrow ?? eyebrow} />
         <h1>{title}</h1>
         <p className="intro-description">{description}</p>
       </div>

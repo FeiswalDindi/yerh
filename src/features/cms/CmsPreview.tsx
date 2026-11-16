@@ -4,6 +4,7 @@ import { OpportunityCard } from '../benefits/OpportunitiesPage';
 import { SessionCard } from '../community/CommunityCards';
 import { DiscoverySidebar } from '../discovery/DiscoverySidebar';
 import { TermsSummary } from '../legal/TermsDialog';
+import { TeamSection } from '../info/TeamSection';
 
 /** Uses the public components and draft catalog without changing the published provider. */
 export function CmsPreview({
@@ -29,6 +30,7 @@ export function CmsPreview({
       <p>Select an event.</p>
     );
   if (module === 'terms') return <TermsSummary />;
+  if (module === 'team') return c.team && <TeamSection team={c.team} />;
   if (module === 'sidebar') return <DiscoverySidebar variant="reading" />;
   if (module === 'media')
     return (

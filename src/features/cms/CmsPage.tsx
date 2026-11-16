@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import { Save, Globe, Eye, Plus, RotateCcw, Search, FileText, LayoutDashboard } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Save, Globe, Eye, Plus, RotateCcw, Search, FileText } from 'lucide-react';
 import { useCatalog, ContentContext } from '../../app/useCatalog';
 import { useDemo } from '../../app/useDemo';
 import { can } from '../../domain/roles';
@@ -12,6 +12,7 @@ import { DemoNotice } from '../demo/DemoNotice';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { createCmsSnapshot } from '../../services/cms-snapshot';
 import { CmsPreview } from './CmsPreview';
+import { cmsModule, cmsModules } from '../dashboard/dashboard-navigation';
 
 type Json = null | string | number | boolean | Json[] | { [key: string]: Json };
 const label = (key: string) =>
@@ -33,7 +34,29 @@ function Editor({
   const key = path.split('.').at(-1) ?? '';
   const immutable =
     readOnly || ['source', 'sha256', 'id', 'ownerId', 'authorId', 'memberIds'].includes(key);
-  if (Array.isArray(value))
+  if (Array.isArray(value)) {
+    const entries = value;
+    function addEntry() {
+      if (path === 'team.members') {
+        onChange([
+          ...entries,
+          {
+            id: `cms-${crypto.randomUUID()}`,
+            name: '',
+            role: '',
+            positioning: '',
+            bio: '',
+            image: '',
+            linkedinUrl: '',
+          },
+        ]);
+        return;
+      }
+      const first = structuredClone(entries.length ? entries[0]! : '');
+      if (first && typeof first === 'object' && !Array.isArray(first) && 'id' in first)
+        first.id = `cms-${crypto.randomUUID()}`;
+      onChange([...entries, first]);
+    }
     return (
       <fieldset className="cms-array">
         <legend>
@@ -59,29 +82,14 @@ function Editor({
           </div>
         ))}
         {!immutable && (
-          <button
-            type="button"
-            className="button button-outline cms-small"
-            onClick={() =>
-              onChange([
-                ...value,
-                value.length
-                  ? typeof value[0] === 'object' &&
-                    value[0] !== null &&
-                    !Array.isArray(value[0]) &&
-                    'id' in value[0]
-                    ? { ...structuredClone(value[0]), id: `cms-${crypto.randomUUID()}` }
-                    : structuredClone(value[0]!)
-                  : '',
-              ])
-            }
-          >
+          <button type="button" className="button button-outline cms-small" onClick={addEntry}>
             <Plus size={13} />
             Add entry
           </button>
         )}
       </fieldset>
     );
+  }
   if (value && typeof value === 'object')
     return (
       <fieldset className="cms-object">
@@ -137,7 +145,9 @@ function Editor({
           disabled={immutable}
           onChange={(e) => onChange(e.target.checked)}
         />
-        {label(key)}
+        {path.startsWith('opportunities.') && key === 'featured'
+          ? 'Feature this opportunity'
+          : label(key)}
       </label>
     );
   return (
@@ -182,28 +192,12 @@ function Editor({
     </label>
   );
 }
-const modules = [
-  ['overview', 'Overview'],
-  ['items', 'Articles, stories & listings'],
-  ['homepage', 'Homepage & featured content'],
-  ['site', 'Pages, navigation & settings'],
-  ['courses', 'Courses'],
-  ['lessons', 'Lessons & media'],
-  ['topics', 'Resource pathways'],
-  ['faqs', 'FAQs'],
-  ['sidebar', 'Sidebar widgets'],
-  ['media', 'Media library & partners'],
-  ['terms', 'Terms & conditions'],
-  ['sessions', 'Events & workshops'],
-  ['opportunities', 'Opportunities'],
-  ['community', 'Community groups & forums'],
-  ['revisions', 'Revisions & audit'],
-] as const;
 export function CmsPage() {
   const catalog = useCatalog();
   const { state, account, execute } = useDemo();
   usePageTitle('Content management');
-  const [module, setModule] = useState<string>('overview');
+  const [params] = useSearchParams();
+  const module = cmsModule(params.get('module'));
   const [snapshot, setSnapshot] = useState<CmsSnapshot>(() => createCmsSnapshot(catalog, state));
   const [baseRevision, setBaseRevision] = useState(state.platform.cmsRevision);
   const [id, setId] = useState<string>(() => crypto.randomUUID());
@@ -214,6 +208,11 @@ export function CmsPage() {
   const [preview, setPreview] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [pagePath, setPagePath] = useState('/pages/');
+  useEffect(() => {
+    setSelected(0);
+    setQuery('');
+    setPreview(false);
+  }, [module]);
   if (!account || !can(account, 'cms'))
     return (
       <section className="container section">
@@ -318,6 +317,7 @@ export function CmsPage() {
     if ('status' in copy)
       copy.status =
         module === 'opportunities' ? 'draft' : module === 'sessions' ? 'postponed' : 'published';
+    if (module === 'opportunities') copy.featured = false;
     if ('memberIds' in copy) copy.memberIds = [];
     change([...records, copy]);
     setSelected(records.length);
@@ -372,362 +372,367 @@ export function CmsPage() {
           </button>
         </div>
       </header>
-      <div className="cms-layout">
-        <nav className="cms-nav" aria-label="Content modules">
-          <Link to="/dashboard">
-            <LayoutDashboard size={16} />
-            Workspace
-          </Link>
-          <Link to="/dashboard/content">Contribution review</Link>
-          <Link to="/dashboard/moderation">Discussion moderation</Link>
-          {modules.map(([key, name]) => (
-            <button
-              key={key}
-              className={module === key ? 'active' : ''}
-              onClick={() => {
-                setModule(key);
-                setSelected(0);
-                setQuery('');
-                setPreview(false);
+      <div className="cms-main">
+        <DemoNotice />
+        {message && (
+          <p className="cms-message" role="status">
+            {message}
+          </p>
+        )}
+        <div className="cms-draft-title">
+          <label>
+            Change-set title
+            <input
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setDirty(true);
               }}
-            >
-              {name}
-            </button>
-          ))}
-        </nav>
-        <div className="cms-main">
-          <DemoNotice />
-          {message && (
-            <p className="cms-message" role="status">
-              {message}
+              maxLength={140}
+            />
+          </label>
+          <button className="text-link" onClick={startLatest}>
+            Reload latest published site
+          </button>
+        </div>
+        {module === 'overview' ? (
+          <>
+            <div className="cms-stat-grid">
+              {[
+                [snapshot.catalog.items.length, 'Content records'],
+                [snapshot.catalog.courses.length, 'Courses'],
+                [snapshot.sessions.length, 'Events'],
+                [snapshot.opportunities.length, 'Opportunities'],
+              ].map(([count, name]) => (
+                <div className="profile-panel" key={name}>
+                  <strong>{count}</strong>
+                  <span>{name}</span>
+                </div>
+              ))}
+            </div>
+            <div className="cms-help">
+              <h2>A controlled publishing workflow</h2>
+              <ol>
+                <li>Edit a module and validate references.</li>
+                <li>Save a named draft.</li>
+                <li>Preview and publish when ready.</li>
+                <li>Restore a retained revision if needed.</li>
+              </ol>
+              <p>
+                Public routes read the latest published revision. Drafts remain in this development
+                browser.
+              </p>
+            </div>
+            <h2>Saved drafts</h2>
+            {p.cmsDrafts
+              .filter((d) => d.ownerId === account.id || can(account, 'admin'))
+              .map((d) => (
+                <button
+                  className="cms-draft-row"
+                  key={d.id}
+                  onClick={() => {
+                    if (dirty && !window.confirm('Discard unsaved changes and load this draft?'))
+                      return;
+                    setSnapshot(
+                      structuredClone({
+                        ...d.snapshot,
+                        catalog: {
+                          ...d.snapshot.catalog,
+                          team: d.snapshot.catalog.team ?? catalog.team,
+                        },
+                      }),
+                    );
+                    setId(d.id);
+                    setBaseRevision(d.baseRevision);
+                    setTitle(d.title);
+                    setDirty(false);
+                    setMessage('Draft loaded.');
+                  }}
+                >
+                  <FileText size={18} />
+                  <strong>{d.title}</strong>
+                  <span>Based on revision {d.baseRevision}</span>
+                </button>
+              ))}
+          </>
+        ) : module === 'revisions' ? (
+          <>
+            <h2>Revision history</h2>
+            <p>
+              The five latest published snapshots are retained. Restoring creates a new revision.
             </p>
-          )}
-          <div className="cms-draft-title">
-            <label>
-              Change-set title
-              <input
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  setDirty(true);
-                }}
-                maxLength={140}
-              />
-            </label>
-            <button className="text-link" onClick={startLatest}>
-              Reload latest published site
-            </button>
-          </div>
-          {module === 'overview' ? (
-            <>
-              <div className="cms-stat-grid">
-                {[
-                  [snapshot.catalog.items.length, 'Content records'],
-                  [snapshot.catalog.courses.length, 'Courses'],
-                  [snapshot.sessions.length, 'Events'],
-                  [snapshot.opportunities.length, 'Opportunities'],
-                ].map(([count, name]) => (
-                  <div className="profile-panel" key={name}>
-                    <strong>{count}</strong>
-                    <span>{name}</span>
-                  </div>
-                ))}
-              </div>
+            {p.cmsReleases
+              .slice()
+              .reverse()
+              .map((r) => (
+                <article className="workspace-record" key={r.id}>
+                  <h3>
+                    Revision {r.revision} · {r.title}
+                  </h3>
+                  <p>{new Date(r.createdAt).toLocaleString('en-KE')}</p>
+                  <button
+                    className="button button-outline"
+                    onClick={() => {
+                      if (
+                        execute({
+                          type: 'cms-rollback',
+                          revision: r.revision,
+                          now: new Date().toISOString(),
+                        })
+                      )
+                        setMessage(
+                          'Revision restored. Reload latest published site before making further edits.',
+                        );
+                    }}
+                  >
+                    <RotateCcw size={15} />
+                    Restore as new revision
+                  </button>
+                </article>
+              ))}
+            <h2>Editorial audit</h2>
+            {p.audit
+              .filter((a) => a.action.startsWith('cms-'))
+              .slice(0, 30)
+              .map((a) => (
+                <p className="cms-audit-row" key={a.id}>
+                  {a.action} · {state.accounts.find((u) => u.id === a.actorId)?.name} ·{' '}
+                  {new Date(a.createdAt).toLocaleString('en-KE')}
+                </p>
+              ))}
+          </>
+        ) : (
+          <>
+            <h2>{cmsModules.find(([key]) => key === module)?.[1]}</h2>
+            {module === 'opportunities' && (
               <div className="cms-help">
-                <h2>A controlled publishing workflow</h2>
-                <ol>
-                  <li>Edit a module and validate references.</li>
-                  <li>Save a named draft.</li>
-                  <li>Preview and publish when ready.</li>
-                  <li>Restore a retained revision if needed.</li>
-                </ol>
+                <h3>Featured opportunities</h3>
                 <p>
-                  Public routes read the latest published revision. Drafts remain in this
-                  development browser.
+                  {snapshot.opportunities.filter((o) => o.featured).length} marked featured ·{' '}
+                  {snapshot.opportunities.filter((o) => o.status === 'published').length} published
+                  · {snapshot.opportunities.length} total
+                </p>
+                <p>
+                  Select a record and enable “Feature this opportunity” to include it in the
+                  featured section. All featured listings use the compact card layout and follow the
+                  visitor’s filters. Draft and archived listings stay hidden.
+                </p>
+                <p>
+                  Save a draft, preview, then publish to update the directory. Changes are recorded
+                  under Revisions &amp; audit and can be restored from a retained revision.
                 </p>
               </div>
-              <h2>Saved drafts</h2>
-              {p.cmsDrafts
-                .filter((d) => d.ownerId === account.id || can(account, 'admin'))
-                .map((d) => (
-                  <button
-                    className="cms-draft-row"
-                    key={d.id}
-                    onClick={() => {
-                      if (dirty && !window.confirm('Discard unsaved changes and load this draft?'))
-                        return;
-                      setSnapshot(structuredClone(d.snapshot));
-                      setId(d.id);
-                      setBaseRevision(d.baseRevision);
-                      setTitle(d.title);
-                      setDirty(false);
-                      setMessage('Draft loaded.');
-                    }}
-                  >
-                    <FileText size={18} />
-                    <strong>{d.title}</strong>
-                    <span>Based on revision {d.baseRevision}</span>
+            )}
+            {module === 'site' && (
+              <div className="cms-help">
+                <p>
+                  Page headers, additional sections, menus, contact details, social links and
+                  homepage section visibility are managed here.
+                </p>
+                <form
+                  className="cms-page-create"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const path = pagePath.trim();
+                    if (
+                      !/^\/[a-z0-9/-]+$/.test(path) ||
+                      /^\/(dashboard|profile|login|register|apply)/.test(path)
+                    ) {
+                      setMessage('Use a public route such as /about or /pages/our-programme.');
+                      return;
+                    }
+                    if (snapshot.catalog.site.pages[path]) {
+                      setMessage('This page already exists. Edit its fields below.');
+                      return;
+                    }
+                    change({
+                      ...snapshot.catalog.site,
+                      pages: {
+                        ...snapshot.catalog.site.pages,
+                        [path]: {
+                          title: 'New page',
+                          eyebrow: 'YERH',
+                          description: 'Describe this page.',
+                          sections: [
+                            { title: 'Section heading', body: 'Add your page content here.' },
+                          ],
+                        },
+                      },
+                    });
+                    setMessage(
+                      'Page fields added below. Add a navigation link if this is a new /pages/ route.',
+                    );
+                  }}
+                >
+                  <label>
+                    Public page path
+                    <input
+                      required
+                      value={pagePath}
+                      onChange={(e) => setPagePath(e.target.value)}
+                      placeholder="/pages/our-programme"
+                    />
+                  </label>
+                  <button className="button button-outline">Add page or page override</button>
+                </form>
+              </div>
+            )}
+            {array ? (
+              <div className="cms-record-layout">
+                <aside className="cms-record-list">
+                  <label className="cms-search">
+                    <Search size={15} />
+                    <input
+                      placeholder="Find a record…"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
+                  </label>
+                  {records
+                    .map((record, index) => ({ record, index }))
+                    .filter(({ record }) =>
+                      JSON.stringify(record).toLowerCase().includes(query.toLowerCase()),
+                    )
+                    .map(({ record, index }) => (
+                      <button
+                        key={String(record.id ?? index)}
+                        className={selected === index ? 'active' : ''}
+                        onClick={() => {
+                          setSelected(index);
+                          setPreview(false);
+                        }}
+                      >
+                        <strong>
+                          {String(
+                            record.title ??
+                              record.question ??
+                              record.name ??
+                              record.id ??
+                              `Record ${index + 1}`,
+                          )}
+                        </strong>
+                        <small>
+                          {module === 'opportunities'
+                            ? `${record.featured ? 'Featured · ' : ''}${label(String(record.status ?? 'draft'))}`
+                            : String(record.kind ?? record.category ?? record.status ?? '')}
+                        </small>
+                      </button>
+                    ))}
+                  <button className="button button-outline" onClick={duplicate}>
+                    <Plus size={14} />
+                    Duplicate selected record
                   </button>
-                ))}
-            </>
-          ) : module === 'revisions' ? (
-            <>
-              <h2>Revision history</h2>
-              <p>
-                The five latest published snapshots are retained. Restoring creates a new revision.
-              </p>
-              {p.cmsReleases
-                .slice()
-                .reverse()
-                .map((r) => (
-                  <article className="workspace-record" key={r.id}>
-                    <h3>
-                      Revision {r.revision} · {r.title}
-                    </h3>
-                    <p>{new Date(r.createdAt).toLocaleString('en-KE')}</p>
-                    <button
-                      className="button button-outline"
-                      onClick={() => {
-                        if (
+                </aside>
+                <div className="cms-editor">
+                  {module === 'items' && value && !workflowOwned && (
+                    <div className="cms-record-actions">
+                      <button
+                        className="text-link"
+                        onClick={() =>
+                          edit({
+                            ...(value as Record<string, Json>),
+                            status:
+                              (value as Record<string, Json>).status === 'archived'
+                                ? 'published'
+                                : 'archived',
+                          })
+                        }
+                      >
+                        {(value as Record<string, Json>).status === 'archived'
+                          ? 'Restore record'
+                          : 'Archive record'}
+                      </button>
+                    </div>
+                  )}
+                  {editor}
+                </div>
+              </div>
+            ) : (
+              <div className="cms-editor">{editor}</div>
+            )}
+            {module === 'opportunities' && (
+              <div className="cms-help">
+                <h3>Submitted opportunities awaiting review</h3>
+                {p.opportunities
+                  .filter((o) => o.status === 'review')
+                  .map((o) => (
+                    <div className="workspace-record" key={o.id}>
+                      <strong>{o.title}</strong>
+                      <p>{o.summary}</p>
+                      <button
+                        className="button"
+                        onClick={() =>
                           execute({
-                            type: 'cms-rollback',
-                            revision: r.revision,
+                            type: 'opportunity-status',
+                            id: o.id,
+                            status: 'published',
                             now: new Date().toISOString(),
                           })
-                        )
-                          setMessage(
-                            'Revision restored. Reload latest published site before making further edits.',
-                          );
-                      }}
-                    >
-                      <RotateCcw size={15} />
-                      Restore as new revision
-                    </button>
-                  </article>
-                ))}
-              <h2>Editorial audit</h2>
-              {p.audit
-                .filter((a) => a.action.startsWith('cms-'))
-                .slice(0, 30)
-                .map((a) => (
-                  <p className="cms-audit-row" key={a.id}>
-                    {a.action} · {state.accounts.find((u) => u.id === a.actorId)?.name} ·{' '}
-                    {new Date(a.createdAt).toLocaleString('en-KE')}
-                  </p>
-                ))}
-            </>
-          ) : (
-            <>
-              <h2>{modules.find(([key]) => key === module)?.[1]}</h2>
-              {module === 'site' && (
-                <div className="cms-help">
-                  <p>
-                    Page headers, additional sections, menus, contact details, social links and
-                    homepage section visibility are managed here.
-                  </p>
-                  <form
-                    className="cms-page-create"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const path = pagePath.trim();
-                      if (
-                        !/^\/[a-z0-9/-]+$/.test(path) ||
-                        /^\/(dashboard|profile|login|register|apply)/.test(path)
-                      ) {
-                        setMessage('Use a public route such as /about or /pages/our-programme.');
-                        return;
-                      }
-                      if (snapshot.catalog.site.pages[path]) {
-                        setMessage('This page already exists. Edit its fields below.');
-                        return;
-                      }
-                      change({
-                        ...snapshot.catalog.site,
-                        pages: {
-                          ...snapshot.catalog.site.pages,
-                          [path]: {
-                            title: 'New page',
-                            eyebrow: 'YERH',
-                            description: 'Describe this page.',
-                            sections: [
-                              { title: 'Section heading', body: 'Add your page content here.' },
-                            ],
-                          },
-                        },
-                      });
-                      setMessage(
-                        'Page fields added below. Add a navigation link if this is a new /pages/ route.',
-                      );
-                    }}
-                  >
-                    <label>
-                      Public page path
-                      <input
-                        required
-                        value={pagePath}
-                        onChange={(e) => setPagePath(e.target.value)}
-                        placeholder="/pages/our-programme"
-                      />
-                    </label>
-                    <button className="button button-outline">Add page or page override</button>
-                  </form>
-                </div>
-              )}
-              {array ? (
-                <div className="cms-record-layout">
-                  <aside className="cms-record-list">
-                    <label className="cms-search">
-                      <Search size={15} />
-                      <input
-                        placeholder="Find a record…"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                      />
-                    </label>
-                    {records
-                      .map((record, index) => ({ record, index }))
-                      .filter(({ record }) =>
-                        JSON.stringify(record).toLowerCase().includes(query.toLowerCase()),
-                      )
-                      .map(({ record, index }) => (
-                        <button
-                          key={String(record.id ?? index)}
-                          className={selected === index ? 'active' : ''}
-                          onClick={() => {
-                            setSelected(index);
-                            setPreview(false);
-                          }}
-                        >
-                          <strong>
-                            {String(
-                              record.title ??
-                                record.question ??
-                                record.name ??
-                                record.id ??
-                                `Record ${index + 1}`,
-                            )}
-                          </strong>
-                          <small>
-                            {String(record.kind ?? record.category ?? record.status ?? '')}
-                          </small>
-                        </button>
-                      ))}
-                    <button className="button button-outline" onClick={duplicate}>
-                      <Plus size={14} />
-                      Duplicate selected record
-                    </button>
-                  </aside>
-                  <div className="cms-editor">
-                    {module === 'items' && value && !workflowOwned && (
-                      <div className="cms-record-actions">
-                        <button
-                          className="text-link"
-                          onClick={() =>
-                            edit({
-                              ...(value as Record<string, Json>),
-                              status:
-                                (value as Record<string, Json>).status === 'archived'
-                                  ? 'published'
-                                  : 'archived',
-                            })
-                          }
-                        >
-                          {(value as Record<string, Json>).status === 'archived'
-                            ? 'Restore record'
-                            : 'Archive record'}
-                        </button>
-                      </div>
-                    )}
-                    {editor}
-                  </div>
-                </div>
+                        }
+                      >
+                        Publish opportunity
+                      </button>
+                      <button
+                        className="text-link"
+                        onClick={() =>
+                          execute({
+                            type: 'opportunity-status',
+                            id: o.id,
+                            status: 'draft',
+                            now: new Date().toISOString(),
+                          })
+                        }
+                      >
+                        Return to draft
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            )}
+            {module === 'media' && (
+              <div className="cms-media-grid">
+                {[
+                  snapshot.catalog.media.team,
+                  snapshot.catalog.media.developers,
+                  snapshot.catalog.media.workshop,
+                  ...snapshot.catalog.items.flatMap((i) => (i.image ? [i.image] : [])),
+                ]
+                  .filter((url, index, all) => all.indexOf(url) === index)
+                  .map((url) => (
+                    <figure key={url}>
+                      <img src={url} alt="Available media asset" loading="lazy" />
+                      <figcaption>{url}</figcaption>
+                    </figure>
+                  ))}
+              </div>
+            )}
+          </>
+        )}
+        {preview && (
+          <section className="cms-preview" aria-label="Draft preview">
+            <h2>Draft preview</h2>
+            <ContentContext.Provider value={snapshot.catalog}>
+              {module === 'homepage' ? (
+                <FeatureCarousel />
+              ) : module === 'items' && snapshot.catalog.items[selected] ? (
+                <ContentCard item={snapshot.catalog.items[selected]!} />
               ) : (
-                <div className="cms-editor">{editor}</div>
+                <CmsPreview module={module} snapshot={snapshot} selected={selected} />
               )}
-              {module === 'opportunities' && (
-                <div className="cms-help">
-                  <h3>Submitted opportunities awaiting review</h3>
-                  {p.opportunities
-                    .filter((o) => o.status === 'review')
-                    .map((o) => (
-                      <div className="workspace-record" key={o.id}>
-                        <strong>{o.title}</strong>
-                        <p>{o.summary}</p>
-                        <button
-                          className="button"
-                          onClick={() =>
-                            execute({
-                              type: 'opportunity-status',
-                              id: o.id,
-                              status: 'published',
-                              now: new Date().toISOString(),
-                            })
-                          }
-                        >
-                          Publish opportunity
-                        </button>
-                        <button
-                          className="text-link"
-                          onClick={() =>
-                            execute({
-                              type: 'opportunity-status',
-                              id: o.id,
-                              status: 'draft',
-                              now: new Date().toISOString(),
-                            })
-                          }
-                        >
-                          Return to draft
-                        </button>
-                      </div>
-                    ))}
-                </div>
-              )}
-              {module === 'media' && (
-                <div className="cms-media-grid">
-                  {[
-                    snapshot.catalog.media.team,
-                    snapshot.catalog.media.developers,
-                    snapshot.catalog.media.workshop,
-                    ...snapshot.catalog.items.flatMap((i) => (i.image ? [i.image] : [])),
-                  ]
-                    .filter((url, index, all) => all.indexOf(url) === index)
-                    .map((url) => (
-                      <figure key={url}>
-                        <img src={url} alt="Available media asset" loading="lazy" />
-                        <figcaption>{url}</figcaption>
-                      </figure>
-                    ))}
-                </div>
-              )}
-            </>
-          )}
-          {preview && (
-            <section className="cms-preview" aria-label="Draft preview">
-              <h2>Draft preview</h2>
-              <ContentContext.Provider value={snapshot.catalog}>
-                {module === 'homepage' ? (
-                  <FeatureCarousel />
-                ) : module === 'items' && snapshot.catalog.items[selected] ? (
-                  <ContentCard item={snapshot.catalog.items[selected]!} />
-                ) : (
-                  <CmsPreview module={module} snapshot={snapshot} selected={selected} />
-                )}
-              </ContentContext.Provider>
-            </section>
-          )}
-          <datalist id="cms-ids">
-            {[
-              ...snapshot.catalog.items.map((i) => ({ id: i.id, title: i.title })),
-              ...snapshot.catalog.courses.map((i) => ({ id: i.id, title: i.title })),
-              ...state.accounts.map((i) => ({ id: i.id, title: i.name })),
-            ].map((i) => (
-              <option value={i.id} key={i.id}>
-                {i.title}
-              </option>
-            ))}
-          </datalist>
-        </div>
+            </ContentContext.Provider>
+          </section>
+        )}
+        <datalist id="cms-ids">
+          {[
+            ...snapshot.catalog.items.map((i) => ({ id: i.id, title: i.title })),
+            ...snapshot.catalog.courses.map((i) => ({ id: i.id, title: i.title })),
+            ...state.accounts.map((i) => ({ id: i.id, title: i.name })),
+          ].map((i) => (
+            <option value={i.id} key={i.id}>
+              {i.title}
+            </option>
+          ))}
+        </datalist>
       </div>
     </section>
   );
