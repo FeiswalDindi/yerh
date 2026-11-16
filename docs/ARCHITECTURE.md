@@ -20,7 +20,7 @@ One typed tree renders desktop dropdowns and mobile disclosures. Main links navi
 
 The pure reducer is the single simulated mutation policy. Draft owners may edit drafts and submit for review. Content Managers can review every editorial content kind; administrators also approve venture and organisation identity. Publication requires review status. Content Managers and administrators moderate discussions; hidden topics reject new replies. Mentor responses require the assigned mentor or admin. Requests cannot be duplicated while active. Learning and membership are account-specific.
 
-These rules are not a security boundary. The production API must enforce identity, ownership, validation and authorization independently. The demo is guarded by Vite's `import.meta.env.DEV`; production does not read active demo sessions or accept demo mutations.
+These rules are not a security boundary. The production API must enforce identity, ownership, validation and authorization independently. `config/demo.ts` determines whether the current build and hostname allow the demo. `DemoProvider` applies that decision to storage, session access and mutations. See [deployment settings](DEPLOYMENT.md) for how to disable demo accounts.
 
 ## Adding features
 

@@ -29,8 +29,10 @@
 }
 
 .role-nav-group > p {
-  margin: 0 10px 3px;
-  color: var(--yerh-navy);
+  margin: 0 0 4px;
+  padding: 6px 10px;
+  background: var(--yerh-navy);
+  color: var(--yerh-white);
   font-size: 13px;
   font-weight: 760;
 }

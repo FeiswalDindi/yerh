@@ -90,7 +90,7 @@ export function LoginPage() {
           </>
         ) : (
           <div className="empty-state">
-            <h2>Demo sign-in is disabled in production builds.</h2>
+            <h2>Demo sign-in is disabled on this site.</h2>
             {host ? (
               <a className="button" href={host}>
                 Continue to member login

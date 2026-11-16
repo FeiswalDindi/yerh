@@ -1,4 +1,6 @@
 import { useCarousel } from '../../shared/useCarousel';
+import { useEffect } from 'react';
+import { preload } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCatalog } from '../../app/useCatalog';
@@ -8,6 +10,11 @@ export function FeatureCarousel() {
   const slides = homepage.slides;
   const { index, rotating, setKeyboardFocused, move, goTo } = useCarousel(slides.length);
   const slide = slides[index];
+  const nextImage = slides[(index + 1) % slides.length]?.image;
+  useEffect(() => {
+    if (nextImage && nextImage !== slide?.image)
+      preload(nextImage, { as: 'image', fetchPriority: 'low' });
+  }, [nextImage, slide?.image]);
   if (!slide) return null;
 
   const isGreenBanner = slide.theme === 'green';
@@ -39,13 +46,13 @@ export function FeatureCarousel() {
               src={slide.image}
               alt={slide.alt}
               className="green-slide-illustration"
-              loading="eager"
+              fetchPriority="high"
             />
           </div>
         </div>
       ) : (
         <div className="photo-slider-slide">
-          <img src={slide.image} alt={slide.alt} className="photo-slide-bg" loading="eager" />
+          <img src={slide.image} alt={slide.alt} className="photo-slide-bg" fetchPriority="high" />
           <div className="photo-slide-shade" />
           <div className="photo-slide-content">
             <h1 className="photo-slide-title">

@@ -117,7 +117,11 @@ export function Header({
         <header className="site-header reference-header">
           <div className="container header-inner">
             <Link className="reference-brand" to="/" aria-label="YERH home">
-              <img src={media.wordmark} alt="Youth Entrepreneurship Resource Hub — YERH Kenya" />
+              <img
+                src={media.wordmark}
+                alt="Youth Entrepreneurship Resource Hub — YERH Kenya"
+                fetchPriority="high"
+              />
             </Link>
 
             <nav className="desktop-tree" aria-label="Main navigation">

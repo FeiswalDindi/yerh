@@ -41,7 +41,7 @@ Select **Login** or **Register** in the site navigation to open the account dial
 
 **Start the full acceptance walkthrough in [docs/TESTING_SPRINT.md](docs/TESTING_SPRINT.md).** The running session uses http://127.0.0.1:5174; `npm run dev -- --port 5174` restarts that port. The default development command still uses 5173.
 
-Only published demo contributions appear in public listings. Use Reset demo data on `/demo` to restore fixtures. Bookmarks use a separate browser key and are retained by the demo reset. Production builds disable demo sign-in and mutations. The backend must supply real authorization; frontend role checks are only a development simulation.
+Only published demo contributions appear in public listings. Use Reset demo data on `/demo` to restore fixtures. Bookmarks use a separate browser key and are retained by the demo reset. Demo accounts work in local development and on the Vercel deployment domain. See [deployment settings](docs/DEPLOYMENT.md) for the disable switch and custom-domain behavior. The backend must supply real authorization; frontend role checks are only a development simulation.
 
 The hero begins with **Idea to Business**, then rotates every 5 seconds. Hover, keyboard focus, hidden tabs, and reduced-motion preferences pause rotation. Manual arrows pause it until Play is chosen. The user-added slide bullets are retained.
 

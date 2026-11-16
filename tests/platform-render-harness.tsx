@@ -158,12 +158,14 @@ export async function checkPlatformRendering() {
   assert.ok(login.includes('Close account dialog'));
   assert.ok(login.includes('name="email"'));
   assert.ok(login.includes('Create an account'));
+  assert.ok(login.includes('Continue with Google'));
   assert.ok(login.includes('href="/demo"'));
   assert.ok(!login.includes('demo-account-grid'));
   assert.ok(register.includes('Create your account'));
   for (const field of ['name', 'email', 'location', 'terms'])
     assert.ok(register.includes(`name="${field}"`), field);
   assert.ok(register.includes('Already have an account?'));
+  assert.ok(register.includes('Continue with Google'));
   assert.ok(register.includes('href="/demo"'));
   assert.ok(demo.includes('demo-account-grid'));
   for (const role of [
@@ -186,6 +188,7 @@ export async function checkPlatformRendering() {
   for (const member of team.members) assert.ok(about.includes(`View profile for ${member.name}`));
   for (const mode of ['login', 'register'] as const) {
     const production = renderAccount(mode, false);
+    assert.ok(production.includes('Continue with Google'));
     assert.ok(!production.includes('name="email"'));
     assert.ok(!production.includes('href="/demo"'));
   }

@@ -1,10 +1,10 @@
 export const mediaAssets = {
-  team: '/media/be-part-of-the-team-3382b8d1.jpg',
+  team: '/media/be-part-of-the-team-3382b8d1.webp',
   developers:
     '/media/youth-enterprise-resource-hub-development-journey---take-from-the-c52a8532.jpg',
-  workshop: '/media/image-2-bdce0363.png',
+  workshop: '/media/image-2-bdce0363.webp',
   business: '/media/mowrah-designs-ac3786bf.jpg',
-  logo: '/media/yerh-logo.png',
+  logo: '/media/yerh-logo-224.webp',
   wordmark: '/media/yerh-wordmark.png',
 } as const;
 

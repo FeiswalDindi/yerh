@@ -190,9 +190,10 @@ html:has(.site-navigation-frame .breadcrumb) {
 }
 .footer-grid {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1.1fr 1.2fr;
-  gap: 48px;
-  padding: 50px 0 56px;
+  grid-template-columns: 1.6fr 1.1fr 1.1fr 1.2fr;
+  gap: 40px;
+  padding-block: 48px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   font-size: 13px;
 }
 .footer-grid > div {
@@ -207,9 +208,6 @@ html:has(.site-navigation-frame .breadcrumb) {
   font-weight: 600;
   margin-bottom: 12px;
   letter-spacing: 0;
-}
-.footer-grid a:hover {
-  color: #e5cf65;
 }
 .footer-brand > a {
   font-size: 38px;
@@ -384,10 +382,6 @@ html:has(.site-navigation-frame .breadcrumb) {
   .brand small {
     display: block;
   }
-  .footer-grid {
-    grid-template-columns: 1.3fr 1fr;
-    gap: 35px;
-  }
 }
 @media (max-width: 600px) {
   .utility-inner {
@@ -436,15 +430,12 @@ html:has(.site-navigation-frame .breadcrumb) {
     font-size: clamp(24px, 6vw, 32px);
   }
   .footer-grid {
-    grid-template-columns: 1fr !important;
-    gap: 28px;
-    padding: 32px 0 36px;
-    font-size: 13px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px 16px;
+    padding-block: 32px 36px;
   }
-  .footer-brand {
-    grid-column: 1 / -1;
-  }
-  .footer-grid > div:last-child {
+  .footer-brand,
+  .footer-social {
     grid-column: 1 / -1;
   }
   .demo-strip-inner {
@@ -890,14 +881,6 @@ html:has(.site-navigation-frame .breadcrumb) {
    4-COLUMN FOOTER MATCHING SCREENSHOT
    ========================================================================== */
 
-.footer-grid.four-columns {
-  display: grid;
-  grid-template-columns: 1.6fr 1.1fr 1.1fr 1.2fr;
-  gap: 40px;
-  padding-block: 48px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
 .footer-logo-img {
   height: 48px;
   width: auto;
@@ -930,15 +913,23 @@ html:has(.site-navigation-frame .breadcrumb) {
   gap: 10px;
 }
 
-.footer-links-list a {
+.footer-link-button {
+  padding: 0;
+  background: transparent;
+  text-align: start;
+}
+
+.footer-links-list :is(a, .footer-link-button) {
   font-size: 13px;
   color: #94a3b8;
   text-decoration: none;
+  text-underline-offset: 3px;
   transition: color 0.2s ease;
 }
 
-.footer-links-list a:hover {
+.footer-links-list :is(a, .footer-link-button):is(:hover, :focus-visible) {
   color: var(--yerh-gold);
+  text-decoration: underline;
 }
 
 .footer-social-icons {

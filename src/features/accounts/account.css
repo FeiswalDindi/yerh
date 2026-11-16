@@ -196,6 +196,40 @@ html:has(.account-dialog[open]) {
   transform: none;
 }
 
+.account-provider {
+  margin-top: 14px;
+}
+
+.account-google-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid #747775;
+  border-radius: 6px;
+  background: var(--yerh-white);
+  color: #1f1f1f;
+  font:
+    600 14px / 1.4 Arial,
+    sans-serif;
+}
+
+.account-google-button:hover {
+  background: var(--yerh-surface);
+}
+
+.account-provider-notice:not(:empty) {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--yerh-gold);
+  background: var(--yerh-gold-light);
+  color: var(--yerh-navy);
+  font-size: 14px;
+}
+
 .account-agreement,
 .account-preview,
 .account-switch,

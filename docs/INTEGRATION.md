@@ -37,7 +37,7 @@ Previous `/news`, `/blogs`, `/stories`, `/businesses` routes and article URLs re
 
 ## Backend responsibilities
 
-- Authentication: real sessions, registration, recovery, server-enforced roles and ownership. Demo account buttons are disabled by `import.meta.env.DEV` in production.
+- Authentication: real sessions, registration, recovery, server-enforced roles and ownership. Disable demo accounts in the [deployment settings](DEPLOYMENT.md) before switching to real authentication.
 - Public content: paginated content queries, uploads, canonical IDs/slugs, moderation and publishing state.
 - Community: durable profiles, independent group/forum memberships, topic/reply pagination, moderation audit trail, abuse controls. Return counts to non-members and authorize roster identities/activity server-side; see [COMMUNITY_UX.md](COMMUNITY_UX.md).
 - Mentorship: availability, requests, matching, notifications, response permissions and workflow transitions.

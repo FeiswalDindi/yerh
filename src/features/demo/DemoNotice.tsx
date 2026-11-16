@@ -6,7 +6,7 @@ export function DemoNotice() {
   return (
     <>
       <div className="demo-notice">
-        <strong>{enabled ? 'Local development demo' : 'Community preview'}</strong>
+        <strong>{enabled ? 'Development demo' : 'Community preview'}</strong>
         <span>Fictional profiles and local activity. No real requests or messages are sent.</span>
         {!account && enabled && <Link to="/demo">Choose a demo account →</Link>}
       </div>

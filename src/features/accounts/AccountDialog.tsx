@@ -6,6 +6,7 @@ import { useDemo } from '../../app/useDemo';
 import { platformHref } from '../../config/site';
 import { CloseButton } from '../../shared/CloseButton';
 import { TermsDialog } from '../legal/TermsDialog';
+import { GoogleAccountButton } from './GoogleAccountButton';
 import { accountDestination, type AccountRequest } from './account-navigation';
 import './account.css';
 
@@ -13,6 +14,8 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
   const { media } = useCatalog();
   const [register, setRegister] = useState(mode === 'register');
   const dialog = useRef<HTMLDialogElement>(null);
+  const card = useRef<HTMLDivElement>(null);
+  const shake = useRef<Animation>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const startedOutside = useRef(false);
 
@@ -25,6 +28,17 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
   function close() {
     dialog.current?.close();
     onClose();
+  }
+
+  function signalUnavailable() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    shake.current?.cancel();
+    shake.current =
+      card.current?.animate?.(
+        [0, -5, 5, -4, 4, -2, 2, 0].map((offset) => ({ transform: `translateX(${offset}px)` })),
+        { duration: 300, easing: 'ease-out' },
+      ) ?? null;
+    navigator.vibrate?.(45);
   }
 
   const title = register ? 'Create your account' : 'Sign in';
@@ -52,15 +66,16 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
         aria-label="Close account dialog"
         onClick={close}
       />
-      <div className="account-card">
+      <div className="account-card" ref={card}>
         <Link className="account-brand" to="/" aria-label="YERH home" onClick={close}>
-          <img src={media.logo} width={104} height={104} alt="" />
+          <img src={media.logo} width={104} height={104} alt="" fetchPriority="high" />
         </Link>
         <AccountForm
           key={String(register)}
           title={title}
           register={register}
           search={search}
+          onGoogleUnavailable={signalUnavailable}
           onSwitch={() => {
             closeButton.current?.focus();
             setRegister(!register);
@@ -76,11 +91,13 @@ function AccountForm({
   register,
   search,
   onSwitch,
+  onGoogleUnavailable,
 }: {
   title: string;
   register: boolean;
   search: string;
   onSwitch: () => void;
+  onGoogleUnavailable: () => void;
 }) {
   const { account, state, enabled, execute, error } = useDemo();
   const navigate = useNavigate();
@@ -261,12 +278,15 @@ function AccountForm({
       )}
 
       {!account && (
-        <p className="account-switch">
-          {register ? 'Already have an account?' : 'New to YERH?'}{' '}
-          <button className="account-link" type="button" onClick={onSwitch}>
-            {register ? 'Sign in' : 'Create an account'}
-          </button>
-        </p>
+        <>
+          <GoogleAccountButton onUnavailable={onGoogleUnavailable} />
+          <p className="account-switch">
+            {register ? 'Already have an account?' : 'New to YERH?'}{' '}
+            <button className="account-link" type="button" onClick={onSwitch}>
+              {register ? 'Sign in' : 'Create an account'}
+            </button>
+          </p>
+        </>
       )}
       {account && message && (
         <p className="account-error" role="alert">

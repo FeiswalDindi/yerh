@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
+import { demoAccountsEnabled } from '../src/config/demo.ts';
 import { applyDemoAction, type DemoState } from '../src/domain/demo.ts';
 import { isDemoState } from '../src/domain/demo-validation.ts';
 import { navigation } from '../src/config/navigation.ts';
@@ -18,6 +19,24 @@ const seed = (): DemoState => ({
   submissions: [],
 });
 const login = (s: DemoState, id: string) => applyDemoAction(s, { type: 'login', accountId: id });
+test('demo accounts are limited to local development and HTTPS Vercel deployment domains', () => {
+  const development = { DEV: true, MODE: 'development' };
+  const hosted = { DEV: false, MODE: 'vercel' };
+  const vercel = new URL('https://yerh.vercel.app');
+  assert.equal(demoAccountsEnabled(development, new URL('http://127.0.0.1:5174')), true);
+  assert.equal(demoAccountsEnabled(hosted, vercel), true);
+  assert.equal(demoAccountsEnabled(hosted, new URL('https://yerh-preview.vercel.app')), true);
+  assert.equal(demoAccountsEnabled(hosted, new URL('https://yerh.feiso.me')), false);
+  assert.equal(demoAccountsEnabled(hosted, new URL('https://yerh.vercel.app.example.com')), false);
+  assert.equal(demoAccountsEnabled(hosted, new URL('http://yerh.vercel.app')), false);
+  assert.equal(demoAccountsEnabled(hosted), false);
+  assert.equal(demoAccountsEnabled({ ...hosted, MODE: 'production' }, vercel), false);
+  assert.equal(
+    demoAccountsEnabled({ ...hosted, VITE_ENABLE_DEMO_ACCOUNTS: 'false' }, vercel),
+    false,
+  );
+});
+
 test('navigation preserves the requested hierarchy without standalone news or story tabs', () => {
   assert.deepEqual(
     navigation.map((n) => n.label),

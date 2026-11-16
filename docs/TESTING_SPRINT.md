@@ -16,7 +16,7 @@ All test changes are saved in this browser's local storage. They survive refresh
 
 ## Demo accounts
 
-Open `/demo` and select **Login as …** on a demo account card, or enter one of the test emails below on `/login`. Both options are development-only.
+On localhost or the Vercel development URL, open `/demo` and select **Login as …** on a demo account card, or enter one of the test emails below on `/login`.
 
 | Account email                | Initial role                 | Useful test                                      |
 | ---------------------------- | ---------------------------- | ------------------------------------------------ |
@@ -127,4 +127,4 @@ Tests cover role/ownership restrictions, approval transitions, enrollment/certif
 
 Chrome automation was stopped by the computer-use tool because it could not confidently determine the browser URL. The existing public page and navigation were inspected before that stop; complete the interactive and mobile walkthrough above manually. No claim of a fully completed browser E2E run is made.
 
-Production integration still needs real authentication, API/database persistence, server-side access control, transactions, secure media/document uploads and notifications. Demo commands are deliberately enabled only under Vite development, and production builds do not offer local account/CMS mutations.
+Production integration still needs real authentication, API/database persistence, server-side access control, transactions, secure media/document uploads and notifications. The [deployment settings](DEPLOYMENT.md) control where the demo permits local account and CMS changes.

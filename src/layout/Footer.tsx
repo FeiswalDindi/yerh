@@ -40,7 +40,7 @@ export function Footer({ onTerms }: { onTerms?: () => void }) {
         </div>
 
         {/* 4-Column Footer Grid matching screenshot */}
-        <div className="footer-grid four-columns">
+        <div className="footer-grid">
           {/* Col 1: Brand & Slogan */}
           <div className="footer-brand">
             <Link to="/" className="footer-logo-link" aria-label="YERH home">
@@ -105,7 +105,7 @@ export function Footer({ onTerms }: { onTerms?: () => void }) {
           </div>
 
           {/* Col 4: Follow Us */}
-          <div className="footer-col">
+          <div className="footer-col footer-social">
             <h3>Follow Us</h3>
             <div className="footer-social-icons">
               <a

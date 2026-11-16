@@ -1,5 +1,6 @@
 import { DemoContext } from './useDemo';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { demoAccountsEnabled } from '../config/demo';
 import { applyDemoAction, currentAccount, type DemoAction, type DemoState } from '../domain/demo';
 import { isDemoState } from '../domain/demo-validation';
 import {
@@ -8,7 +9,15 @@ import {
   DEMO_STORAGE_KEY,
   type DemoRepository,
 } from '../services/demo-repository';
-const demoEnabled = import.meta.env.DEV;
+
+const demoEnabled = demoAccountsEnabled(
+  {
+    DEV: import.meta.env.DEV,
+    MODE: import.meta.env.MODE,
+    VITE_ENABLE_DEMO_ACCOUNTS: import.meta.env.VITE_ENABLE_DEMO_ACCOUNTS,
+  },
+  typeof window === 'undefined' ? undefined : window.location,
+);
 export function DemoProvider({
   children,
   repository = browserDemoRepository,
@@ -26,16 +35,16 @@ export function DemoProvider({
     setState(next);
   }
   useEffect(() => {
+    if (!demoEnabled) return;
     const update = (event: StorageEvent) => {
-      if (demoEnabled && (event.key === DEMO_STORAGE_KEY || event.key === null))
-        replace(repository.load());
+      if (event.key === DEMO_STORAGE_KEY || event.key === null) replace(repository.load());
     };
     window.addEventListener('storage', update);
     return () => window.removeEventListener('storage', update);
   }, [repository]);
   function execute(action: DemoAction) {
     if (!demoEnabled) {
-      setError('Demo actions are available only on the development server.');
+      setError('Demo actions are disabled on this site.');
       return false;
     }
     try {
@@ -58,6 +67,7 @@ export function DemoProvider({
     }
   }
   function reset() {
+    if (!demoEnabled) return;
     try {
       replace(repository.reset());
       setError('');

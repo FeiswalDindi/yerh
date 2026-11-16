@@ -8,8 +8,10 @@ export function HomeSidebar() {
   const { site } = useCatalog();
   return (
     <aside className="home-sidebar" aria-label="Sidebar widgets">
-      {site.homeSections.blogs !== false && <NewsWidget />}
-      <LinksWidget />
+      <div className="home-hero-widgets">
+        {site.homeSections.blogs !== false && <NewsWidget />}
+        <LinksWidget />
+      </div>
       {site.homeSections.partners !== false && <PartnersWidget />}
       <StatisticsWidget />
       <SocialsWidget />
