@@ -77,13 +77,6 @@
   top: 0;
   left: 100%;
 }
-.header-login {
-  border: 1px solid var(--yerh-border);
-  padding: 10px 18px;
-  font-size: 12px;
-  font-weight: 650;
-  white-space: nowrap;
-}
 .demo-session-strip {
   background: var(--yerh-navy);
   color: white;
@@ -418,25 +411,19 @@ a.collection-card:hover {
   color: var(--yerh-navy);
   font-weight: 600;
 }
-@media (min-width: 1001px) and (max-width: 1200px) {
+@media (min-width: 1001px) {
   .reference-brand img {
-    width: 210px;
+    width: clamp(176px, 16vw, 212px);
+    height: auto;
   }
+}
+@media (min-width: 1001px) and (max-width: 1200px) {
   .desktop-tree > ul {
     gap: 2px;
   }
   .desktop-tree > ul > .nav-branch > .nav-entry > a {
-    padding-inline: 6px;
+    padding-inline: 3px;
     font-size: 14px;
-  }
-  .header-actions {
-    gap: 7px;
-  }
-  .header-login {
-    padding: 10px;
-  }
-  .header-actions .button-small {
-    padding-inline: 12px;
   }
 }
 @media (max-width: 1000px) {
