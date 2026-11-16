@@ -1,33 +1,156 @@
-.account-page {
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 18px;
-  min-height: 560px;
-  padding: clamp(28px, 6vw, 76px) var(--yerh-gutter);
-  background:
-    radial-gradient(ellipse at top, var(--yerh-gold-light), transparent 62%), var(--yerh-surface);
+html:has(.account-dialog[open]) {
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
 }
 
-.account-card,
-.account-preview {
-  width: min(100%, 480px);
+.account-dialog {
+  width: min(480px, calc(100% - 32px));
+  max-width: none;
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  overflow: visible;
+  isolation: isolate;
+}
+
+.account-dialog::backdrop {
+  background: rgb(17 32 62 / 36%);
+  backdrop-filter: blur(4px);
 }
 
 .account-card {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
   padding: clamp(24px, 5vw, 42px);
   background: var(--yerh-white);
-  border: 1px solid var(--yerh-border);
-  border-top: 3px solid var(--yerh-gold);
-  border-radius: 12px;
-  box-shadow: 0 16px 48px #192c570d;
+  border: 2px solid var(--yerh-border);
+  box-shadow: 0 16px 48px #11203e38;
+}
+
+.account-card::-webkit-scrollbar {
+  display: none;
+}
+
+@property --account-border-angle {
+  syntax: '<angle>';
+  inherits: true;
+  initial-value: 0deg;
+}
+
+@property --account-red-angle {
+  syntax: '<angle>';
+  inherits: true;
+  initial-value: 180deg;
+}
+
+@supports (background-image: conic-gradient(transparent, white)) {
+  .account-dialog {
+    --account-border-angle: 0deg;
+    --account-red-angle: 180deg;
+    --account-red-light: conic-gradient(
+      from var(--account-red-angle),
+      transparent 0deg,
+      #ff918a 4deg,
+      #e32938 10deg,
+      transparent 29deg
+    );
+    --account-edge-light: conic-gradient(
+      from var(--account-border-angle),
+      transparent 0deg,
+      #215fc9 18deg,
+      #8cc6ff 24deg,
+      transparent 29deg 53deg,
+      var(--yerh-gold) 71deg,
+      #ffe296 77deg,
+      transparent 82deg
+    );
+  }
+
+  .account-dialog::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: -12px;
+    background: var(--account-red-light), var(--account-edge-light);
+    filter: blur(16px);
+    opacity: 0.85;
+    pointer-events: none;
+  }
+
+  .account-card {
+    border-color: transparent;
+    background:
+      linear-gradient(var(--yerh-white), var(--yerh-white)) padding-box,
+      var(--account-red-light) border-box,
+      var(--account-edge-light) border-box var(--yerh-border);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .account-dialog {
+      animation:
+        account-border-chase 10s linear infinite,
+        account-red-chase 6.666667s linear infinite;
+    }
+  }
+}
+
+@keyframes account-border-chase {
+  to {
+    --account-border-angle: 360deg;
+  }
+}
+
+@keyframes account-red-chase {
+  to {
+    --account-red-angle: -180deg;
+  }
+}
+
+.account-close {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 8px;
+  width: 44px;
+  height: 44px;
+  background: var(--yerh-white);
+}
+
+.account-brand {
+  display: block;
+  width: fit-content;
+  margin: 0 auto 16px;
+}
+
+.account-brand img {
+  object-fit: contain;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .account-brand img {
+    transition: transform 180ms ease;
+  }
+
+  .account-brand:is(:hover, :focus-visible) img {
+    transform: scale(1.23);
+  }
 }
 
 .account-heading {
   margin-bottom: 26px;
 }
 
-.account-heading h1 {
+.account-heading h2,
+.account-heading > p {
+  text-align: center;
+}
+
+.account-heading h2 {
   font-size: clamp(30px, 5vw, 40px);
   letter-spacing: -1.2px;
 }
@@ -128,14 +251,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 10px;
-  padding: 11px 14px;
-  border: 1px solid var(--yerh-border);
-  border-radius: 8px;
-  background: var(--yerh-white);
-}
-
-.account-preview > p {
-  flex: 1;
+  margin-top: 12px;
 }
 
 .account-error {

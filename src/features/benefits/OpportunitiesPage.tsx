@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { AccountLink } from '../accounts/AccountLink';
 import { CalendarDays, ArrowUpRight, MapPin, Star } from 'lucide-react';
 import { useDemo } from '../../app/useDemo';
 import { can } from '../../domain/roles';
@@ -293,9 +294,12 @@ export function OpportunityDetail() {
                 </button>
               </>
             ) : !account ? (
-              <Link className="button" to={`/login?redirect=/opportunities/${o.slug}`}>
+              <AccountLink
+                className="button"
+                search={`?${new URLSearchParams({ redirect: `/opportunities/${o.slug}` })}`}
+              >
                 Sign in to apply
-              </Link>
+              </AccountLink>
             ) : !can(account, 'apply') ? (
               <Link className="button" to="/apply">
                 Apply for entrepreneur access

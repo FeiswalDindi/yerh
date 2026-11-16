@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { AccountLink } from '../accounts/AccountLink';
 import { useDemo } from '../../app/useDemo';
 import { PageIntro } from '../../shared/PageIntro';
 import { DemoNotice } from '../demo/DemoNotice';
@@ -112,9 +113,9 @@ export function ThreadPage() {
               </form>
             ) : (
               !thread.hidden && (
-                <Link className="button" to={account ? '/apply' : '/login'}>
+                <AccountLink className="button" to={account ? '/apply' : undefined}>
                   {account ? 'Apply for community access' : 'Login to reply'}
-                </Link>
+                </AccountLink>
               )
             )}
             {state.sessions.some((s) => s.forumId === thread.forumId) && (

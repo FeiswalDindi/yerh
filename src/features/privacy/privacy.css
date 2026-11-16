@@ -11,7 +11,7 @@
   max-width: 580px;
   margin-left: auto;
   margin-right: 0;
-  background: #ffffff;
+  background: var(--yerh-white);
   border: 1px solid var(--yerh-border);
   border-radius: 12px;
   box-shadow: 0 14px 40px rgba(25, 44, 87, 0.22);
@@ -21,6 +21,14 @@
   flex-direction: column;
   gap: 14px;
   animation: slideUpConsent 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .cookie-floating-banner {
+    background: rgb(255 255 255 / 70%);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
 }
 
 @keyframes slideUpConsent {
@@ -40,7 +48,7 @@
   right: 12px;
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--yerh-navy);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -49,11 +57,6 @@
   transition:
     color 0.15s ease,
     background 0.15s ease;
-}
-
-.cookie-banner-close:hover {
-  color: var(--yerh-navy);
-  background: #f1f5f9;
 }
 
 .cookie-banner-content {
@@ -91,7 +94,7 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.55;
-  color: #475569;
+  color: #334155;
 }
 
 .cookie-banner-actions {
@@ -109,7 +112,7 @@
   align-items: center;
   gap: 5px;
   font-size: 12px;
-  color: #0284c7;
+  color: var(--yerh-navy);
   font-weight: 600;
   text-decoration: none;
 }

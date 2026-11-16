@@ -195,9 +195,9 @@ function Editor({
 export function CmsPage() {
   const catalog = useCatalog();
   const { state, account, execute } = useDemo();
-  usePageTitle('Content management');
   const [params] = useSearchParams();
   const module = cmsModule(params.get('module'));
+  usePageTitle(cmsModules.find(([key]) => key === module)?.[1] ?? 'Content Studio');
   const [snapshot, setSnapshot] = useState<CmsSnapshot>(() => createCmsSnapshot(catalog, state));
   const [baseRevision, setBaseRevision] = useState(state.platform.cmsRevision);
   const [id, setId] = useState<string>(() => crypto.randomUUID());

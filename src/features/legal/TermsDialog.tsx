@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, FileText, X } from 'lucide-react';
+import { ArrowUpRight, FileText } from 'lucide-react';
 import { useCatalog } from '../../app/useCatalog';
+import { CloseButton } from '../../shared/CloseButton';
 
 export function TermsSummary() {
   const { terms } = useCatalog();
@@ -52,14 +53,12 @@ export function TermsDialog({ onClose }: { onClose: () => void }) {
           <span className="terms-dialog-icon" aria-hidden="true">
             <FileText size={24} />
           </span>
-          <button
-            type="button"
+          <CloseButton
             className="terms-dialog-close"
             aria-label="Close terms and conditions"
+            iconSize={20}
             onClick={close}
-          >
-            <X size={20} />
-          </button>
+          />
         </div>
         <p className="eyebrow">YERH COMMUNITY</p>
         <h2 id="terms-dialog-title">Terms & conditions</h2>

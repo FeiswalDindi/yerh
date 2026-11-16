@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Cookie, ShieldCheck, X } from 'lucide-react';
+import { Cookie, ShieldCheck } from 'lucide-react';
 
 import { getCookieConsent, setCookieConsent, OPEN_CONSENT } from '../../services/cookie-consent';
 import { useCookieConsent } from './useCookieConsent';
+import { CloseButton } from '../../shared/CloseButton';
 export function CookieConsentModal() {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
@@ -46,14 +47,12 @@ export function CookieConsentModal() {
 
   return (
     <aside className="cookie-floating-banner" role="region" aria-label="Cookie consent banner">
-      <button
+      <CloseButton
         className="cookie-banner-close"
-        type="button"
         aria-label="Dismiss cookie notice with essential cookies"
+        iconSize={16}
         onClick={handleEssentialOnly}
-      >
-        <X size={16} />
-      </button>
+      />
 
       <div className="cookie-banner-content">
         <div className="cookie-banner-icon">

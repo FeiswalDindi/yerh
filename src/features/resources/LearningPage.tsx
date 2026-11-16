@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
+import { AccountLink } from '../accounts/AccountLink';
 import { ArrowRight, Check, Play } from 'lucide-react';
 import { useCatalog } from '../../app/useCatalog';
 import { useDemo } from '../../app/useDemo';
@@ -55,9 +56,9 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
               </div>
             ) : (
               <p>
-                <Link className="button" to={account ? '/apply' : '/login'}>
+                <AccountLink className="button" to={account ? '/apply' : undefined}>
                   {account ? 'Apply for learner access' : 'Sign in to enroll'}
-                </Link>
+                </AccountLink>
               </p>
             )}
             <div className="learning-progress">

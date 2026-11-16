@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { ArrowRight, ArrowUpRight, Linkedin, X } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Linkedin } from 'lucide-react';
 import type { TeamContent, TeamMember } from '../../domain/site';
+import { CloseButton } from '../../shared/CloseButton';
 import './team.css';
 
 function TeamPortrait({ member }: { member: TeamMember }) {
@@ -51,13 +52,13 @@ function TeamProfileDialog({ member, onClose }: { member: TeamMember; onClose: (
     >
       <div className="team-profile-inner">
         <form method="dialog">
-          <button
+          <CloseButton
             className="team-profile-dismiss icon-button"
+            type="submit"
             aria-label="Close profile dialog"
+            iconSize={21}
             autoFocus
-          >
-            <X size={21} aria-hidden="true" />
-          </button>
+          />
         </form>
         <TeamPortrait member={member} />
         <h2 id={nameId}>{member.name}</h2>

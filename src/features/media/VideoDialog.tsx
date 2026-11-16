@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { CloseButton } from '../../shared/CloseButton';
 import { VideoPlayer } from './VideoPlayer';
 export function VideoDialog({ url, onClose }: { url: string; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -20,14 +20,12 @@ export function VideoDialog({ url, onClose }: { url: string; onClose: () => void
       }}
     >
       <div className="story-video-modal-content">
-        <button
-          type="button"
+        <CloseButton
           className="story-video-modal-close"
           onClick={onClose}
           aria-label="Close video"
-        >
-          <X size={20} />
-        </button>
+          iconSize={20}
+        />
         <div className="story-video-iframe-wrap">
           <VideoPlayer onPreferences={onClose} url={url} title="Story Video Player" />
         </div>

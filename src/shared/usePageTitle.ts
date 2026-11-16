@@ -1,6 +1,10 @@
-import { useEffect } from 'react';
+import { useContext, useEffect } from 'react';
+import { BreadcrumbRegistrationContext } from './BreadcrumbProvider';
+
 export function usePageTitle(title: string) {
+  const register = useContext(BreadcrumbRegistrationContext);
   useEffect(() => {
     document.title = `${title} | YERH`;
-  }, [title]);
+    register?.({ label: title }, true);
+  }, [title, register]);
 }

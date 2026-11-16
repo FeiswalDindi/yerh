@@ -1,10 +1,12 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, LogOut, X } from 'lucide-react';
+import { ArrowUpRight, LogOut } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
 import { roleLabels } from '../../domain/roles';
 import type { DemoAccount } from '../../domain/demo';
 import { Header } from '../../layout/Header';
+import { BreadcrumbBar } from '../../shared/Breadcrumb';
+import { CloseButton } from '../../shared/CloseButton';
 import { CookieConsentModal } from '../privacy/CookieConsentModal';
 import {
   activeWorkspaceModule,
@@ -119,6 +121,7 @@ export function DashboardLayout() {
           </Link>
         </aside>
         <main id="main-content" className="dashboard-content" ref={main} tabIndex={-1}>
+          <BreadcrumbBar />
           <Suspense
             fallback={
               <p className="container section" role="status">
@@ -147,14 +150,11 @@ export function DashboardLayout() {
               <h2 id="dashboard-menu-title">Dashboard menu</h2>
               <p>{role}</p>
             </div>
-            <button
+            <CloseButton
               className="icon-button"
-              type="button"
               aria-label="Close dashboard menu"
               onClick={() => dashboardDrawer.current?.close()}
-            >
-              <X size={22} aria-hidden="true" />
-            </button>
+            />
           </header>
           <DashboardNavigation
             account={account}

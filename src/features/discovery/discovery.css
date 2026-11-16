@@ -364,7 +364,7 @@
   color: var(--yerh-ink);
   font-size: 12px;
 }
-.forum-calendar td button:hover {
+.forum-calendar td button:is(:hover, :focus-visible) {
   background: var(--yerh-gold-light);
 }
 .forum-calendar td button[aria-current='date'] {
@@ -373,6 +373,43 @@
 .forum-calendar td button[aria-pressed='true'] {
   background: var(--yerh-navy);
   color: white;
+}
+.forum-calendar td button::after {
+  content: 'Click to filter';
+  display: none;
+  position: absolute;
+  z-index: 2;
+  inset-block-end: calc(100% + 4px);
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  padding: 4px 8px;
+  background: var(--yerh-navy-dark);
+  color: var(--yerh-white);
+  box-shadow: 0 2px 6px #11203e30;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.forum-calendar td button[aria-pressed='true']::after {
+  content: 'Click to clear filter';
+}
+.forum-calendar td:first-child button::after {
+  inset-inline-start: 0;
+  translate: none;
+}
+.forum-calendar td:last-child button::after {
+  inset-inline: auto 0;
+  translate: none;
+}
+.forum-calendar td button:focus-visible::after {
+  display: block;
+}
+@media (hover: hover) {
+  .forum-calendar td button:hover::after {
+    display: block;
+  }
 }
 .calendar-dot {
   display: inline-block;

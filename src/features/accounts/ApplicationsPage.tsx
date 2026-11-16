@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { AccountLink } from './AccountLink';
 import { useDemo } from '../../app/useDemo';
 import { applicationRoles, roleLabels, type AppliedRole } from '../../domain/roles';
 import { PageIntro } from '../../shared/PageIntro';
@@ -39,10 +39,10 @@ export function ApplicationsPage() {
         {!account ? (
           <div className="empty-state">
             <h2>Sign in before applying</h2>
-            <Link className="button" to="/register">
+            <AccountLink className="button" mode="register">
               Create an account
-            </Link>
-            <Link to="/login">Already have an account? Sign in</Link>
+            </AccountLink>
+            <AccountLink>Already have an account? Sign in</AccountLink>
           </div>
         ) : (
           <>

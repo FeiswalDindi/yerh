@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
+import { AccountLink } from '../accounts/AccountLink';
 import { useDemo } from '../../app/useDemo';
 import { useCatalog } from '../../app/useCatalog';
 import { contentPath } from '../../domain/content';
@@ -162,9 +163,9 @@ export function SessionPage() {
                   Reserve a demo place
                 </button>
               ) : (
-                <Link className="button" to={account ? '/apply' : '/login'}>
+                <AccountLink className="button" to={account ? '/apply' : undefined}>
                   {account ? 'Apply for event access' : 'Login to reserve a place'}
-                </Link>
+                </AccountLink>
               )}
               {account && (
                 <Link

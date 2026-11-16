@@ -8,7 +8,7 @@ import { createDemoSeed } from '../src/services/demo-repository';
 import { mockContentRepository } from '../src/services/mock-content-repository';
 import { createCmsSnapshot } from '../src/services/cms-snapshot';
 import { LoginPage } from '../src/features/demo/LoginPage';
-import { AccountPage } from '../src/features/accounts/AccountPage';
+import { AccountDialog } from '../src/features/accounts/AccountDialog';
 import { accountDestination } from '../src/features/accounts/account-navigation';
 import { JoinPage } from '../src/features/connect/JoinPage';
 import { AboutPage } from '../src/features/info/AboutPage';
@@ -57,8 +57,6 @@ export async function checkPlatformRendering() {
           <MemoryRouter initialEntries={[path]}>
             {child ?? (
               <Routes>
-                <Route path="/login" element={<AccountPage />} />
-                <Route path="/register" element={<AccountPage register />} />
                 <Route path="/demo" element={<LoginPage />} />
                 <Route path="/join" element={<JoinPage />} />
                 <Route path="/about" element={<AboutPage />} />
@@ -96,8 +94,6 @@ export async function checkPlatformRendering() {
   }
   let count = 0;
   for (const path of [
-    '/login',
-    '/register',
     '/join',
     '/apply',
     '/events',
@@ -144,18 +140,31 @@ export async function checkPlatformRendering() {
   assert.ok(mixedHtml.includes('More opportunities'));
   assert.equal((mixedHtml.match(/class="benefit-card /g) ?? []).length, 2);
   count += 5;
-  const login = render('/login');
-  const register = render('/register');
+  function renderAccount(mode: 'login' | 'register', enabled = true) {
+    return render(
+      '/',
+      null,
+      <AccountDialog mode={mode} search="" onClose={() => {}} />,
+      state,
+      enabled,
+    );
+  }
+  const login = renderAccount('login');
+  const register = renderAccount('register');
   const demo = render('/demo');
-  assert.ok(login.includes('Sign in to YERH'));
+  assert.ok(login.includes('id="account-title">Sign in</h2>'));
+  assert.ok(login.includes('Access your workspace.'));
+  assert.ok(login.includes('<dialog class="account-dialog"'));
+  assert.ok(login.includes('Close account dialog'));
   assert.ok(login.includes('name="email"'));
-  assert.ok(login.includes('href="/register"'));
+  assert.ok(login.includes('Create an account'));
   assert.ok(login.includes('href="/demo"'));
   assert.ok(!login.includes('demo-account-grid'));
   assert.ok(register.includes('Create your account'));
   for (const field of ['name', 'email', 'location', 'terms'])
     assert.ok(register.includes(`name="${field}"`), field);
-  assert.ok(register.includes('href="/login"'));
+  assert.ok(register.includes('Already have an account?'));
+  assert.ok(register.includes('href="/demo"'));
   assert.ok(demo.includes('demo-account-grid'));
   for (const role of [
     'Guest',
@@ -175,8 +184,8 @@ export async function checkPlatformRendering() {
   assert.ok(about.includes(team.groupPhoto.image));
   assert.equal((about.match(/aria-haspopup="dialog"/g) ?? []).length, team.members.length);
   for (const member of team.members) assert.ok(about.includes(`View profile for ${member.name}`));
-  for (const path of ['/login', '/register']) {
-    const production = render(path, null, undefined, state, false);
+  for (const mode of ['login', 'register'] as const) {
+    const production = renderAccount(mode, false);
     assert.ok(!production.includes('name="email"'));
     assert.ok(!production.includes('href="/demo"'));
   }

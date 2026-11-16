@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { AccountLink } from '../accounts/AccountLink';
 import { ArrowUpRight, CalendarDays, MapPin, Users } from 'lucide-react';
 import { useDemo } from '../../app/useDemo';
 import { useCatalog } from '../../app/useCatalog';
@@ -62,9 +63,9 @@ export function FriendshipActions({ memberId }: { memberId: string }) {
     );
   if (!account || !enabled || !can(account, 'community'))
     return (
-      <Link className="button" to={account ? '/apply' : '/login'}>
+      <AccountLink className="button" to={account ? '/apply' : undefined}>
         {account ? 'Apply for community access' : 'Login to connect'}
-      </Link>
+      </AccountLink>
     );
   const connection = connectionBetween(state, account.id, memberId);
   function act(operation: 'request' | 'accept' | 'decline' | 'cancel' | 'remove') {
@@ -131,7 +132,7 @@ export function GroupCard({ group }: { group: Group }) {
             {joined ? 'Leave group' : 'Join group'}
           </button>
         ) : (
-          <Link to="/login">Login to join</Link>
+          <AccountLink>Login to join</AccountLink>
         )}
       </div>
     </article>

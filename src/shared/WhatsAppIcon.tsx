@@ -1,14 +1,37 @@
+/*!
+ * WhatsApp SVG from Bootstrap Icons v1.13.1
+ * Copyright (c) 2019-2024 The Bootstrap Authors
+ * The MIT License (MIT)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 export function WhatsAppIcon({ size = 20, className = '' }: { size?: number; className?: string }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 24 24"
+      viewBox="0 0 16 16"
       fill="currentColor"
       className={className}
       aria-hidden="true"
     >
-      <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.699c.969.54 1.769.815 2.791.815 3.18 0 5.767-2.587 5.768-5.766.001-3.181-2.586-5.767-5.768-5.767zm7.653 5.768c-.002 4.238-3.447 7.683-7.684 7.683-.87 0-1.74-.15-2.56-.44l-4.14 1.09 1.109-4.048c-.34-.91-.53-1.89-.53-2.885.002-4.238 3.447-7.683 7.684-7.683 4.237 0 7.682 3.445 7.684 7.683zm-3.844 2.146c-.209-.105-1.238-.611-1.43-.68-.192-.07-.332-.105-.472.105-.14.209-.541.68-.663.82-.122.14-.245.157-.454.052-.209-.105-.884-.326-1.684-1.039-.623-.555-1.043-1.24-1.165-1.45-.122-.209-.013-.322.092-.426.094-.094.209-.245.314-.367.105-.122.14-.209.209-.349.07-.14.035-.262-.017-.367-.052-.105-.472-1.137-.646-1.558-.17-.41-.343-.354-.472-.36-.122-.007-.262-.009-.402-.009s-.367.052-.559.262c-.192.209-.733.716-.733 1.746 0 1.03 1.047 2.025 1.192 2.165.145.14 2.062 3.149 4.996 4.416.698.302 1.243.482 1.668.617.701.223 1.339.192 1.843.117.562-.084 1.729-.706 1.973-1.388.244-.682.244-1.267.171-1.388-.073-.122-.213-.192-.422-.297z" />
+      <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232" />
     </svg>
   );
 }

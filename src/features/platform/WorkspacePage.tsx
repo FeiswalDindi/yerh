@@ -100,7 +100,7 @@ export function WorkspacePage() {
   return (
     <>
       <PageIntro
-        eyebrow={roleLabels[account.role]}
+        eyebrow={activeModule?.label ?? 'Workspace'}
         title={activeModule?.label ?? 'Workspace'}
         description={activeModule?.description ?? 'Choose an available tool from your dashboard.'}
       />

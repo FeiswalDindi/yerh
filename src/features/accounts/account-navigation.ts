@@ -1,5 +1,10 @@
 const origin = 'https://yerh.invalid';
 
+export interface AccountRequest {
+  mode: 'login' | 'register';
+  search: string;
+}
+
 export function accountDestination(search: string, fallback: string) {
   const redirect = new URLSearchParams(search).get('redirect');
   if (!redirect?.startsWith('/') || redirect.startsWith('//') || /[\\\s]/.test(redirect))

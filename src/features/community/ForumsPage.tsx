@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { AccountLink } from '../accounts/AccountLink';
 import { MessageSquare, Plus } from 'lucide-react';
 import { useDemo } from '../../app/useDemo';
 import { PageIntro } from '../../shared/PageIntro';
@@ -120,9 +121,9 @@ export function ForumsPage() {
                   {compose ? 'Close composer' : 'Start a discussion'}
                 </button>
               ) : (
-                <Link className="button" to={account ? '/apply' : '/login'}>
+                <AccountLink className="button" to={account ? '/apply' : undefined}>
                   {account ? 'Apply for community access' : 'Login to participate'}
-                </Link>
+                </AccountLink>
               )}
             </div>
             <nav className="section-tabs" aria-label="Forum categories">

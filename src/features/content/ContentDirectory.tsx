@@ -6,6 +6,7 @@ import { usePageTitle } from '../../shared/usePageTitle';
 import { useSavedItems } from '../../shared/useSavedItems';
 import { PageIntro } from '../../shared/PageIntro';
 import { ContentCard } from './ContentCard';
+import { BlogHeroMedia } from './BlogHeroMedia';
 import { DiscoverySidebar } from '../discovery/DiscoverySidebar';
 
 const descriptions: Record<ContentKind, { title: string; description: string; eyebrow: string }> = {
@@ -86,7 +87,11 @@ export function ContentDirectory({
   }
   return (
     <>
-      <PageIntro {...config} />
+      <PageIntro
+        {...config}
+        className={kind === 'article' ? 'blog-hero' : undefined}
+        media={kind === 'article' ? <BlogHeroMedia /> : undefined}
+      />
       <section className="container directory-section">
         <div className={hasSidebar ? 'content-with-sidebar' : undefined}>
           <div className="discovery-main">

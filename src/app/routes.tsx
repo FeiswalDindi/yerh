@@ -6,7 +6,10 @@ import { HomePage } from '../features/home/HomePage';
 import { NotFoundPage } from '../features/info/NotFoundPage';
 import { RequireDemo } from '../features/demo/RequireDemo';
 import { useDemo } from './useDemo';
-import { dashboardAccess } from '../features/dashboard/dashboard-navigation';
+import { cmsModule, dashboardAccess } from '../features/dashboard/dashboard-navigation';
+import { AccountAccess } from '../features/accounts/AccountAccess';
+import { AccountEntryRedirect } from '../features/accounts/AccountLink';
+import { BreadcrumbProvider } from '../shared/BreadcrumbProvider';
 const DashboardLayout = lazy(() =>
   import('../features/dashboard/DashboardLayout').then((m) => ({ default: m.DashboardLayout })),
 );
@@ -46,9 +49,6 @@ const FaqPage = lazy(() =>
 );
 const DemoLoginPage = lazy(() =>
   import('../features/demo/LoginPage').then((m) => ({ default: m.LoginPage })),
-);
-const AccountPage = lazy(() =>
-  import('../features/accounts/AccountPage').then((m) => ({ default: m.AccountPage })),
 );
 const ContactPage = lazy(() =>
   import('../features/contact/ContactPage').then((m) => ({ default: m.ContactPage })),
@@ -142,11 +142,34 @@ function CollectionRedirect({ to }: { to: string }) {
 }
 function ApplicationEntry() {
   const { account } = useDemo();
-  if (account?.suspended) return <Navigate to="/login" replace />;
+  if (account?.suspended) return <AccountEntryRedirect />;
   return account ? <Navigate to="/dashboard/applications" replace /> : <ApplicationsPage />;
 }
 /** Compose under the host router; DemoProvider and ContentProvider are supplied at the app boundary. */
 export function createYerhRoutes(): RouteObject[] {
+  return [
+    {
+      element: (
+        <BreadcrumbProvider identifyPage={breadcrumbPageKey}>
+          <AccountAccess />
+        </BreadcrumbProvider>
+      ),
+      children: siteRoutes(),
+    },
+  ];
+}
+
+function breadcrumbPageKey(pathname: string, search: string) {
+  if (pathname === '/dashboard/workspace') {
+    const tab = new URLSearchParams(search).get('tab');
+    return tab ? `${pathname}?tab=${tab}` : pathname;
+  }
+  if (pathname === '/dashboard/cms')
+    return `${pathname}?module=${cmsModule(new URLSearchParams(search).get('module'))}`;
+  return pathname;
+}
+
+function siteRoutes(): RouteObject[] {
   return [
     {
       element: (
@@ -200,8 +223,8 @@ export function createYerhRoutes(): RouteObject[] {
         { path: 'yem/mentees', element: <MentorshipPage mode="mentees" /> },
         { path: 'community', element: <Navigate to="/network" replace /> },
         { path: 'join', element: <JoinPage /> },
-        { path: 'register', element: <AccountPage key="register" register /> },
-        { path: 'login', element: <AccountPage key="login" /> },
+        { path: 'register', element: <AccountEntryRedirect mode="register" /> },
+        { path: 'login', element: <AccountEntryRedirect /> },
         { path: 'demo', element: <DemoLoginPage /> },
         { path: 'profile', element: <Navigate to="/dashboard/profile" replace /> },
         { path: 'contact', element: <ContactPage /> },
@@ -209,9 +232,9 @@ export function createYerhRoutes(): RouteObject[] {
         { path: 'saved', element: <ContentDirectory savedOnly /> },
         { path: 'privacy', element: <PolicyPage /> },
         { path: 'terms', element: <TermsPage /> },
-        { path: 'preferences', element: <CookiePolicyPage /> },
+        { path: 'preferences', element: <Navigate to="/cookies" replace /> },
         { path: 'cookies', element: <CookiePolicyPage /> },
-        { path: 'cookie-policy', element: <CookiePolicyPage /> },
+        { path: 'cookie-policy', element: <Navigate to="/cookies" replace /> },
         ...[
           ['news', 'publications/blogs'],
           ['blogs', 'publications/blogs'],

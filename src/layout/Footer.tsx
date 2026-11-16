@@ -1,13 +1,31 @@
 import { WhatsAppIcon } from '../shared/WhatsAppIcon';
+import { useId } from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Youtube, Rss, ArrowRight } from 'lucide-react';
 import { useCatalog } from '../app/useCatalog';
 
 export function Footer({ onTerms }: { onTerms?: () => void }) {
   const { site, media } = useCatalog();
+  const wordmarkFilter = useId();
   const socialLinks = Object.fromEntries(site.socials.map((s) => [s.label.toLowerCase(), s.href]));
   return (
     <footer className="site-footer">
+      <svg width={0} height={0} aria-hidden="true" style={{ position: 'absolute' }}>
+        <defs>
+          <filter id={wordmarkFilter} colorInterpolationFilters="sRGB">
+            <feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0" result="white" />
+            {/* Gold has more red than blue. Keep those pixels from the original artwork. */}
+            <feColorMatrix
+              in="SourceGraphic"
+              values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  4 0 -4 0 0"
+              result="goldMask"
+            />
+            <feComposite in="SourceGraphic" in2="goldMask" operator="in" result="gold" />
+            <feComposite in="white" in2="goldMask" operator="out" result="whiteDetails" />
+            <feComposite in="gold" in2="whiteDetails" operator="arithmetic" k2={1} k3={1} />
+          </filter>
+        </defs>
+      </svg>
       <div className="container">
         {/* Top Callout Strip */}
         <div className="footer-top">
@@ -26,7 +44,12 @@ export function Footer({ onTerms }: { onTerms?: () => void }) {
           {/* Col 1: Brand & Slogan */}
           <div className="footer-brand">
             <Link to="/" className="footer-logo-link" aria-label="YERH home">
-              <img src={media.wordmark} alt={site.name} className="footer-logo-img" />
+              <img
+                src={media.wordmark}
+                alt={site.name}
+                className="footer-logo-img"
+                style={{ filter: `url(#${wordmarkFilter})` }}
+              />
             </Link>
             <p className="footer-slogan">{site.slogan}</p>
           </div>
@@ -73,10 +96,7 @@ export function Footer({ onTerms }: { onTerms?: () => void }) {
                 )}
               </li>
               <li>
-                <Link to="/preferences">Cookie Preferences</Link>
-              </li>
-              <li>
-                <Link to="/cookies">Cookies</Link>
+                <Link to="/cookies">Cookies & Preferences</Link>
               </li>
               <li>
                 <Link to="/publications/stories">Success Stories</Link>
@@ -96,7 +116,7 @@ export function Footer({ onTerms }: { onTerms?: () => void }) {
                 title="Facebook"
                 className="social-icon-btn facebook"
               >
-                <Facebook size={18} />
+                <Facebook size={23} aria-hidden="true" />
               </a>
               <a
                 href={socialLinks.youtube}
@@ -106,7 +126,7 @@ export function Footer({ onTerms }: { onTerms?: () => void }) {
                 title="YouTube"
                 className="social-icon-btn youtube"
               >
-                <Youtube size={18} />
+                <Youtube size={23} aria-hidden="true" />
               </a>
               <a
                 href={socialLinks.whatsapp}
@@ -116,7 +136,7 @@ export function Footer({ onTerms }: { onTerms?: () => void }) {
                 title="WhatsApp"
                 className="social-icon-btn whatsapp"
               >
-                <WhatsAppIcon size={18} />
+                <WhatsAppIcon size={24} />
               </a>
               <a
                 href={socialLinks.instagram}
@@ -126,7 +146,7 @@ export function Footer({ onTerms }: { onTerms?: () => void }) {
                 title="Instagram"
                 className="social-icon-btn instagram"
               >
-                <Instagram size={18} />
+                <Instagram size={23} aria-hidden="true" />
               </a>
               <Link
                 to="/publications"
@@ -134,7 +154,7 @@ export function Footer({ onTerms }: { onTerms?: () => void }) {
                 title="Publications"
                 className="social-icon-btn rss"
               >
-                <Rss size={18} />
+                <Rss size={23} aria-hidden="true" />
               </Link>
             </div>
           </div>

@@ -8,6 +8,7 @@ import { platformHref } from '../../config/site';
 import { DemoNotice } from './DemoNotice';
 import { roleLabels } from '../../domain/roles';
 import { accountDestination } from '../accounts/account-navigation';
+import { AccountLink } from '../accounts/AccountLink';
 export function LoginPage() {
   const { state, account, enabled, execute, reset } = useDemo();
   const navigate = useNavigate();
@@ -52,9 +53,9 @@ export function LoginPage() {
               ))}
             </div>
             <div className="demo-controls">
-              <Link className="text-link" to={`/login${search}`}>
+              <AccountLink className="text-link" search={search}>
                 Member sign-in
-              </Link>
+              </AccountLink>
               {account && (
                 <button className="text-link" onClick={() => execute({ type: 'logout' })}>
                   <LogOut size={16} />

@@ -6,6 +6,8 @@ import { type NavigationItem } from '../config/navigation';
 import { roleLabels } from '../domain/roles';
 import { useCatalog } from '../app/useCatalog';
 import { useDemo } from '../app/useDemo';
+import { AccountLink } from '../features/accounts/AccountLink';
+import { BreadcrumbBar } from '../shared/Breadcrumb';
 
 function NavigationBranch({ item, depth = 0 }: { item: NavigationItem; depth?: number }) {
   const [open, setOpen] = useState(false);
@@ -111,94 +113,93 @@ export function Header({
         </div>
       )}
 
-      <header
-        className={`site-header reference-header${dashboardMenu ? ' site-header--in-flow' : ''}`}
-      >
-        <div className="container header-inner">
-          <Link className="reference-brand" to="/" aria-label="YERH home">
-            <img src={media.wordmark} alt="Youth Entrepreneurship Resource Hub — YERH Kenya" />
-          </Link>
-
-          <nav className="desktop-tree" aria-label="Main navigation">
-            <ul>
-              {navigation.map((item) => (
-                <NavigationBranch key={item.id} item={item} />
-              ))}
-            </ul>
-          </nav>
-
-          <div className="header-actions">
-            <Link to="/search" className="icon-button" aria-label="Search the hub">
-              <Search size={19} />
+      <div className={dashboardMenu ? 'dashboard-navigation-frame' : 'site-navigation-frame'}>
+        <header className="site-header reference-header">
+          <div className="container header-inner">
+            <Link className="reference-brand" to="/" aria-label="YERH home">
+              <img src={media.wordmark} alt="Youth Entrepreneurship Resource Hub — YERH Kenya" />
             </Link>
 
-            {account ? (
-              <>
-                <Link className="header-login" to="/dashboard">
-                  MY ACCOUNT
-                </Link>
-                <button
-                  type="button"
-                  className="button button-gold button-small header-signout-btn"
-                  onClick={() => execute({ type: 'logout' })}
-                  title="Sign out of demo account"
-                >
-                  SIGN OUT
-                </button>
-              </>
-            ) : (
-              <>
-                <Link className="header-login" to="/login">
-                  LOGIN
-                </Link>
-                <Link className="button button-gold button-small" to="/register">
-                  REGISTER
-                </Link>
-              </>
-            )}
+            <nav className="desktop-tree" aria-label="Main navigation">
+              <ul>
+                {navigation.map((item) => (
+                  <NavigationBranch key={item.id} item={item} />
+                ))}
+              </ul>
+            </nav>
 
-            <button
-              ref={toggle}
-              type="button"
-              className={`menu-toggle icon-button${dashboardMenu ? ' site-menu-toggle' : ''}`}
-              aria-label={
-                dashboardMenu
-                  ? 'Site menu'
-                  : open
-                    ? 'Close navigation drawer'
-                    : 'Open navigation drawer'
-              }
-              aria-haspopup="dialog"
-              aria-expanded={open}
-              aria-controls="feiso-mobile-drawer"
-              onClick={() => setOpen((v) => !v)}
-            >
-              {dashboardMenu ? (
+            <div className="header-actions">
+              <Link to="/search" className="icon-button" aria-label="Search the hub">
+                <Search size={19} />
+              </Link>
+
+              {account ? (
                 <>
-                  <Globe size={17} aria-hidden="true" /> Site menu
+                  <Link className="header-login" to="/dashboard">
+                    MY ACCOUNT
+                  </Link>
+                  <button
+                    type="button"
+                    className="button button-gold button-small header-signout-btn"
+                    onClick={() => execute({ type: 'logout' })}
+                    title="Sign out of demo account"
+                  >
+                    SIGN OUT
+                  </button>
                 </>
-              ) : open ? (
-                <X size={24} aria-hidden="true" />
               ) : (
-                <Menu size={24} aria-hidden="true" />
+                <>
+                  <AccountLink className="header-login">LOGIN</AccountLink>
+                  <AccountLink className="button button-gold button-small" mode="register">
+                    REGISTER
+                  </AccountLink>
+                </>
               )}
-            </button>
-            {dashboardMenu && (
+
               <button
-                className="menu-toggle icon-button"
+                ref={toggle}
                 type="button"
-                aria-label="Open dashboard menu"
+                className={`menu-toggle icon-button${dashboardMenu ? ' site-menu-toggle' : ''}`}
+                aria-label={
+                  dashboardMenu
+                    ? 'Site menu'
+                    : open
+                      ? 'Close navigation drawer'
+                      : 'Open navigation drawer'
+                }
                 aria-haspopup="dialog"
-                aria-controls="dashboard-menu"
-                aria-expanded={dashboardMenu.expanded}
-                onClick={dashboardMenu.onOpen}
+                aria-expanded={open}
+                aria-controls="feiso-mobile-drawer"
+                onClick={() => setOpen((v) => !v)}
               >
-                <Menu size={24} aria-hidden="true" />
+                {dashboardMenu ? (
+                  <>
+                    <Globe size={17} aria-hidden="true" /> Site menu
+                  </>
+                ) : open ? (
+                  <X size={24} aria-hidden="true" />
+                ) : (
+                  <Menu size={24} aria-hidden="true" />
+                )}
               </button>
-            )}
+              {dashboardMenu && (
+                <button
+                  className="menu-toggle icon-button"
+                  type="button"
+                  aria-label="Open dashboard menu"
+                  aria-haspopup="dialog"
+                  aria-controls="dashboard-menu"
+                  aria-expanded={dashboardMenu.expanded}
+                  onClick={dashboardMenu.onOpen}
+                >
+                  <Menu size={24} aria-hidden="true" />
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+        {!dashboardMenu && <BreadcrumbBar />}
+      </div>
 
       <MobileNavigationDrawer open={open} setOpen={setOpen} toggle={toggle} />
     </>

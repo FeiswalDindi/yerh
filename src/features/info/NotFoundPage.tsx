@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
+import { usePageTitle } from '../../shared/usePageTitle';
 export function NotFoundPage() {
+  usePageTitle('Page not found');
   return (
     <section className="container status-page">
       <p className="eyebrow">404 · A SMALL DETOUR</p>

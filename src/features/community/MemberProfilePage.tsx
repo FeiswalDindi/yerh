@@ -28,6 +28,8 @@ import {
   SessionCard,
 } from './CommunityCards';
 
+const memberBreadcrumbParents = [{ label: 'Members', to: '/network?tab=members' }];
+
 export function MemberProfilePage() {
   const { memberId } = useParams();
   const { state, account } = useDemo();
@@ -82,10 +84,7 @@ export function MemberProfilePage() {
   );
   return (
     <section className="container section member-profile">
-      <Breadcrumb
-        current={member.name}
-        parents={[{ label: 'Members', to: '/network?tab=members' }]}
-      />
+      <Breadcrumb current={member.name} parents={memberBreadcrumbParents} />
       <DemoNotice />
       <header className="member-cover">
         <div className="member-cover-decoration" aria-hidden="true">

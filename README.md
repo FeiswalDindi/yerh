@@ -31,7 +31,7 @@ Open http://127.0.0.1:5173. Node 22.12+ is required. `npm run check` runs domain
 
 ## Try the demo
 
-Use `/login` and `/register` to try the member account forms in development. Create a test account or sign in with a test email. Use `/demo` for the ready-made Guest, Entrepreneur/Learner, Mentor, Partner, Investor, Content Manager and Administrator accounts. `/join` offers pathway advice and `/apply` handles role applications. Production account pages link to `VITE_PLATFORM_URL` when configured.
+Select **Login** or **Register** in the site navigation to open the account dialog. In development, sign in with a test email, create a test account, or follow **Demo accounts** in the dialog to try the ready-made roles. Existing `/login` and `/register` links open the corresponding dialog over the homepage. `/join` offers pathway advice and `/apply` handles role applications. Production account dialogs link to `VITE_PLATFORM_URL` when configured.
 
 - Entrepreneur/Learner: ventures/products, learning enrollment, community, mentorship, opportunities and incubation.
 - Mentor: profile/expertise/availability, guidance requests, assigned incubation notes and validated milestones.

@@ -164,6 +164,10 @@ button {
 .icon-button:hover {
   background: var(--yerh-surface);
 }
+.close-button:is(:hover, :focus-visible) {
+  background: var(--yerh-navy);
+  color: var(--yerh-white);
+}
 .sr-only {
   position: absolute;
   width: 1px;

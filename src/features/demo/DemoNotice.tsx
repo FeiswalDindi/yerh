@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
+import { CloseButton } from '../../shared/CloseButton';
 export function DemoNotice() {
   const { enabled, account, error, clearError } = useDemo();
   return (
@@ -12,9 +13,7 @@ export function DemoNotice() {
       {error && (
         <div className="form-error" role="alert">
           {error}
-          <button type="button" onClick={clearError} aria-label="Dismiss error">
-            ×
-          </button>
+          <CloseButton onClick={clearError} aria-label="Dismiss error" iconSize={16} />
         </div>
       )}
     </>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AccountLink } from '../accounts/AccountLink';
 import { LockKeyhole, Users } from 'lucide-react';
 import { useDemo } from '../../app/useDemo';
 import { forumMemberIds, memberPath } from '../../domain/community';
@@ -43,9 +44,9 @@ export function MemberRoster({ scope, id }: { scope: 'group' | 'forum'; id: stri
             {joined ? `Leave ${scope}` : `Join ${scope}`}
           </button>
         ) : (
-          <Link className="text-link" to={account ? '/apply' : '/login'}>
+          <AccountLink className="text-link" to={account ? '/apply' : undefined}>
             {account ? 'Apply for community access' : 'Login'} to join {scope} →
-          </Link>
+          </AccountLink>
         )}
       </div>
       {joined ? (

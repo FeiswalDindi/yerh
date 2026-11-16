@@ -17,13 +17,14 @@ import {
   Mail,
   Phone,
   UserCircle,
-  X,
 } from 'lucide-react';
 import { WhatsAppIcon } from '../shared/WhatsAppIcon';
+import { CloseButton } from '../shared/CloseButton';
 import { useCatalog } from '../app/useCatalog';
 import { roleLabels } from '../domain/roles';
 import type { SiteNavigation } from '../domain/site';
 import { useDemo } from '../app/useDemo';
+import { AccountLink } from '../features/accounts/AccountLink';
 
 function MobileNavigationList({
   items,
@@ -176,14 +177,12 @@ export function MobileNavigationDrawer({
               <div className="feiso-drawer-inner">
                 {/* Drawer Top Header with Close (No YERH NAVIGATION text) */}
                 <div className="feiso-drawer-header">
-                  <button
-                    type="button"
+                  <CloseButton
                     className="feiso-drawer-close-btn"
                     aria-label="Close menu"
+                    iconSize={26}
                     onClick={() => setOpen(false)}
-                  >
-                    <X size={26} />
-                  </button>
+                  />
                 </div>
 
                 {/* Feiso Account Identity Card */}
@@ -239,21 +238,17 @@ export function MobileNavigationDrawer({
                         progress.
                       </p>
                       <div className="feiso-guest-btns">
-                        <Link
-                          to="/login"
-                          onClick={() => setOpen(false)}
-                          className="feiso-signin-btn"
-                        >
+                        <AccountLink onClick={() => setOpen(false)} className="feiso-signin-btn">
                           <UserCircle size={16} />
                           Sign In
-                        </Link>
-                        <Link
-                          to="/register"
+                        </AccountLink>
+                        <AccountLink
+                          mode="register"
                           onClick={() => setOpen(false)}
                           className="button button-gold feiso-join-btn"
                         >
                           Join Today
-                        </Link>
+                        </AccountLink>
                       </div>
                     </div>
                   )}
@@ -279,13 +274,13 @@ export function MobileNavigationDrawer({
 
                 {/* Quick Action Button */}
                 <div className="feiso-cta-wrapper">
-                  <Link
-                    to="/register"
+                  <AccountLink
+                    mode="register"
                     onClick={() => setOpen(false)}
                     className="button button-gold feiso-cta-button"
                   >
                     Apply for Access
-                  </Link>
+                  </AccountLink>
                 </div>
 
                 {/* Bottom Quick Contact Icons (WhatsApp Support) */}

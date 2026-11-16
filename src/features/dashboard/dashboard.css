@@ -30,9 +30,9 @@
 
 .role-nav-group > p {
   margin: 0 10px 3px;
-  color: var(--yerh-muted);
-  font-size: 12px;
-  font-weight: 650;
+  color: var(--yerh-navy);
+  font-size: 13px;
+  font-weight: 760;
 }
 
 .role-nav ul {
@@ -86,12 +86,14 @@
   margin-inline: auto;
 }
 
-.dashboard-content .page-intro {
-  padding-block: 28px 20px;
+.dashboard-content > .breadcrumb {
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
-.dashboard-content .page-intro .breadcrumb {
-  display: none;
+.dashboard-content .page-intro {
+  padding-block: 28px 20px;
 }
 
 .dashboard-content .page-intro h1 {
