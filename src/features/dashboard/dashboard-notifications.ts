@@ -3,7 +3,11 @@ import type { DemoAccount, DemoState } from '../../domain/demo';
 import { can } from '../../domain/roles';
 import { cmsHref, workspaceHref } from './dashboard-navigation';
 
-type DashboardUpdate = { label: string; count: number; to: string };
+type DashboardUpdate = { label: string; itemIds: string[]; to: string };
+
+function pendingIds(records: { id: string; status: string }[], kind: string) {
+  return records.filter(({ status }) => status === 'pending').map(({ id }) => `${kind}:${id}`);
+}
 
 export function dashboardUpdates(state: DemoState, account: DemoAccount): DashboardUpdate[] {
   const { id } = account;
@@ -12,8 +16,9 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
   const updates: DashboardUpdate[] = [
     {
       label: 'Role application decisions',
-      count: platform.applications.filter((a) => a.accountId === id && a.status !== 'pending')
-        .length,
+      itemIds: platform.applications
+        .filter((a) => a.accountId === id && a.status !== 'pending')
+        .map((a) => `${a.id}:${a.status}`),
       to: '/dashboard/applications',
     },
   ];
@@ -21,28 +26,33 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
   if (can(account, 'community'))
     updates.push({
       label: 'Pending connection requests',
-      count: state.connections.filter((c) => c.recipientId === id && c.status === 'pending').length,
+      itemIds: state.connections
+        .filter((c) => c.recipientId === id && c.status === 'pending')
+        .map((c) => c.requesterId),
       to: `${memberPath(id)}?tab=friends`,
     });
 
   if (can(account, 'mentor'))
     updates.push({
       label: 'Mentorship requests to review',
-      count: state.requests.filter((r) => r.status === 'pending' && (admin || r.mentorId === id))
-        .length,
+      itemIds: state.requests
+        .filter((r) => r.status === 'pending' && (admin || r.mentorId === id))
+        .map((r) => r.id),
       to: '/dashboard/mentorship',
     });
 
   if (admin)
     updates.push({
       label: 'Items awaiting approval',
-      count: [
-        ...platform.applications,
-        ...platform.ventures,
-        ...platform.products,
-        ...platform.organisations,
-        ...platform.incubations,
-      ].filter((item) => item.status === 'pending').length,
+      itemIds: [
+        ...pendingIds(platform.applications, 'role'),
+        ...pendingIds(platform.ventures, 'venture'),
+        ...pendingIds(platform.products, 'product'),
+        ...pendingIds(platform.incubations, 'incubation'),
+        ...platform.organisations
+          .filter((organisation) => organisation.status === 'pending')
+          .map(({ accountId }) => `organisation:${accountId}`),
+      ],
       to: workspaceHref('approvals'),
     });
 
@@ -50,12 +60,16 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
     updates.push(
       {
         label: 'Contributions to review',
-        count: state.submissions.filter((item) => item.status === 'review').length,
+        itemIds: state.submissions
+          .filter((item) => item.status === 'review')
+          .map((item) => item.id),
         to: '/dashboard/content',
       },
       {
         label: 'Opportunities to review',
-        count: platform.opportunities.filter((item) => item.status === 'review').length,
+        itemIds: platform.opportunities
+          .filter((item) => item.status === 'review')
+          .map((item) => item.id),
         to: cmsHref('opportunities'),
       },
     );
@@ -66,12 +80,16 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
     );
     updates.push({
       label: 'Opportunity applications to review',
-      count: platform.opportunityApplications.filter(
-        (a) => a.status === 'submitted' && listings.has(a.opportunityId),
-      ).length,
+      itemIds: platform.opportunityApplications
+        .filter((a) => a.status === 'submitted' && listings.has(a.opportunityId))
+        .map((a) => a.id),
       to: workspaceHref('applicants'),
     });
   }
 
-  return updates.filter(({ count }) => count > 0);
+  return updates.filter(({ itemIds }) => itemIds.length > 0);
+}
+
+export function dashboardUpdateKeys(updates: DashboardUpdate[]): string[] {
+  return updates.flatMap(({ itemIds, to }) => itemIds.map((id) => `${to}:${id}`));
 }

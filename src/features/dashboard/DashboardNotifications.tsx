@@ -1,17 +1,42 @@
-import { useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Bell, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
+import type { DemoAccount } from '../../domain/demo';
+import {
+  loadReadNotifications,
+  notificationReadKey,
+  saveReadNotifications,
+} from '../../services/notification-read-state';
 import { CloseButton } from '../../shared/CloseButton';
-import { dashboardUpdates } from './dashboard-notifications';
+import { dashboardUpdateKeys, dashboardUpdates } from './dashboard-notifications';
 
-export function DashboardNotifications() {
-  const { state, account } = useDemo();
+export function DashboardNotifications({ account }: { account: DemoAccount }) {
+  const { state } = useDemo();
   const dialog = useRef<HTMLDialogElement>(null);
   const id = useId();
-  const updates = account ? dashboardUpdates(state, account) : [];
-  const count = updates.reduce((total, update) => total + update.count, 0);
+  const storageKey = notificationReadKey(account.id);
+  const [readKeys, setReadKeys] = useState(() => loadReadNotifications(storageKey));
+  const updates = dashboardUpdates(state, account);
+  const updateKeys = dashboardUpdateKeys(updates);
+  const unread = updateKeys.filter((key) => !readKeys.has(key)).length;
   const close = () => dialog.current?.close();
+
+  useEffect(() => {
+    const sync = (event: StorageEvent) => {
+      if (event.key === storageKey || event.key === null)
+        setReadKeys(loadReadNotifications(storageKey));
+    };
+    window.addEventListener('storage', sync);
+    return () => window.removeEventListener('storage', sync);
+  }, [storageKey]);
+
+  function open() {
+    if (!dialog.current) return;
+    dialog.current.showModal();
+    setReadKeys(new Set(updateKeys));
+    saveReadNotifications(storageKey, updateKeys);
+  }
 
   return (
     <>
@@ -19,15 +44,17 @@ export function DashboardNotifications() {
         className="icon-button dashboard-notifications-toggle"
         type="button"
         aria-label={
-          count ? `Notifications, ${count} ${count === 1 ? 'update' : 'updates'}` : 'Notifications'
+          unread
+            ? `Notifications, ${unread} ${unread === 1 ? 'update' : 'updates'}`
+            : 'Notifications'
         }
         aria-haspopup="dialog"
         aria-controls={id}
         title="Notifications"
-        onClick={() => dialog.current?.showModal()}
+        onClick={open}
       >
         <Bell size={21} aria-hidden="true" />
-        {count > 0 && <span aria-hidden="true">{count > 99 ? '99+' : count}</span>}
+        {unread > 0 && <span aria-hidden="true">{unread > 99 ? '99+' : unread}</span>}
       </button>
       <dialog
         className="dashboard-notifications-dialog"
@@ -45,10 +72,10 @@ export function DashboardNotifications() {
           </header>
           {updates.length ? (
             <ul>
-              {updates.map(({ label, count, to }) => (
+              {updates.map(({ label, itemIds, to }) => (
                 <li key={to}>
                   <Link to={to} onClick={close}>
-                    <strong>{count}</strong>
+                    <strong>{itemIds.length}</strong>
                     <span>{label}</span>
                     <ChevronRight size={16} aria-hidden="true" />
                   </Link>

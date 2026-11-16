@@ -26,6 +26,10 @@ import { useCatalog } from '../src/app/useCatalog';
 import { applyDemoAction, type DemoState } from '../src/domain/demo';
 import { DashboardLayout } from '../src/features/dashboard/DashboardLayout';
 import { dashboardAccess } from '../src/features/dashboard/dashboard-navigation';
+import {
+  dashboardUpdateKeys,
+  dashboardUpdates,
+} from '../src/features/dashboard/dashboard-notifications';
 import { dashboardTitles } from '../src/features/dashboard/dashboard-overview';
 import type { ReactNode } from 'react';
 
@@ -232,6 +236,15 @@ export async function checkPlatformRendering() {
   assert.ok(mentorDashboard.includes('aria-label="Notifications, 1 update"'));
   assert.ok(mentorDashboard.includes('Mentorship requests to review'));
   assert.ok(!mentorDashboard.includes('Pending connection requests'));
+  const mentor = state.accounts.find(({ id }) => id === 'demo-mentor')!;
+  const readKeys = new Set(dashboardUpdateKeys(dashboardUpdates(state, mentor)));
+  const replacement = {
+    ...state,
+    requests: state.requests.map((request) => ({ ...request, id: `new-${request.id}` })),
+  };
+  const newKeys = dashboardUpdateKeys(dashboardUpdates(replacement, mentor));
+  assert.equal(newKeys.length, readKeys.size);
+  assert.equal(newKeys.filter((key) => !readKeys.has(key)).length, 1);
   const founderDashboard = render('/dashboard', 'demo-founder');
   assert.ok(founderDashboard.includes('Pending connection requests'));
   assert.ok(!founderDashboard.includes('Mentorship requests to review'));

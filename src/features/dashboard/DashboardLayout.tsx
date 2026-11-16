@@ -137,7 +137,7 @@ export function DashboardLayout() {
         dashboardMenu={{
           expanded: dashboardOpen,
           onOpen: openDashboard,
-          notifications: <DashboardNotifications />,
+          notifications: <DashboardNotifications key={account.id} account={account} />,
         }}
       />
 
