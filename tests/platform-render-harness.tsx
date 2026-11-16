@@ -220,11 +220,21 @@ export async function checkPlatformRendering() {
     assert.ok(html.includes(dashboardTitles[account.role]));
     assert.ok(html.includes('aria-controls="dashboard-menu"'));
     assert.ok(html.includes('aria-controls="feiso-mobile-drawer"'));
+    assert.ok(html.includes('aria-label="Open site menu"'));
+    assert.match(html, /aria-label="Notifications[,"]/);
+    assert.ok(!html.includes('aria-label="Search the hub"'));
     assert.ok(html.includes('aria-label="Dashboard navigation"'));
     count++;
   }
   assert.ok(!render('/dashboard', 'demo-guest').includes('/dashboard/cms'));
   assert.ok(!render('/dashboard', 'demo-mentor').includes('tab=approvals'));
+  const mentorDashboard = render('/dashboard', 'demo-mentor');
+  assert.ok(mentorDashboard.includes('aria-label="Notifications, 1 update"'));
+  assert.ok(mentorDashboard.includes('Mentorship requests to review'));
+  assert.ok(!mentorDashboard.includes('Pending connection requests'));
+  const founderDashboard = render('/dashboard', 'demo-founder');
+  assert.ok(founderDashboard.includes('Pending connection requests'));
+  assert.ok(!founderDashboard.includes('Mentorship requests to review'));
   assert.ok(render('/dashboard', 'demo-partner').includes('Partner tools'));
   assert.ok(render('/dashboard', 'demo-investor').includes('Investor tools'));
   const teamEditor = render('/dashboard/cms?module=team', 'demo-editor');
@@ -260,6 +270,9 @@ export async function checkPlatformRendering() {
   assert.ok(pendingOverview.includes('Application under review'));
   assert.ok(!pendingOverview.includes('tab=mentees'));
   const admin = applyDemoAction(pending, { type: 'login', accountId: 'demo-admin' });
+  assert.ok(
+    render('/dashboard', 'demo-admin', undefined, admin).includes('Items awaiting approval'),
+  );
   const approved = applyDemoAction(admin, {
     type: 'role-review',
     id: 'test-role',
@@ -271,6 +284,7 @@ export async function checkPlatformRendering() {
   assert.ok(approvedOverview.includes('Mentor dashboard'));
   assert.ok(approvedOverview.includes('tab=mentees'));
   assert.ok(approvedOverview.includes('Approved for the mentoring programme.'));
+  assert.ok(approvedOverview.includes('Role application decisions'));
 
   assert.ok(!render('/dashboard', 'demo-partner').includes('Administration'));
   for (const [id, tabs] of [

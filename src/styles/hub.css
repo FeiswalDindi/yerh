@@ -3,6 +3,9 @@
 }
 .reference-brand {
   flex: 0 0 260px;
+  min-width: 0;
+  max-width: 100%;
+  justify-self: start;
 }
 .reference-brand img {
   width: 260px;
@@ -10,7 +13,7 @@
   object-fit: contain;
 }
 .desktop-tree {
-  margin-left: auto;
+  justify-self: center;
 }
 .desktop-tree ul,
 .mobile-tree ul {
@@ -21,7 +24,7 @@
 .desktop-tree > ul {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: clamp(4px, 1vw, 12px);
 }
 .nav-branch {
   position: relative;
@@ -36,7 +39,7 @@
   color: var(--yerh-navy);
   font-weight: 650;
   white-space: nowrap;
-  font-size: 16px;
+  font-size: 15px;
 }
 .nav-entry > button {
   display: grid;
@@ -416,16 +419,14 @@ a.collection-card:hover {
   font-weight: 600;
 }
 @media (min-width: 1001px) and (max-width: 1200px) {
-  .reference-brand {
-    flex-basis: 210px;
-  }
   .reference-brand img {
     width: 210px;
   }
   .desktop-tree > ul {
     gap: 2px;
   }
-  .nav-entry > a {
+  .desktop-tree > ul > .nav-branch > .nav-entry > a {
+    padding-inline: 6px;
     font-size: 14px;
   }
   .header-actions {
@@ -433,6 +434,9 @@ a.collection-card:hover {
   }
   .header-login {
     padding: 10px;
+  }
+  .header-actions .button-small {
+    padding-inline: 12px;
   }
 }
 @media (max-width: 1000px) {
@@ -462,7 +466,7 @@ a.collection-card:hover {
   }
   .reference-brand img {
     width: auto;
-    max-width: 155px;
+    max-width: min(100%, 155px);
     height: 38px;
     object-fit: contain;
   }

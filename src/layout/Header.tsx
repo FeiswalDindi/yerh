@@ -1,5 +1,5 @@
 import { MobileNavigationDrawer } from './MobileNavigationDrawer';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { ChevronDown, ChevronRight, Globe, LogOut, Menu, Search, X } from 'lucide-react';
 import { type NavigationItem } from '../config/navigation';
@@ -70,7 +70,7 @@ function NavigationBranch({ item, depth = 0 }: { item: NavigationItem; depth?: n
 export function Header({
   dashboardMenu,
 }: {
-  dashboardMenu?: { expanded: boolean; onOpen: () => void };
+  dashboardMenu?: { expanded: boolean; onOpen: () => void; notifications: ReactNode };
 }) {
   const { media, site } = useCatalog();
   const navigation = site.navigation;
@@ -133,9 +133,13 @@ export function Header({
             </nav>
 
             <div className="header-actions">
-              <Link to="/search" className="icon-button" aria-label="Search the hub">
-                <Search size={19} />
-              </Link>
+              {dashboardMenu ? (
+                dashboardMenu.notifications
+              ) : (
+                <Link to="/search" className="icon-button" aria-label="Search the hub">
+                  <Search size={19} aria-hidden="true" />
+                </Link>
+              )}
 
               {account ? (
                 <>
@@ -163,10 +167,10 @@ export function Header({
               <button
                 ref={toggle}
                 type="button"
-                className={`menu-toggle icon-button${dashboardMenu ? ' site-menu-toggle' : ''}`}
+                className="menu-toggle icon-button"
                 aria-label={
                   dashboardMenu
-                    ? 'Site menu'
+                    ? 'Open site menu'
                     : open
                       ? 'Close navigation drawer'
                       : 'Open navigation drawer'
@@ -174,12 +178,11 @@ export function Header({
                 aria-haspopup="dialog"
                 aria-expanded={open}
                 aria-controls="feiso-mobile-drawer"
+                title={dashboardMenu ? 'Site menu' : undefined}
                 onClick={() => setOpen((v) => !v)}
               >
                 {dashboardMenu ? (
-                  <>
-                    <Globe size={17} aria-hidden="true" /> Site menu
-                  </>
+                  <Globe size={21} aria-hidden="true" />
                 ) : open ? (
                   <X size={24} aria-hidden="true" />
                 ) : (

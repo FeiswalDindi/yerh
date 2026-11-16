@@ -36,14 +36,11 @@ html:has(.site-navigation-frame .breadcrumb) {
   background: var(--yerh-nav-surface);
   border-bottom: 1px solid var(--yerh-border);
 }
-.dashboard-navigation-frame {
-  display: contents;
-}
 .header-inner {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  gap: clamp(10px, 1.3vw, 20px);
   min-height: 93px;
 }
 .brand {
@@ -108,6 +105,7 @@ html:has(.site-navigation-frame .breadcrumb) {
 .header-actions {
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: 14px;
 }
 .login-link {
@@ -134,14 +132,6 @@ html:has(.site-navigation-frame .breadcrumb) {
 }
 .menu-toggle svg {
   display: block;
-}
-.header-actions .site-menu-toggle {
-  width: auto;
-  gap: 6px;
-  padding-inline: 9px;
-  font-size: 13px;
-  font-weight: 550;
-  white-space: nowrap;
 }
 .mobile-nav {
   padding: 15px var(--yerh-gutter) 28px;
@@ -362,6 +352,8 @@ html:has(.site-navigation-frame .breadcrumb) {
     display: inline-flex !important;
   }
   .header-inner {
+    display: flex;
+    justify-content: space-between;
     min-height: 72px;
     gap: 12px;
   }

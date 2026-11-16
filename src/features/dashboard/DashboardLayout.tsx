@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowUpRight, LogOut } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
@@ -8,6 +8,7 @@ import { Header } from '../../layout/Header';
 import { BreadcrumbBar } from '../../shared/Breadcrumb';
 import { CloseButton } from '../../shared/CloseButton';
 import { CookieConsentModal } from '../privacy/CookieConsentModal';
+import { DashboardNotifications } from './DashboardNotifications';
 import {
   activeWorkspaceModule,
   cmsHref,
@@ -82,9 +83,30 @@ function DashboardNavigation({
 export function DashboardLayout() {
   const { account, execute } = useDemo();
   const location = useLocation();
+  const shell = useRef<HTMLDivElement>(null);
   const dashboardDrawer = useRef<HTMLDialogElement>(null);
   const main = useRef<HTMLElement>(null);
   const [dashboardOpen, setDashboardOpen] = useState(false);
+
+  useLayoutEffect(() => {
+    const root = shell.current;
+    const navbar = root?.querySelector('.dashboard-navigation-frame');
+    const sessionStrip = root?.querySelector('.demo-session-strip');
+    if (!root || !navbar) return;
+
+    const updateHeaderHeights = () => {
+      const navbarHeight = navbar.getBoundingClientRect().height;
+      const sessionHeight = sessionStrip?.getBoundingClientRect().height ?? 0;
+      root.style.setProperty('--dashboard-navbar-height', `${navbarHeight}px`);
+      root.style.setProperty('--dashboard-header-height', `${navbarHeight + sessionHeight}px`);
+    };
+
+    updateHeaderHeights();
+    const observer = new ResizeObserver(updateHeaderHeights);
+    observer.observe(navbar);
+    if (sessionStrip) observer.observe(sessionStrip);
+    return () => observer.disconnect();
+  }, [account?.id]);
 
   useEffect(() => {
     dashboardDrawer.current?.close();
@@ -110,8 +132,14 @@ export function DashboardLayout() {
   }
 
   return (
-    <div className="dashboard-shell">
-      <Header dashboardMenu={{ expanded: dashboardOpen, onOpen: openDashboard }} />
+    <div className="dashboard-shell" ref={shell}>
+      <Header
+        dashboardMenu={{
+          expanded: dashboardOpen,
+          onOpen: openDashboard,
+          notifications: <DashboardNotifications />,
+        }}
+      />
 
       <div className="dashboard-body">
         <aside className="dashboard-sidebar">
