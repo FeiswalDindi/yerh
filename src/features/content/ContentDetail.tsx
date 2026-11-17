@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { ArrowLeft, ArrowUpRight, Bookmark, Check, ExternalLink, Play, Share2 } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { useCatalog } from '../../app/useCatalog';
-import { kindPaths, type ContentBlock } from '../../domain/content';
+import {
+  businessSectorPath,
+  contentPath,
+  kindPaths,
+  type ContentBlock,
+} from '../../domain/content';
 import { useSavedItems } from '../../shared/useSavedItems';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { ContentCard } from './ContentCard';
@@ -12,6 +17,7 @@ import { MemberLink } from '../community/CommunityCards';
 import { sessionPath } from '../../domain/community';
 import { DiscoverySidebar } from '../discovery/DiscoverySidebar';
 import { ArticleComments } from '../discovery/ArticleComments';
+import { dashboardCataloguePaths } from '../dashboard/catalogue-paths';
 function ArticleBody({ blocks }: { blocks: ContentBlock[] }) {
   const groups: { list: boolean; blocks: ContentBlock[] }[] = [];
   for (const block of blocks) {
@@ -37,20 +43,28 @@ function ArticleBody({ blocks }: { blocks: ContentBlock[] }) {
     </>
   );
 }
-export function ContentDetail() {
+export function ContentDetail({ dashboard = false }: { dashboard?: boolean }) {
   const { slug } = useParams();
+  const { search } = useLocation();
   const { items, media } = useCatalog();
   const { state } = useDemo();
-  const item = items.find((i) => i.slug === slug);
+  const item = items.find((i) => i.slug === slug && (!dashboard || i.kind === 'business'));
   const { ids, toggle } = useSavedItems();
   const [message, setMessage] = useState('');
   usePageTitle(item?.title || 'Page not found');
   if (!item) return <NotFoundPage />;
   const saved = ids.includes(item.id);
-  const related = items.filter((i) => i.kind === item.kind && i.id !== item.id).slice(0, 3);
+  const related = dashboard
+    ? []
+    : items.filter((i) => i.kind === item.kind && i.id !== item.id).slice(0, 3);
+  const publicPath = dashboard ? contentPath(item) : undefined;
+  const collectionPath =
+    item.kind === 'business' ? businessSectorPath(item.category) : kindPaths[item.kind];
   async function share() {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(
+        publicPath ? new URL(publicPath, window.location.origin).href : window.location.href,
+      );
       setMessage('Link copied.');
     } catch {
       setMessage('Copy the address from your browser to share this page.');
@@ -58,17 +72,22 @@ export function ContentDetail() {
   }
   return (
     <>
-      <div className="container article-header article-header-with-sidebar">
-        <Link className="text-link" to={kindPaths[item.kind]}>
+      <div className={`container article-header${dashboard ? '' : ' article-header-with-sidebar'}`}>
+        <Link
+          className="text-link"
+          to={dashboard ? `${dashboardCataloguePaths.marketplace}${search}` : collectionPath}
+        >
           <ArrowLeft size={16} />
           Back to{' '}
-          {item.kind === 'article'
-            ? 'blogs'
-            : item.kind === 'story'
-              ? 'stories'
-              : item.kind === 'business'
-                ? 'businesses'
-                : `${item.kind}s`}
+          {dashboard
+            ? 'Marketplace'
+            : item.kind === 'article'
+              ? 'blogs'
+              : item.kind === 'story'
+                ? 'stories'
+                : item.kind === 'business'
+                  ? item.category
+                  : `${item.kind}s`}
         </Link>
         <h1>{item.title}</h1>
         <p className="article-deck">{item.excerpt}</p>
@@ -99,7 +118,9 @@ export function ContentDetail() {
           {message}
         </p>
       </div>
-      <div className="container article-layout content-with-sidebar">
+      <div
+        className={`container article-layout ${dashboard ? 'dashboard-listing-detail' : 'content-with-sidebar'}`}
+      >
         <div>
           <img
             className="article-image"
@@ -152,7 +173,7 @@ export function ContentDetail() {
                 'Created in the local development demo. This contribution exists only in this browser.'
               )}
             </div>
-            <ArticleComments contentId={item.id} />
+            {!dashboard && <ArticleComments contentId={item.id} />}
           </div>
           {!!related.length && (
             <section className="article-related" aria-label="Related reading">
@@ -167,38 +188,40 @@ export function ContentDetail() {
             </section>
           )}
         </div>
-        <DiscoverySidebar currentId={item.id}>
-          {item.authorId && (
-            <div className="profile-panel">
-              <h2>Meet the author</h2>
-              <MemberLink id={item.authorId} />
-              <p>Explore their blogs, discussions, groups, and community profile.</p>
-            </div>
-          )}
-          {state.sessions
-            .filter((s) => s.contentId === item.id)
-            .map((s) => (
-              <Link className="profile-sidebar-link" key={s.id} to={sessionPath(s.id)}>
-                View {s.type} details →
+        {!dashboard && (
+          <DiscoverySidebar currentId={item.id} kind={item.kind}>
+            {item.authorId && (
+              <div className="profile-panel">
+                <h2>Meet the author</h2>
+                <MemberLink id={item.authorId} />
+                <p>Explore their blogs, discussions, groups, and community profile.</p>
+              </div>
+            )}
+            {state.sessions
+              .filter((s) => s.contentId === item.id)
+              .map((s) => (
+                <Link className="profile-sidebar-link" key={s.id} to={sessionPath(s.id)}>
+                  View {s.type} details →
+                </Link>
+              ))}
+            <section className="discovery-community-callout">
+              <p className="eyebrow">KEEP MOVING FORWARD</p>
+              <h2>Your idea deserves a next step.</h2>
+              <p>
+                Build your confidence with practical resources and a community that understands the
+                journey.
+              </p>
+              <Link className="button button-gold" to="/resources">
+                Explore resources
+                <ArrowUpRight size={16} />
               </Link>
-            ))}
-          <section className="discovery-community-callout">
-            <p className="eyebrow">KEEP MOVING FORWARD</p>
-            <h2>Your idea deserves a next step.</h2>
-            <p>
-              Build your confidence with practical resources and a community that understands the
-              journey.
-            </p>
-            <Link className="button button-gold" to="/resources">
-              Explore resources
-              <ArrowUpRight size={16} />
-            </Link>
-            <Link className="text-link" to="/community">
-              Find your community
-              <ArrowUpRight size={16} />
-            </Link>
-          </section>
-        </DiscoverySidebar>
+              <Link className="text-link" to="/community">
+                Find your community
+                <ArrowUpRight size={16} />
+              </Link>
+            </section>
+          </DiscoverySidebar>
+        )}
       </div>
     </>
   );

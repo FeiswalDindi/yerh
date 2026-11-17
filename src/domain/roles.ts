@@ -22,7 +22,7 @@ export type Capability =
   | 'cms'
   | 'admin';
 const permissions: Record<Role, Capability[]> = {
-  guest: [],
+  guest: ['learn', 'attend'],
   entrepreneur: ['community', 'learn', 'attend', 'venture', 'apply'],
   mentor: ['community', 'learn', 'attend', 'mentor'],
   partner: ['community', 'attend', 'organisation'],

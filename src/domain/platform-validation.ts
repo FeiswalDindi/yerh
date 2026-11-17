@@ -1,4 +1,5 @@
 import type { PlatformState } from './platform';
+import { applicationRoles, roleLabels } from './roles.ts';
 const record = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === 'object' && !Array.isArray(v);
 const fields = (v: unknown, keys: string[]): v is Record<string, unknown> =>
@@ -74,7 +75,11 @@ export function isPlatformState(v: unknown): v is PlatformState {
     p.cmsRevision >= 0 &&
     p.applications.every(
       (a) =>
-        ['entrepreneur', 'mentor', 'partner', 'investor'].includes(a.role) &&
+        applicationRoles.includes(a.role) &&
+        (a.fromRole === undefined ||
+          (typeof a.fromRole === 'string' &&
+            Object.hasOwn(roleLabels, a.fromRole) &&
+            a.fromRole !== a.role)) &&
         ['pending', 'approved', 'rejected'].includes(a.status),
     ) &&
     p.ventures.every((a) => ['pending', 'approved', 'rejected'].includes(a.status)) &&

@@ -1,9 +1,11 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { AccountLink } from '../accounts/AccountLink';
+import { roleAccessPath } from '../accounts/role-requests';
+import { dashboardCataloguePaths } from '../dashboard/catalogue-paths';
 import { useDemo } from '../../app/useDemo';
 import { useCatalog } from '../../app/useCatalog';
 import { contentPath } from '../../domain/content';
-import { registrationProblem } from '../../domain/community';
+import { memberPath, registrationProblem, sessionPath } from '../../domain/community';
 import { PageIntro } from '../../shared/PageIntro';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { DemoNotice } from '../demo/DemoNotice';
@@ -11,8 +13,9 @@ import { NotFoundPage } from '../info/NotFoundPage';
 import { MemberCard } from '../community/CommunityCards';
 import { can } from '../../domain/roles';
 
-export function SessionPage() {
+export function SessionPage({ dashboard = false }: { dashboard?: boolean }) {
   const { sessionId } = useParams();
+  const { search } = useLocation();
   const { state, account, enabled, execute } = useDemo();
   const { items } = useCatalog();
   const session = state.sessions.find((s) => s.id === sessionId);
@@ -24,6 +27,7 @@ export function SessionPage() {
   const registration = state.registrations.find(
     (r) => r.sessionId === session.id && r.memberId === account?.id,
   );
+  const canAttend = can(account, 'attend');
   const count = state.registrations.filter(
     (r) => r.sessionId === session.id && r.status !== 'cancelled',
   ).length;
@@ -48,14 +52,16 @@ export function SessionPage() {
         <Link
           className="text-link"
           to={
-            session.type === 'workshop'
-              ? '/workshops'
-              : session.type === 'webinar'
-                ? '/webinars'
-                : '/events'
+            dashboard
+              ? `${dashboardCataloguePaths.events}${search}`
+              : session.type === 'workshop'
+                ? '/workshops'
+                : session.type === 'webinar'
+                  ? '/webinars'
+                  : '/events'
           }
         >
-          ← All {session.type}s
+          {dashboard ? '← Back to events' : `← All ${session.type}s`}
         </Link>
         <div className="session-layout">
           <div>
@@ -148,7 +154,7 @@ export function SessionPage() {
                 </>
               ) : problem ? (
                 <p role="status">{problem}</p>
-              ) : account && enabled && can(account, 'attend') ? (
+              ) : account && enabled && canAttend ? (
                 <button
                   className="button"
                   onClick={() =>
@@ -163,16 +169,24 @@ export function SessionPage() {
                   Reserve a demo place
                 </button>
               ) : (
-                <AccountLink className="button" to={account ? '/apply' : undefined}>
-                  {account ? 'Apply for event access' : 'Login to reserve a place'}
+                <AccountLink
+                  className="button"
+                  to={account ? roleAccessPath : undefined}
+                  search={`?${new URLSearchParams({ redirect: sessionPath(session.id) })}`}
+                >
+                  {account ? 'Request event access' : 'Sign in to reserve a place'}
                 </AccountLink>
               )}
               {account && (
                 <Link
                   className="profile-sidebar-link"
-                  to={`/network/members/${account.id}?tab=events`}
+                  to={
+                    canAttend
+                      ? `${dashboardCataloguePaths.events}?view=mine`
+                      : `${memberPath(account.id)}?tab=events`
+                  }
                 >
-                  My sessions & registrations →
+                  {canAttend ? 'My events →' : 'My sessions & registrations →'}
                 </Link>
               )}
             </section>

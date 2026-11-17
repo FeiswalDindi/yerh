@@ -1,5 +1,7 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { AccountLink } from '../accounts/AccountLink';
+import { roleAccessPath } from '../accounts/role-requests';
+import { dashboardCatalogueItemPath, dashboardCataloguePaths } from '../dashboard/catalogue-paths';
 import { ArrowRight, Check, Play } from 'lucide-react';
 import { useCatalog } from '../../app/useCatalog';
 import { useDemo } from '../../app/useDemo';
@@ -10,11 +12,25 @@ import { usePageTitle } from '../../shared/usePageTitle';
 import { can } from '../../domain/roles';
 export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
   const { courseId } = useParams();
+  const { search } = useLocation();
   const { courses, lessons } = useCatalog();
   const { state, account, execute, enabled } = useDemo();
   const course = courses.find((c) => c.id === courseId);
   usePageTitle(course?.title ?? 'Learn');
   const done = account ? (state.progress[account.id] ?? []) : [];
+  const enrolled = !!(
+    course &&
+    account &&
+    state.platform.enrollments[account.id]?.includes(course.id)
+  );
+  const completed = course?.lessonIds.filter((id) => done.includes(id)).length ?? 0;
+  const finished = !!course?.lessonIds.length && completed === course.lessonIds.length;
+  const certificate =
+    course &&
+    account &&
+    state.platform.certificates.find(
+      (record) => record.accountId === account.id && record.courseId === course.id,
+    );
   if (courseId && !course) return <NotFoundPage />;
   return (
     <>
@@ -30,8 +46,11 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
         <DemoNotice />
         {course ? (
           <>
-            <Link className="text-link" to={dashboard ? '/dashboard/learning' : '/learn'}>
-              {dashboard ? '← My learning' : '← All learning pathways'}
+            <Link
+              className="text-link"
+              to={dashboard ? `${dashboardCataloguePaths.learning}${search}` : '/learn'}
+            >
+              {dashboard ? '← Back to courses' : '← All learning pathways'}
             </Link>
             {can(account, 'learn') && enabled ? (
               <div className="course-enrollment">
@@ -41,36 +60,57 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
                     execute({
                       type: 'enroll',
                       courseId: course.id,
-                      operation: (state.platform.enrollments[account!.id] ?? []).includes(course.id)
-                        ? 'withdraw'
-                        : 'enroll',
+                      operation: enrolled ? 'withdraw' : 'enroll',
                       now: new Date().toISOString(),
                     })
                   }
                 >
-                  {(state.platform.enrollments[account!.id] ?? []).includes(course.id)
-                    ? 'Withdraw enrollment'
-                    : 'Enroll in this course'}
+                  {enrolled ? 'Withdraw enrollment' : 'Enroll in this course'}
                 </button>
-                <p>Enrollment and completion are saved to your own account in this preview.</p>
+                <p role="status">
+                  {enrolled
+                    ? 'You’re enrolled. Your progress is saved as you mark lessons complete.'
+                    : 'Enroll to track your progress and qualify for a course completion certificate.'}
+                </p>
+                {enrolled && !dashboard && (
+                  <Link className="text-link" to="/dashboard/learning">
+                    Go to My learning
+                  </Link>
+                )}
               </div>
             ) : (
               <p>
-                <AccountLink className="button" to={account ? '/apply' : undefined}>
-                  {account ? 'Apply for learner access' : 'Sign in to enroll'}
+                <AccountLink
+                  className="button"
+                  to={account ? roleAccessPath : undefined}
+                  search={`?${new URLSearchParams({ redirect: `/learn/${encodeURIComponent(course.id)}` })}`}
+                >
+                  {account ? 'Request learner access' : 'Sign in to enroll'}
                 </AccountLink>
               </p>
             )}
             <div className="learning-progress">
               <span>
-                {course.lessonIds.filter((id) => done.includes(id)).length} of{' '}
-                {course.lessonIds.length} lessons marked complete
+                {completed} of {course.lessonIds.length} lessons marked complete
               </span>
-              <progress
-                value={course.lessonIds.filter((id) => done.includes(id)).length}
-                max={course.lessonIds.length}
-              />
+              <progress value={completed} max={course.lessonIds.length} />
             </div>
+            {certificate ? (
+              <p className="course-completion-notice" role="status">
+                Certificate issued.{' '}
+                <Link className="text-link" to={`/certificates/${certificate.id}`}>
+                  View certificate
+                </Link>
+              </p>
+            ) : (
+              enrolled &&
+              finished && (
+                <p className="course-completion-notice" role="status">
+                  Course complete. Your certificate will appear in My certificates after an
+                  administrator issues it.
+                </p>
+              )
+            )}
             <div className="learning-lessons">
               {course.lessonIds.map((id, i) => {
                 const lesson = lessons.find((l) => l.id === id);
@@ -84,10 +124,7 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
                         Watch original video
                       </a>
                     </div>
-                    {account &&
-                    enabled &&
-                    can(account, 'learn') &&
-                    (state.platform.enrollments[account.id] ?? []).includes(course.id) ? (
+                    {account && enabled && can(account, 'learn') && enrolled ? (
                       <button
                         className={`button ${done.includes(id) ? 'button-gold' : ''}`}
                         aria-pressed={done.includes(id)}
@@ -117,7 +154,15 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
         ) : (
           <div className="collection-grid">
             {courses.map((c) => (
-              <Link className="collection-card" key={c.id} to={`/learn/${c.id}`}>
+              <Link
+                className="collection-card"
+                key={c.id}
+                to={
+                  dashboard
+                    ? dashboardCatalogueItemPath('learning', c.id)
+                    : `/learn/${encodeURIComponent(c.id)}`
+                }
+              >
                 <p className="eyebrow">{c.level}</p>
                 <h2>{c.title}</h2>
                 <p>{c.description}</p>

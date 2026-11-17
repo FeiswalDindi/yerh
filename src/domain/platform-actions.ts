@@ -7,6 +7,7 @@ export function isPlatformAction(action: { type: string }): action is PlatformAc
     'certificate-issue',
     'signup',
     'role-apply',
+    'role-change-request',
     'role-review',
     'account-admin',
     'enroll',
@@ -105,7 +106,7 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       require('admin');
       const lessons = p.courseLessons[action.courseId];
       if (
-        !lessons ||
+        !lessons?.length ||
         !accounts.some((a) => a.id === action.accountId) ||
         !lessons.every((id) => (state.progress[action.accountId] ?? []).includes(id))
       )
@@ -127,7 +128,12 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       break;
     }
 
-    case 'role-apply': {
+    case 'role-apply':
+    case 'role-change-request': {
+      if (action.type === 'role-apply' && actor.role !== 'guest')
+        throw new Error('Request a different role from My profile.');
+      if (action.type === 'role-change-request' && actor.role === 'guest')
+        throw new Error('Apply for your first role from the Guest dashboard.');
       if (!applicationRoles.includes(action.role))
         throw new Error('This role requires staff assignment.');
       if (actor.role === action.role) throw new Error('You already hold this role.');
@@ -141,6 +147,7 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
         id: action.id,
         accountId: actor.id,
         role: action.role,
+        fromRole: actor.role,
         motivation: text(action.motivation, 30),
         organisation: action.organisation.trim(),
         expertise: action.expertise.trim(),
@@ -160,10 +167,18 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       application.reviewedBy = actor.id;
       if (!['approved', 'rejected'].includes(action.decision))
         throw new Error('Invalid review decision.');
-      if (action.decision === 'approved')
+      if (action.decision === 'approved') {
+        const applicant = accounts.find((a) => a.id === application.accountId);
+        if (!applicant || applicant.suspended)
+          throw new Error('Only an active account can be approved.');
+        if (application.fromRole && applicant.role !== application.fromRole)
+          throw new Error(
+            'The member’s role changed. Reject this request and ask them to submit a new one.',
+          );
         accounts = accounts.map((a) =>
           a.id === application.accountId ? { ...a, role: application.role } : a,
         );
+      }
       audit(action.id);
       break;
     }

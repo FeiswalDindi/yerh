@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { CommunitySession } from '../../domain/community';
 import { calendarCells, isCalendarDay, nairobiDay, shiftCalendarMonth } from '../../domain/sidebar';
+import { sessionOccursOnDay } from './event-filters';
 
 export function EventCalendar({
   sessions,
@@ -25,10 +26,7 @@ export function EventCalendar({
   });
   const cells = calendarCells(month);
   const count = (day: string) =>
-    sessions.filter(
-      (s) =>
-        s.startsAt && nairobiDay(s.startsAt) <= day && nairobiDay(s.endsAt ?? s.startsAt) >= day,
-    ).length;
+    sessions.filter((session) => sessionOccursOnDay(session, day)).length;
   return (
     <div className="forum-calendar event-calendar">
       <div className="calendar-month-nav">

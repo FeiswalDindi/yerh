@@ -51,7 +51,7 @@ test('signup creates only a guest, passwords are absent, and admin approval unlo
   assert.ok(isDemoState(s, fixture('accounts')), 'A newly signed-up active guest must persist.');
   assert.equal(can(s.accounts.at(-1), 'venture'), false);
   assert.ok(!JSON.stringify(s).includes('password'));
-  assert.throws(() => applyDemoAction(s, { type: 'progress', lessonId: 'one' }), /approved role/);
+  assert.throws(() => applyDemoAction(s, { type: 'progress', lessonId: 'one' }), /Enroll/);
   assert.throws(
     () =>
       applyDemoAction(s, {
@@ -337,6 +337,61 @@ test('enrollment is required for progress and certificates require completed cou
       }),
     /already/,
   );
+});
+test('a guest can complete a course, earn a certificate, and reserve and cancel an eligible event', () => {
+  let s = login(seed(), 'demo-guest');
+  const course = fixture('learning')[0];
+  s = applyDemoAction(s, { type: 'enroll', courseId: course.id, operation: 'enroll', now });
+  const certificate = {
+    type: 'certificate-issue',
+    id: 'guest-certificate',
+    accountId: 'demo-guest',
+    courseId: course.id,
+    now,
+  } as const;
+  assert.throws(() => applyDemoAction(s, certificate), /permission/);
+  assert.throws(
+    () => applyDemoAction(login(s, 'demo-admin'), certificate),
+    /lessons must be completed/,
+  );
+  for (const lessonId of course.lessonIds) s = applyDemoAction(s, { type: 'progress', lessonId });
+  s = applyDemoAction(login(s, 'demo-admin'), certificate);
+  s = login(s, 'demo-guest');
+  assert.equal(s.platform.certificates[0]?.accountId, 'demo-guest');
+  const reservation = { type: 'registration', sessionId: 'demo-customer-discovery', now } as const;
+  s = applyDemoAction(s, { ...reservation, operation: 'register' });
+  assert.equal(s.registrations.find((r) => r.memberId === 'demo-guest')?.status, 'registered');
+  s = applyDemoAction(s, { ...reservation, operation: 'cancel' });
+  assert.equal(s.registrations.find((r) => r.memberId === 'demo-guest')?.status, 'cancelled');
+  assert.ok(isDemoState(s, fixture('accounts')));
+});
+
+test('members request role changes independently of first applications and retain their role until review', () => {
+  const request = {
+    type: 'role-change-request',
+    id: 'change-to-mentor',
+    role: 'mentor',
+    motivation: 'I want to mentor founders after developing my own business.',
+    expertise: 'Customer discovery and business planning',
+    organisation: '',
+    now,
+  } as const;
+  assert.throws(() => applyDemoAction(login(seed(), 'demo-guest'), request), /first role/);
+  let s = login(seed(), 'demo-founder');
+  assert.throws(() => applyDemoAction(s, { ...request, type: 'role-apply' }), /My profile/);
+  s = applyDemoAction(s, request);
+  assert.equal(s.platform.applications[0]?.fromRole, 'entrepreneur');
+  assert.equal(s.accounts.find((a) => a.id === 'demo-founder')?.role, 'entrepreneur');
+  assert.throws(() => applyDemoAction(s, { ...request, id: 'duplicate' }), /pending/);
+  s = applyDemoAction(login(s, 'demo-admin'), {
+    type: 'role-review',
+    id: request.id,
+    decision: 'approved',
+    reason: 'Approved to support other founders.',
+    now,
+  });
+  assert.equal(s.accounts.find((a) => a.id === 'demo-founder')?.role, 'mentor');
+  assert.ok(isDemoState(s, fixture('accounts')));
 });
 test('legacy version-2 records migrate to canonical roles without losing contributions or activity', () => {
   const original = seed();

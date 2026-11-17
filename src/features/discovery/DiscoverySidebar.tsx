@@ -7,7 +7,6 @@ import {
   Heart,
   MessageCircle,
   MessagesSquare,
-  Megaphone,
   Sparkles,
   TrendingUp,
 } from 'lucide-react';
@@ -16,6 +15,7 @@ import { useDemo } from '../../app/useDemo';
 import { contentPath, type ContentItem, type ContentKind } from '../../domain/content';
 import { popularContent, readingRecommendations, recentComments } from '../../domain/sidebar';
 import { MemberAvatar, MemberLink } from '../community/CommunityCards';
+import { AdvertisementsWidget } from './AdvertisementsWidget';
 
 function Widget({
   title,
@@ -176,6 +176,7 @@ export function DiscoverySidebar({
       className="discovery-sidebar"
       aria-label={variant === 'forum' ? 'Forum sidebar' : 'Reading sidebar'}
     >
+      {kind === 'business' && <AdvertisementsWidget />}
       {variant === 'reading' ? (
         <Widget title="Keep reading" icon={<TrendingUp size={18} />}>
           <ContentRows items={readingRecommendations(items, currentId, kind)} />
@@ -210,22 +211,7 @@ export function DiscoverySidebar({
               All learning pathways <ArrowUpRight size={15} />
             </Link>
           </Widget>
-          <Widget title="Advertisements" icon={<Megaphone size={18} />}>
-            {sidebar.advertisements.map((ad) => (
-              <div className="discovery-ad" key={ad.id}>
-                {ad.image && <img src={ad.image} alt={ad.imageAlt} loading="lazy" />}
-                <div>
-                  <span className="discovery-category">Hub promotion</span>
-                  <h3>{ad.title}</h3>
-                  <p>{ad.text}</p>
-                  <Link className="button button-gold" to={ad.href}>
-                    {ad.action}
-                    <ArrowUpRight size={15} />
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </Widget>
+          <AdvertisementsWidget />
         </>
       )}
       <Widget title="Featured" icon={<Sparkles size={18} />}>

@@ -143,7 +143,7 @@ export function applyDemoAction(state: DemoState, action: DemoAction): DemoState
   const actor = currentAccount(state);
   if (!actor) throw new Error('Choose a demo account to try this action.');
   if (actor.suspended) throw new Error('This account is suspended.');
-  if (actor.role === 'guest' && action.type !== 'profile')
+  if (actor.role === 'guest' && !['profile', 'progress', 'registration'].includes(action.type))
     throw new Error('Apply for an approved role to access this feature.');
   const capability = ['topic', 'reply', 'connection', 'membership', 'forum-membership'].includes(
     action.type,

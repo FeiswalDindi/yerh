@@ -588,7 +588,7 @@ export function WorkspacePage() {
           )}
           {tab === 'approvals' && (
             <Panel title="Approval queue">
-              <h3>Role applications</h3>
+              <h3>Role requests</h3>
               {p.applications
                 .filter((a) => a.status === 'pending')
                 .map((a) => (
@@ -596,6 +596,11 @@ export function WorkspacePage() {
                     <h3>
                       {name(a.accountId)} · {roleLabels[a.role]}
                     </h3>
+                    <p>
+                      {a.fromRole && a.fromRole !== 'guest'
+                        ? `Role change from ${roleLabels[a.fromRole]}`
+                        : 'Role application'}
+                    </p>
                     <p>{a.motivation}</p>
                     <p>
                       {a.organisation} {a.expertise}

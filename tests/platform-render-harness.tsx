@@ -25,6 +25,12 @@ import { LearningPage } from '../src/features/resources/LearningPage';
 import { useCatalog } from '../src/app/useCatalog';
 import { applyDemoAction, type DemoState } from '../src/domain/demo';
 import { DashboardLayout } from '../src/features/dashboard/DashboardLayout';
+import { DashboardCatalogue } from '../src/features/dashboard/DashboardCatalogue';
+import { DashboardEvents } from '../src/features/dashboard/DashboardEvents';
+import { ContentDetail } from '../src/features/content/ContentDetail';
+import { MarketplacePage } from '../src/features/content/MarketplacePage';
+import { DashboardCertificates } from '../src/features/dashboard/DashboardCertificates';
+import { ProfilePage } from '../src/features/dashboard/ProfilePage';
 import { dashboardAccess } from '../src/features/dashboard/dashboard-navigation';
 import {
   dashboardUpdateKeys,
@@ -66,6 +72,8 @@ export async function checkPlatformRendering() {
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/apply" element={<ApplicationsPage />} />
                 <Route path="/events" element={<EventsPage />} />
+                <Route path="/marketplace" element={<MarketplacePage />} />
+                <Route path="/marketplace/:slug" element={<ContentDetail />} />
                 <Route path="/opportunities" element={<OpportunitiesPage />} />
                 <Route path="/opportunities/:slug" element={<OpportunityDetail />} />
                 <Route
@@ -77,7 +85,12 @@ export async function checkPlatformRendering() {
                   }
                 >
                   <Route index element={<RoleDashboard />} />
-                  <Route path="applications" element={<ApplicationsPage />} />
+                  <Route path="profile" element={<ProfilePage />} />
+                  <Route path="learning" element={<DashboardCatalogue kind="learning" />} />
+                  <Route path="events" element={<DashboardEvents />} />
+                  <Route path="marketplace" element={<DashboardCatalogue kind="marketplace" />} />
+                  <Route path="marketplace/:slug" element={<ContentDetail dashboard />} />
+                  <Route path="certificates" element={<DashboardCertificates />} />
                   <Route path="workspace" element={<WorkspacePage />} />
                   <Route
                     path="cms"
@@ -231,6 +244,98 @@ export async function checkPlatformRendering() {
     count++;
   }
   assert.ok(!render('/dashboard', 'demo-guest').includes('/dashboard/cms'));
+  const guestDashboard = render('/dashboard', 'demo-guest');
+  for (const link of [
+    '/dashboard/learning',
+    '/dashboard/events',
+    '/dashboard/marketplace',
+    '/dashboard/certificates',
+    '/dashboard/profile',
+  ])
+    assert.ok(guestDashboard.includes(`href="${link}"`));
+  assert.ok(!guestDashboard.includes('href="/dashboard/applications"'));
+  const guestProfile = render('/dashboard/profile', 'demo-guest');
+  assert.ok(guestProfile.includes('Submit application'));
+  assert.ok(!guestProfile.includes('Submit role change request'));
+  assert.ok(!guestProfile.includes('Save changes'));
+  assert.ok(render('/dashboard/profile', 'demo-founder').includes('Submit role change request'));
+  const coursesInDashboard = render('/dashboard/learning?category=Getting+started', 'demo-guest');
+  assert.ok(
+    coursesInDashboard.includes(
+      '/dashboard/learning/business-foundations?category=Getting+started',
+    ),
+  );
+  assert.ok(!coursesInDashboard.includes('/dashboard/learning/growing-your-business'));
+  const futureStart = new Date(Date.now() + 86_400_000).toISOString();
+  const futureEnd = new Date(Date.now() + 90_000_000).toISOString();
+  const eventState = {
+    ...state,
+    sessions: state.sessions.map((session) =>
+      session.id === 'demo-customer-discovery'
+        ? { ...session, startsAt: futureStart, endsAt: futureEnd }
+        : session,
+    ),
+  };
+  const dashboardEvents = render(
+    '/dashboard/events?category=Workshops',
+    'demo-guest',
+    undefined,
+    eventState,
+  );
+  assert.ok(!dashboardEvents.includes('dashboard-events-title'));
+  assert.ok(
+    dashboardEvents.includes('/dashboard/events/demo-customer-discovery?category=Workshops'),
+  );
+  assert.ok(!dashboardEvents.includes('/dashboard/events/demo-digital-launch'));
+  assert.ok(dashboardEvents.includes('Past events archive'));
+  assert.ok(!dashboardEvents.includes('Innovation and Entrepreneurship Bootcamp'));
+  const archive = render('/dashboard/events?view=past', 'demo-guest');
+  assert.ok(archive.includes('Innovation and Entrepreneurship Bootcamp'));
+  const myEvents = render('/dashboard/events?view=mine', 'demo-mentee', undefined, eventState);
+  assert.ok(myEvents.includes('Upcoming &amp; ongoing'));
+  assert.ok(myEvents.includes('Customer discovery studio'));
+  assert.ok(myEvents.includes('You have no past bookings yet.'));
+  assert.ok(!myEvents.includes('Innovation and Entrepreneurship Bootcamp'));
+  const pastBookings = render('/dashboard/events?view=mine', 'demo-mentee', undefined, {
+    ...eventState,
+    registrations: eventState.registrations.map((registration) =>
+      registration.sessionId === 'demo-customer-discovery' &&
+      registration.memberId === 'demo-mentee'
+        ? { ...registration, status: 'attended' }
+        : registration,
+    ),
+  });
+  assert.ok(
+    pastBookings.indexOf('Past events') < pastBookings.indexOf('Customer discovery studio'),
+  );
+  assert.ok(pastBookings.includes('Attended'));
+  const dashboardMarket = render('/dashboard/marketplace?category=Agribusiness', 'demo-guest');
+  assert.ok(
+    dashboardMarket.includes(
+      '/dashboard/marketplace/comfort-worms-and-insects?category=Agribusiness',
+    ),
+  );
+  assert.ok(!dashboardMarket.includes('/dashboard/marketplace/joyride-medical-center'));
+  assert.ok(!dashboardMarket.includes('page-intro'));
+  const marketListing = render('/dashboard/marketplace/comfort-worms-and-insects', 'demo-guest');
+  assert.ok(marketListing.includes('Back to Marketplace'));
+  assert.ok(!marketListing.includes('discovery-sidebar'));
+  assert.ok(!marketListing.includes('Keep exploring'));
+  const publicMarketplace = render('/marketplace');
+  assert.ok(publicMarketplace.includes('aria-label="Marketplace sectors"'));
+  assert.ok(!publicMarketplace.includes('Browse by sector'));
+  assert.ok(publicMarketplace.includes('href="/marketplace?category=Healthcare"'));
+  assert.ok(publicMarketplace.includes('aria-label="Advertisements"'));
+  assert.ok(!publicMarketplace.includes('href="/marketplace/joyride-medical-center"'));
+  const publicSector = render('/marketplace?category=Healthcare');
+  assert.ok(publicSector.includes('href="/marketplace/joyride-medical-center"'));
+  assert.ok(!publicSector.includes('href="/marketplace/comfort-worms-and-insects"'));
+  assert.ok(publicSector.includes('Explore other sectors'));
+  assert.ok(publicSector.includes('href="/marketplace?category=Agribusiness"'));
+  const publicListing = render('/marketplace/joyride-medical-center');
+  assert.ok(publicListing.includes('href="/marketplace?category=Healthcare"'));
+  assert.ok(publicListing.includes('aria-label="Advertisements"'));
+  assert.ok(render('/dashboard/certificates', 'demo-guest').includes('No certificates yet'));
   assert.ok(!render('/dashboard', 'demo-mentor').includes('tab=approvals'));
   const mentorDashboard = render('/dashboard', 'demo-mentor');
   assert.ok(mentorDashboard.includes('aria-label="Notifications, 1 update"'));
@@ -297,7 +402,14 @@ export async function checkPlatformRendering() {
   assert.ok(approvedOverview.includes('Mentor dashboard'));
   assert.ok(approvedOverview.includes('tab=mentees'));
   assert.ok(approvedOverview.includes('Approved for the mentoring programme.'));
-  assert.ok(approvedOverview.includes('Role application decisions'));
+  assert.ok(approvedOverview.includes('Role request decisions'));
+  assert.ok(approvedOverview.includes('/dashboard/profile#role-access'));
+  const approvedMember = approved.accounts.find((account) => account.id === memberId)!;
+  assert.ok(
+    dashboardUpdateKeys(dashboardUpdates(approved, approvedMember)).includes(
+      '/dashboard/applications:test-role:approved',
+    ),
+  );
 
   assert.ok(!render('/dashboard', 'demo-partner').includes('Administration'));
   for (const [id, tabs] of [

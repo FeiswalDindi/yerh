@@ -9,15 +9,29 @@ import { useDemo } from './useDemo';
 import { cmsModule, dashboardAccess } from '../features/dashboard/dashboard-navigation';
 import { AccountAccess } from '../features/accounts/AccountAccess';
 import { AccountEntryRedirect } from '../features/accounts/AccountLink';
+import { roleAccessPath } from '../features/accounts/role-requests';
 import { BreadcrumbProvider } from '../shared/BreadcrumbProvider';
 const DashboardLayout = lazy(() =>
   import('../features/dashboard/DashboardLayout').then((m) => ({ default: m.DashboardLayout })),
 );
-const DashboardActivity = lazy(() =>
-  import('../features/dashboard/DashboardActivity').then((m) => ({ default: m.DashboardActivity })),
+const DashboardCatalogue = lazy(() =>
+  import('../features/dashboard/DashboardCatalogue').then((m) => ({
+    default: m.DashboardCatalogue,
+  })),
+);
+const DashboardCertificates = lazy(() =>
+  import('../features/dashboard/DashboardCertificates').then((m) => ({
+    default: m.DashboardCertificates,
+  })),
+);
+const DashboardEvents = lazy(() =>
+  import('../features/dashboard/DashboardEvents').then((m) => ({ default: m.DashboardEvents })),
 );
 const ContentDirectory = lazy(() =>
   import('../features/content/ContentDirectory').then((m) => ({ default: m.ContentDirectory })),
+);
+const MarketplacePage = lazy(() =>
+  import('../features/content/MarketplacePage').then((m) => ({ default: m.MarketplacePage })),
 );
 const ContentDetail = lazy(() =>
   import('../features/content/ContentDetail').then((m) => ({ default: m.ContentDetail })),
@@ -143,7 +157,7 @@ function CollectionRedirect({ to }: { to: string }) {
 function ApplicationEntry() {
   const { account } = useDemo();
   if (account?.suspended) return <AccountEntryRedirect />;
-  return account ? <Navigate to="/dashboard/applications" replace /> : <ApplicationsPage />;
+  return account ? <Navigate to={roleAccessPath} replace /> : <ApplicationsPage />;
 }
 /** Compose under the host router; DemoProvider and ContentProvider are supplied at the app boundary. */
 export function createYerhRoutes(): RouteObject[] {
@@ -193,7 +207,7 @@ function siteRoutes(): RouteObject[] {
         { path: 'publications/stories', element: <ContentDirectory kind="story" /> },
         { path: 'publications/blogs', element: <ContentDirectory kind="article" /> },
         { path: 'publications/reports', element: <ContentDirectory kind="publication" /> },
-        { path: 'marketplace', element: <ContentDirectory kind="business" /> },
+        { path: 'marketplace', element: <MarketplacePage /> },
         { path: 'events', element: <EventsPage /> },
         { path: 'events/archive', element: <ContentDirectory kind="event" /> },
         { path: 'opportunities', element: <OpportunitiesPage /> },
@@ -266,7 +280,8 @@ function siteRoutes(): RouteObject[] {
       children: [
         { index: true, element: <RoleDashboard /> },
         { path: 'profile', element: <ProfilePage /> },
-        { path: 'applications', element: <ApplicationsPage /> },
+        { path: 'applications', element: <Navigate to={roleAccessPath} replace /> },
+        { path: 'certificates', element: <DashboardCertificates /> },
         { path: 'workspace', element: <WorkspacePage /> },
         {
           path: 'mentorship',
@@ -304,7 +319,7 @@ function siteRoutes(): RouteObject[] {
           path: 'learning',
           element: (
             <RequireDemo capabilities={dashboardAccess.learning}>
-              <DashboardActivity kind="learning" />
+              <DashboardCatalogue kind="learning" />
             </RequireDemo>
           ),
         },
@@ -320,10 +335,20 @@ function siteRoutes(): RouteObject[] {
           path: 'events',
           element: (
             <RequireDemo capabilities={dashboardAccess.events}>
-              <DashboardActivity kind="events" />
+              <DashboardEvents />
             </RequireDemo>
           ),
         },
+        {
+          path: 'events/:sessionId',
+          element: (
+            <RequireDemo capabilities={dashboardAccess.events}>
+              <SessionPage dashboard />
+            </RequireDemo>
+          ),
+        },
+        { path: 'marketplace', element: <DashboardCatalogue kind="marketplace" /> },
+        { path: 'marketplace/:slug', element: <ContentDetail dashboard /> },
         { path: '*', element: <NotFoundPage /> },
       ],
     },

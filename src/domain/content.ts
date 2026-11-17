@@ -62,6 +62,9 @@ export const kindPaths: Record<ContentKind, string> = {
 export function contentPath(item: Pick<ContentItem, 'kind' | 'slug'>): string {
   return `${kindPaths[item.kind]}/${encodeURIComponent(item.slug)}`;
 }
+export function businessSectorPath(category: string): string {
+  return `${kindPaths.business}?${new URLSearchParams({ category })}`;
+}
 export function filterContent(
   items: readonly ContentItem[],
   query = '',

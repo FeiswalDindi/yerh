@@ -6,6 +6,7 @@ export interface RoleApplication {
   id: string;
   accountId: string;
   role: AppliedRole;
+  fromRole?: Role;
   motivation: string;
   organisation: string;
   expertise: string;
@@ -162,7 +163,7 @@ export type PlatformAction =
       now: string;
     }
   | {
-      type: 'role-apply';
+      type: 'role-apply' | 'role-change-request';
       id: string;
       role: AppliedRole;
       motivation: string;

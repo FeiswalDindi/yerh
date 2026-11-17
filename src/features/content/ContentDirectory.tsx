@@ -9,47 +9,44 @@ import { ContentCard } from './ContentCard';
 import { BlogHeroMedia } from './BlogHeroMedia';
 import { DiscoverySidebar } from '../discovery/DiscoverySidebar';
 
-const descriptions: Record<ContentKind, { title: string; description: string; eyebrow: string }> = {
-  article: {
-    title: 'Ideas worth exploring.',
-    eyebrow: 'Blogs',
-    description: 'Practical perspectives, research, and stories from the YERH community.',
-  },
-  story: {
-    title: 'Every business starts with a story.',
-    eyebrow: 'Success stories',
-    description:
-      'Meet the people turning ambition into action. Discover their journeys, their lessons, and what keeps them going.',
-  },
-  business: {
-    title: 'Built with purpose. Made in Kenya.',
-    eyebrow: 'Business directory',
-    description: 'Discover youth enterprises across industries and the people building them.',
-  },
-  event: {
-    title: 'Learn together. Grow together.',
-    eyebrow: 'Events & workshops',
-    description:
-      'Explore past workshops and gatherings from the original YERH programme. New dates will appear when the programme is updated.',
-  },
-  publication: {
-    title: 'Knowledge that moves us forward.',
-    eyebrow: 'Publications',
-    description:
-      'Reports, advocacy briefs, and lessons from the Co-Production for Youth Entrepreneurship in Kenya project.',
-  },
-  resource: {
-    title: 'Put your next idea into motion.',
-    eyebrow: 'Resources',
-    description: 'Explore practical guides and knowledge for your entrepreneurial journey.',
-  },
-};
+type DirectoryKind = Exclude<ContentKind, 'business'>;
+const descriptions: Record<DirectoryKind, { title: string; description: string; eyebrow: string }> =
+  {
+    article: {
+      title: 'Ideas worth exploring.',
+      eyebrow: 'Blogs',
+      description: 'Practical perspectives, research, and stories from the YERH community.',
+    },
+    story: {
+      title: 'Every business starts with a story.',
+      eyebrow: 'Success stories',
+      description:
+        'Meet the people turning ambition into action. Discover their journeys, their lessons, and what keeps them going.',
+    },
+    event: {
+      title: 'Learn together. Grow together.',
+      eyebrow: 'Events & workshops',
+      description:
+        'Explore past workshops and gatherings from the original YERH programme. New dates will appear when the programme is updated.',
+    },
+    publication: {
+      title: 'Knowledge that moves us forward.',
+      eyebrow: 'Publications',
+      description:
+        'Reports, advocacy briefs, and lessons from the Co-Production for Youth Entrepreneurship in Kenya project.',
+    },
+    resource: {
+      title: 'Put your next idea into motion.',
+      eyebrow: 'Resources',
+      description: 'Explore practical guides and knowledge for your entrepreneurial journey.',
+    },
+  };
 export function ContentDirectory({
   kind,
   savedOnly = false,
   search = false,
 }: {
-  kind?: ContentKind;
+  kind?: DirectoryKind;
   savedOnly?: boolean;
   search?: boolean;
 }) {

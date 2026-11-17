@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { AccountLink } from '../accounts/AccountLink';
+import { roleAccessPath } from '../accounts/role-requests';
 import { CalendarDays, ArrowUpRight, MapPin, Star } from 'lucide-react';
 import { useDemo } from '../../app/useDemo';
 import { can } from '../../domain/roles';
@@ -301,8 +302,10 @@ export function OpportunityDetail() {
                 Sign in to apply
               </AccountLink>
             ) : !can(account, 'apply') ? (
-              <Link className="button" to="/apply">
-                Apply for entrepreneur access
+              <Link className="button" to={roleAccessPath}>
+                {account.role === 'guest'
+                  ? 'Apply for entrepreneur access'
+                  : 'Request entrepreneur access'}
               </Link>
             ) : o.type === 'external' ? (
               <>

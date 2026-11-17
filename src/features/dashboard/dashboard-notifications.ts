@@ -2,8 +2,9 @@ import { memberPath } from '../../domain/community';
 import type { DemoAccount, DemoState } from '../../domain/demo';
 import { can } from '../../domain/roles';
 import { cmsHref, workspaceHref } from './dashboard-navigation';
+import { roleAccessPath, roleApplicationPath } from '../accounts/role-requests';
 
-type DashboardUpdate = { label: string; itemIds: string[]; to: string };
+type DashboardUpdate = { label: string; itemIds: string[]; to: string; readKeyScope?: string };
 
 function pendingIds(records: { id: string; status: string }[], kind: string) {
   return records.filter(({ status }) => status === 'pending').map(({ id }) => `${kind}:${id}`);
@@ -15,11 +16,12 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
   const admin = can(account, 'admin');
   const updates: DashboardUpdate[] = [
     {
-      label: 'Role application decisions',
+      label: 'Role request decisions',
       itemIds: platform.applications
         .filter((a) => a.accountId === id && a.status !== 'pending')
         .map((a) => `${a.id}:${a.status}`),
-      to: '/dashboard/applications',
+      to: roleAccessPath,
+      readKeyScope: roleApplicationPath,
     },
   ];
 
@@ -91,5 +93,7 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
 }
 
 export function dashboardUpdateKeys(updates: DashboardUpdate[]): string[] {
-  return updates.flatMap(({ itemIds, to }) => itemIds.map((id) => `${to}:${id}`));
+  return updates.flatMap(({ itemIds, to, readKeyScope = to }) =>
+    itemIds.map((id) => `${readKeyScope}:${id}`),
+  );
 }

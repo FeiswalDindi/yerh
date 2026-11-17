@@ -6,8 +6,9 @@ import { PageIntro } from '../../shared/PageIntro';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { DemoNotice } from '../demo/DemoNotice';
 import { sessionPath } from '../../domain/community';
-import { isCalendarDay, nairobiDay } from '../../domain/sidebar';
+import { isCalendarDay } from '../../domain/sidebar';
 import { EventCalendar } from './EventCalendar';
+import { isPastSession, sessionOccursOnDay } from './event-filters';
 export function EventsPage() {
   const { state } = useDemo();
   const [params, setParams] = useSearchParams();
@@ -17,18 +18,14 @@ export function EventsPage() {
   usePageTitle('Events');
   const date = params.get('date') ?? '';
   const type = params.get('type') ?? 'all';
+  const selectedDate = isCalendarDay(date) ? date : '';
   const filtered = state.sessions.filter(
     (s) =>
-      (type === 'all' || s.type === type) &&
-      (!isCalendarDay(date) ||
-        (!!s.startsAt &&
-          nairobiDay(s.startsAt) <= date &&
-          nairobiDay(s.endsAt ?? s.startsAt) >= date)),
+      (type === 'all' || s.type === type) && (!selectedDate || sessionOccursOnDay(s, selectedDate)),
   );
-  const upcoming = filtered.filter(
-    (s) => s.status !== 'completed' && (!s.endsAt || Date.parse(s.endsAt) > Date.now()),
-  );
-  const historical = filtered.filter((s) => !upcoming.includes(s));
+  const now = Date.now();
+  const upcoming = filtered.filter((s) => !isPastSession(s, now));
+  const historical = filtered.filter((s) => isPastSession(s, now));
   return (
     <>
       <PageIntro

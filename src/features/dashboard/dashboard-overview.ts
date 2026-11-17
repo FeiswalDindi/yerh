@@ -1,6 +1,7 @@
 import type { DemoAccount, DemoState } from '../../domain/demo';
 import type { Role } from '../../domain/roles';
 import { workspaceHref } from './dashboard-navigation';
+import { roleAccessPath } from '../accounts/role-requests';
 
 export const dashboardTitles: Record<Role, string> = {
   guest: 'Guest dashboard',
@@ -21,9 +22,9 @@ export function dashboardMetrics(state: DemoState, account: DemoAccount): Metric
     case 'guest':
       return [
         {
-          label: 'Pending role applications',
+          label: 'Pending role requests',
           value: p.applications.filter((a) => a.accountId === id && a.status === 'pending').length,
-          to: '/dashboard/applications',
+          to: roleAccessPath,
         },
       ];
     case 'entrepreneur':
@@ -113,7 +114,7 @@ export function dashboardMetrics(state: DemoState, account: DemoAccount): Metric
     case 'admin':
       return [
         {
-          label: 'Pending role applications',
+          label: 'Pending role requests',
           value: p.applications.filter((a) => a.status === 'pending').length,
           to: workspaceHref('approvals'),
         },

@@ -1,4 +1,5 @@
 import { can, type Capability, type Role } from '../../domain/roles';
+import { dashboardCataloguePaths } from './catalogue-paths';
 
 type AccountAccess = { role: Role; suspended?: boolean };
 type WorkspaceGroup = 'venture' | 'mentor' | 'organisation' | 'admin';
@@ -140,11 +141,31 @@ const groupLabels: Record<WorkspaceGroup, string> = {
   organisation: 'Organisation',
 };
 
-const applicationLink = {
-  label: 'Role applications',
-  to: '/dashboard/applications',
-  description: 'Apply for access and follow the decision.',
+const learningLink = {
+  label: 'My learning',
+  to: dashboardCataloguePaths.learning,
+  description: 'Enroll in a course or pick up where you left off.',
 };
+const eventsLink = {
+  label: 'My events',
+  to: dashboardCataloguePaths.events,
+  description: 'Find workshops and webinars, and manage your reservations.',
+};
+const certificatesLink = {
+  label: 'My certificates',
+  to: '/dashboard/certificates',
+  description: 'View your earned course completion records.',
+};
+export const guestResourceLinks = [
+  { ...learningLink, label: 'Courses' },
+  { ...eventsLink, label: 'Events' },
+  {
+    label: 'Marketplace',
+    to: dashboardCataloguePaths.marketplace,
+    description: 'Discover products and services from youth ventures.',
+  },
+  certificatesLink,
+];
 const mentorshipLink = {
   label: 'Mentorship requests',
   to: '/dashboard/mentorship',
@@ -182,12 +203,7 @@ export function dashboardGroups(
       description,
       to: workspaceHref(id),
     }));
-    if (group === 'venture')
-      links.push({
-        label: 'My learning',
-        to: '/dashboard/learning',
-        description: 'Continue your enrolled courses.',
-      });
+    if (group === 'venture') links.push(learningLink);
     if (group === 'mentor') links.unshift(mentorshipLink);
     if (group === 'venture' && !can(account, 'mentor') && can(account, 'apply'))
       links.push(mentorshipLink);
@@ -204,15 +220,16 @@ export function dashboardGroups(
   if (can(account, 'cms') && !can(account, 'admin'))
     groups.push({ label: 'Editorial', links: contentLinks });
 
-  const accountLinks: DashboardLink[] = [
-    { label: 'My profile', to: '/dashboard/profile' },
-    applicationLink,
-  ];
-  if (can(account, 'attend')) accountLinks.push({ label: 'My events', to: '/dashboard/events' });
+  const accountLinks: DashboardLink[] = [{ label: 'My profile', to: '/dashboard/profile' }];
+  if (account.role === 'guest') {
+    groups.push({ label: 'Explore', links: guestResourceLinks });
+  } else {
+    if (can(account, 'attend')) accountLinks.push(eventsLink);
+    if (can(account, 'learn') && !can(account, 'venture')) accountLinks.push(learningLink);
+    accountLinks.push(certificatesLink);
+  }
   if (can(account, 'community') && !can(account, 'cms'))
     accountLinks.push({ label: 'My contributions', to: '/dashboard/content' });
-  if (can(account, 'learn') && !can(account, 'venture'))
-    accountLinks.push({ label: 'My learning', to: '/dashboard/learning' });
   groups.push({ label: 'Account', links: accountLinks });
   return groups;
 }

@@ -1,5 +1,5 @@
 import { usePageTitle } from '../../shared/usePageTitle';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
 import { PageIntro } from '../../shared/PageIntro';
@@ -16,6 +16,7 @@ export function ContentWorkspace() {
   const [editing, setEditing] = useState<string | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [saved, setSaved] = useState(false);
+  const composer = useRef<HTMLDetailsElement>(null);
   if (!account) return null;
   const canReview = ['content_manager', 'admin'].includes(account.role);
   const entries = state.submissions.filter((s) => s.ownerId === account.id || canReview);
@@ -45,6 +46,7 @@ export function ContentWorkspace() {
         <DemoNotice />
         <details
           className="draft-composer"
+          ref={composer}
           open={composerOpen}
           onToggle={(e) => setComposerOpen(e.currentTarget.open)}
         >
@@ -144,7 +146,7 @@ export function ContentWorkspace() {
                       setKind(entry.kind);
                       setSaved(false);
                       setComposerOpen(true);
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                      composer.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
                     }}
                   >
                     Edit draft

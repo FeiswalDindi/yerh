@@ -9,6 +9,7 @@ import { BreadcrumbBar } from '../../shared/Breadcrumb';
 import { CloseButton } from '../../shared/CloseButton';
 import { CookieConsentModal } from '../privacy/CookieConsentModal';
 import { DashboardNotifications } from './DashboardNotifications';
+import { dashboardCataloguePaths } from './catalogue-paths';
 import {
   activeWorkspaceModule,
   cmsHref,
@@ -37,7 +38,12 @@ function DashboardNavigation({
     if (studioOpen && to === '/dashboard/cms') return studioModule === 'overview';
     if (pathname === '/dashboard/workspace' && activeTab && to === workspaceHref(activeTab))
       return true;
-    if (pathname.startsWith('/dashboard/learning/') && to === '/dashboard/learning') return true;
+    if (
+      Object.values(dashboardCataloguePaths).some(
+        (base) => to === base && pathname.startsWith(`${base}/`),
+      )
+    )
+      return true;
     return to === pathname;
   }
 
@@ -87,32 +93,33 @@ export function DashboardLayout() {
   const dashboardDrawer = useRef<HTMLDialogElement>(null);
   const main = useRef<HTMLElement>(null);
   const [dashboardOpen, setDashboardOpen] = useState(false);
+  const pagePath = location.pathname.replace(/\/+$/, '');
+  const sectionQuery =
+    pagePath === '/dashboard/workspace' || pagePath === '/dashboard/cms' ? location.search : '';
 
   useLayoutEffect(() => {
     const root = shell.current;
     const navbar = root?.querySelector('.dashboard-navigation-frame');
-    const sessionStrip = root?.querySelector('.demo-session-strip');
     if (!root || !navbar) return;
 
-    const updateHeaderHeights = () => {
-      const navbarHeight = navbar.getBoundingClientRect().height;
-      const sessionHeight = sessionStrip?.getBoundingClientRect().height ?? 0;
-      root.style.setProperty('--dashboard-navbar-height', `${navbarHeight}px`);
-      root.style.setProperty('--dashboard-header-height', `${navbarHeight + sessionHeight}px`);
-    };
+    const updateNavbarHeight = () =>
+      root.style.setProperty(
+        '--dashboard-navbar-height',
+        `${navbar.getBoundingClientRect().height}px`,
+      );
 
-    updateHeaderHeights();
-    const observer = new ResizeObserver(updateHeaderHeights);
+    updateNavbarHeight();
+    const observer = new ResizeObserver(updateNavbarHeight);
     observer.observe(navbar);
-    if (sessionStrip) observer.observe(sessionStrip);
     return () => observer.disconnect();
   }, [account?.id]);
 
   useEffect(() => {
     dashboardDrawer.current?.close();
+    main.current?.scrollTo({ top: 0, behavior: 'instant' });
     window.scrollTo({ top: 0, behavior: 'instant' });
     main.current?.focus({ preventScroll: true });
-  }, [location.pathname, location.search, account?.id, account?.role]);
+  }, [pagePath, sectionQuery, account?.id, account?.role]);
 
   useEffect(() => {
     const desktop = window.matchMedia('(min-width: 1001px)');
