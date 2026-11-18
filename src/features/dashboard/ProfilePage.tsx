@@ -11,6 +11,7 @@ import { RoleRequestForm, RoleRequestHistory } from '../accounts/RoleRequestForm
 import { accountRoleRequests, roleAccessSectionId } from '../accounts/role-requests';
 import { DemoNotice } from '../demo/DemoNotice';
 import { workspaceHref } from './dashboard-navigation';
+import { UniversitySelection } from '../platform/IncubationWorkspace';
 
 type ProfileFields = Pick<DemoAccount, 'name' | 'location' | 'headline' | 'bio'>;
 
@@ -125,7 +126,7 @@ function ProfileForm({ person }: { person: DemoAccount }) {
 
 export function ProfilePage() {
   usePageTitle('My profile');
-  const { account, state } = useDemo();
+  const { account, state, execute } = useDemo();
   const { hash, key } = useLocation();
   const roleAccess = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -207,6 +208,15 @@ export function ProfilePage() {
           </aside>
           <div className="dashboard-profile-settings">
             <ProfileForm key={account.id} person={account} />
+            {(isGuest || account.role === 'entrepreneur') &&
+              state.platform.training.institutions.some(
+                (school) => school.kind === 'university' && school.status === 'active',
+              ) && (
+                <section className="profile-panel dashboard-profile-card">
+                  <h2>University affiliation</h2>
+                  <UniversitySelection p={state.platform} account={account} save={execute} />
+                </section>
+              )}
             <section
               className="profile-panel dashboard-profile-card role-request-panel"
               id={roleAccessSectionId}

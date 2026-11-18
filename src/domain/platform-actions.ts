@@ -2,32 +2,37 @@ import type { DemoState } from './demo';
 import { can, applicationRoles, roleLabels } from './roles.ts';
 import { assertCmsSnapshot, assertOpportunity, safeUrl } from './cms.ts';
 import type { PlatformAction, CmsSnapshot, Opportunity } from './platform';
+import { applyTrainingAction, canGraduate, isTrainingAction } from './incubation-actions.ts';
+import { managesVenture } from './incubation.ts';
 export function isPlatformAction(action: { type: string }): action is PlatformAction {
-  return [
-    'certificate-issue',
-    'signup',
-    'role-apply',
-    'role-change-request',
-    'role-review',
-    'account-admin',
-    'enroll',
-    'venture-save',
-    'product-save',
-    'venture-review',
-    'mentor-profile',
-    'organisation-save',
-    'opportunity-save',
-    'opportunity-status',
-    'opportunity-apply',
-    'opportunity-review',
-    'incubation-apply',
-    'incubation-complete',
-    'incubation-assign',
-    'milestone',
-    'cms-save',
-    'cms-publish',
-    'cms-rollback',
-  ].includes(action.type);
+  return (
+    isTrainingAction(action) ||
+    [
+      'certificate-issue',
+      'signup',
+      'role-apply',
+      'role-change-request',
+      'role-review',
+      'account-admin',
+      'enroll',
+      'venture-save',
+      'product-save',
+      'venture-review',
+      'mentor-profile',
+      'organisation-save',
+      'opportunity-save',
+      'opportunity-status',
+      'opportunity-apply',
+      'opportunity-review',
+      'incubation-apply',
+      'incubation-complete',
+      'incubation-assign',
+      'milestone',
+      'cms-save',
+      'cms-publish',
+      'cms-rollback',
+    ].includes(action.type)
+  );
 }
 export function opportunityProblem(opportunity: Opportunity, now: string): string | null {
   const time = Date.parse(now);
@@ -101,6 +106,10 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
     ...rows.filter((r) => r.id !== value.id),
     value,
   ];
+  if (isTrainingAction(action)) {
+    audit(applyTrainingAction(p, accounts, actor, action));
+    return { ...state, platform: p };
+  }
   switch (action.type) {
     case 'certificate-issue': {
       require('admin');
@@ -216,9 +225,22 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       const old = p.ventures.find((v) => v.id === action.venture.id);
       if (old && old.ownerId !== actor.id && !can(actor, 'admin'))
         throw new Error('This venture belongs to another account.');
+      const groupId = old ? old.groupId : action.venture.groupId;
+      if (can(actor, 'school') || groupId) {
+        const group = p.training.groups.find((g) => g.id === groupId);
+        const school = p.training.institutions.find((i) => i.id === group?.institutionId);
+        if (
+          !school ||
+          school.status !== 'active' ||
+          school.adminId !== (old?.ownerId ?? actor.id) ||
+          (!can(actor, 'admin') && !can(actor, 'school'))
+        )
+          throw new Error('Choose a group from your active high school.');
+      }
       p.ventures = update(p.ventures, {
         ...action.venture,
         ownerId: old?.ownerId ?? actor.id,
+        groupId,
         name: text(action.venture.name, 3, 120),
         description: text(action.venture.description, 30),
         sector: text(action.venture.sector),
@@ -232,12 +254,22 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
     case 'product-save': {
       require('venture');
       const venture = p.ventures.find(
-        (v) =>
-          v.id === action.product.ventureId && v.ownerId === actor.id && v.status === 'approved',
+        (v) => v.id === action.product.ventureId && v.ownerId === actor.id,
       );
       const old = p.products.find((v) => v.id === action.product.id);
-      if (!venture || (old && old.ownerId !== actor.id))
-        throw new Error('Choose your own approved venture.');
+      if (
+        !managesVenture(p, actor, venture) ||
+        (old && (old.ownerId !== actor.id || old.ventureId !== venture.id))
+      )
+        throw new Error('Choose a venture you own.');
+      if (
+        old &&
+        (old.name !== text(action.product.name, 3, 120) ||
+          old.description !== text(action.product.description, 20))
+      )
+        p.training.productReviews = p.training.productReviews.filter(
+          (review) => review.productId !== old.id,
+        );
       if (!Number.isFinite(action.product.price) || action.product.price < 0)
         throw new Error('Enter a valid non-negative price.');
       p.products = update(p.products, {
@@ -415,20 +447,26 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       audit(action.id);
       break;
     }
-    case 'incubation-apply':
-      require('apply');
-      if (
-        !p.ventures.some(
-          (v) => v.id === action.ventureId && v.ownerId === actor.id && v.status === 'approved',
-        )
-      )
+    case 'incubation-apply': {
+      if (!can(actor, 'school')) require('apply');
+      const venture = p.ventures.find((v) => v.id === action.ventureId);
+      if (!managesVenture(p, actor, venture) || venture.status !== 'approved')
         throw new Error('Choose your approved venture.');
       if (p.incubations.some((i) => i.ventureId === action.ventureId && i.status !== 'rejected'))
         throw new Error('An incubation application already exists.');
+      const productIds = [...new Set(action.productIds ?? [])];
+      if (
+        p.incubations.some((i) => i.id === action.id) ||
+        !productIds.every((id) =>
+          p.products.some((product) => product.id === id && product.ventureId === action.ventureId),
+        )
+      )
+        throw new Error('Select products from the venture you are launching.');
       p.incubations.push({
         id: action.id,
         ownerId: actor.id,
         ventureId: action.ventureId,
+        productIds,
         goal: text(action.goal, 30),
         mentorId: '',
         status: 'pending',
@@ -436,11 +474,12 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       });
       audit(action.id);
       break;
+    }
     case 'incubation-complete': {
       require('admin');
       const i = p.incubations.find((i) => i.id === action.id && i.status === 'active');
-      if (!i || !i.milestones.length || i.milestones.some((m) => !m.validated))
-        throw new Error('Complete and validate every milestone before graduating this incubation.');
+      if (!i || !canGraduate(p, i))
+        throw new Error('Pass all three stage exams before graduating this incubation.');
       i.status = 'completed';
       audit(i.id);
       break;

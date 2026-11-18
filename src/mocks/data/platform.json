@@ -1,4 +1,107 @@
 {
+  "training": {
+    "curriculum": [
+      {
+        "id": "getting-started",
+        "title": "Getting Started",
+        "resourceTopic": "startups",
+        "steps": [
+          {
+            "id": "discovery",
+            "title": "Customer discovery",
+            "instruction": "Describe the customer, their problem and what you learned from talking to them."
+          },
+          {
+            "id": "offer",
+            "title": "Offer and professional profile",
+            "instruction": "Draft an offer, a professional headline, an About paragraph, and three skills or project examples. Eligible students can update their own LinkedIn profile or prepare a private or paper portfolio with the school administrator."
+          }
+        ],
+        "examPrompt": "Explain who your first customer is, how you verified their problem, and how your offer helps them."
+      },
+      {
+        "id": "advanced",
+        "title": "Intermediate / Advanced",
+        "resourceTopic": "advanced",
+        "steps": [
+          {
+            "id": "pilot",
+            "title": "Run a pilot",
+            "instruction": "Describe your prototype or service and record what a prospective customer did or said when testing it."
+          },
+          {
+            "id": "pricing",
+            "title": "Set a price",
+            "instruction": "Show your delivery costs, selling price, and anticipated margin."
+          }
+        ],
+        "examPrompt": "Explain what your pilot taught you and how your costs informed your price."
+      },
+      {
+        "id": "funding",
+        "title": "Funding (Aid)",
+        "resourceTopic": "funding",
+        "steps": [
+          {
+            "id": "cashflow",
+            "title": "Forecast cash flow",
+            "instruction": "Estimate your next three months of cash coming in and payments going out."
+          },
+          {
+            "id": "plan",
+            "title": "Choose a funding plan",
+            "instruction": "Explain the amount you need, how you would use it, and whether you would fund it from sales or an external source."
+          }
+        ],
+        "examPrompt": "Describe your funding choice, projected cash needs, and the milestone this money will help you reach."
+      }
+    ],
+    "stages": [],
+    "fees": { "getting-started": 500, "advanced": 750, "marketplace": 1000 },
+    "bypassEnabled": true,
+    "payments": [],
+    "credentials": [],
+    "productReviews": [],
+    "institutions": [
+      {
+        "id": "demo-high-school",
+        "name": "Lakeview Demo High School",
+        "kind": "high-school",
+        "adminId": "demo-school",
+        "amount": 25000,
+        "status": "active",
+        "proof": null,
+        "story": "",
+        "featured": false
+      },
+      {
+        "id": "demo-university",
+        "name": "Lakeside Demo University",
+        "kind": "university",
+        "adminId": "demo-university-staff",
+        "amount": 0,
+        "status": "active",
+        "proof": null,
+        "story": "",
+        "featured": false
+      }
+    ],
+    "students": [
+      { "id": "demo-student-a", "institutionId": "demo-high-school", "name": "Robin Kimani" },
+      { "id": "demo-student-b", "institutionId": "demo-high-school", "name": "Terry Auma" }
+    ],
+    "groups": [
+      {
+        "id": "demo-school-group",
+        "institutionId": "demo-high-school",
+        "name": "Lakeview Enterprise Team",
+        "studentIds": ["demo-student-a", "demo-student-b"]
+      }
+    ],
+    "classes": [],
+    "contributions": [],
+    "affiliations": {}
+  },
   "applications": [],
   "opportunities": [
     {

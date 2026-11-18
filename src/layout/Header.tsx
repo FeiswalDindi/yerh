@@ -98,6 +98,7 @@ export function Header({
               DEVELOPMENT DEMO · {account.name} · {roleLabels[account.role]}
             </span>
             <div className="demo-strip-links">
+              <Link to="/demo">Switch demo role</Link>
               <Link to="/dashboard">My workspace</Link>
               <button
                 type="button"

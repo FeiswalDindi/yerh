@@ -3,6 +3,12 @@ import { useDemo } from '../../app/useDemo';
 import { PageIntro } from '../../shared/PageIntro';
 import { DemoNotice } from '../demo/DemoNotice';
 import { Link } from 'react-router-dom';
+import {
+  WorkspaceDialog,
+  WorkspaceStatus,
+  WorkspaceTable,
+  WorkspaceTabs,
+} from '../platform/WorkspaceControls';
 export function MentorshipWorkspace() {
   usePageTitle('Mentorship requests');
   const { state, account, execute } = useDemo();
@@ -10,58 +16,103 @@ export function MentorshipWorkspace() {
   const requests = state.requests.filter(
     (r) => account.role === 'admin' || r.mentorId === account.id || r.menteeId === account.id,
   );
+  const name = (id: string) =>
+    state.accounts.find((account) => account.id === id)?.name ?? 'Member';
+  const pending = requests.filter((request) => request.status === 'pending');
+  const history = requests.filter((request) => request.status !== 'pending');
+  const table = (entries: typeof requests, empty: string) => (
+    <WorkspaceTable
+      label="mentorship requests"
+      columns={['Mentee', 'Mentor', 'Status', 'Action']}
+      empty={empty}
+      actions={<Link to="/yem/mentees">Explore mentorship</Link>}
+      rows={entries.map((request) => {
+        const mentor = name(request.mentorId);
+        const mentee = name(request.menteeId);
+        const canReview =
+          request.status === 'pending' &&
+          (request.mentorId === account.id || account.role === 'admin');
+        return {
+          id: request.id,
+          search: [mentor, mentee, request.status, request.goal].join(' '),
+          cells: [
+            mentee,
+            mentor,
+            <WorkspaceStatus>{request.status}</WorkspaceStatus>,
+            <WorkspaceDialog
+              action={canReview ? 'Review request' : 'View request'}
+              title={mentee + ' · ' + mentor}
+            >
+              {(finish) => (
+                <>
+                  <p className="workspace-detail-copy">{request.goal}</p>
+                  {canReview && (
+                    <div className="workspace-form-footer">
+                      <button
+                        className="button button-outline"
+                        onClick={() =>
+                          finish(
+                            execute({
+                              type: 'request-status',
+                              requestId: request.id,
+                              status: 'declined',
+                            }),
+                          )
+                        }
+                      >
+                        Decline
+                      </button>
+                      <button
+                        className="button"
+                        onClick={() =>
+                          finish(
+                            execute({
+                              type: 'request-status',
+                              requestId: request.id,
+                              status: 'accepted',
+                            }),
+                          )
+                        }
+                      >
+                        Accept request
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </WorkspaceDialog>,
+          ],
+        };
+      })}
+    />
+  );
   return (
     <>
       <PageIntro
-        eyebrow="My mentorship"
-        title="Make the next step a shared one."
-        description="Track requests or review the ones assigned to your demo account."
+        eyebrow="Mentorship"
+        title="Mentorship requests"
+        description="Review pending requests and track past decisions."
+        className="workspace-page-intro"
       />
-      <section className="container section">
+      <section className="container section workspace-content">
         <DemoNotice />
-        <div className="request-list">
-          {requests.map((r) => (
-            <article key={r.id} className="review-card">
-              <div>
-                <p className="eyebrow">{r.status}</p>
-                <h2>
-                  {state.accounts.find((a) => a.id === r.menteeId)?.name} →{' '}
-                  {state.accounts.find((a) => a.id === r.mentorId)?.name}
-                </h2>
-                <p>{r.goal}</p>
-              </div>
-              {r.status === 'pending' &&
-                (r.mentorId === account.id || account.role === 'admin') && (
-                  <div className="form-actions">
-                    <button
-                      className="button"
-                      onClick={() =>
-                        execute({ type: 'request-status', requestId: r.id, status: 'accepted' })
-                      }
-                    >
-                      Accept request
-                    </button>
-                    <button
-                      className="text-link"
-                      onClick={() =>
-                        execute({ type: 'request-status', requestId: r.id, status: 'declined' })
-                      }
-                    >
-                      Decline
-                    </button>
-                  </div>
-                )}
-            </article>
-          ))}
-        </div>
-        {!requests.length && (
-          <div className="empty-state">
-            <h2>No requests yet.</h2>
-            <Link className="button" to="/yem/mentees">
-              Explore mentorship
-            </Link>
-          </div>
-        )}
+        <WorkspaceTabs
+          label="Mentorship request views"
+          views={[
+            {
+              id: 'pending',
+              label: 'Pending',
+              count: pending.length,
+              content: table(pending, 'No mentorship requests are pending.'),
+            },
+            {
+              id: 'history',
+              label: 'History',
+              count: history.length,
+              content: table(history, 'No mentorship requests have been decided.'),
+            },
+          ]}
+        />
       </section>
     </>
   );

@@ -3,12 +3,60 @@ import { useDemo } from '../../app/useDemo';
 import { useCatalog } from '../../app/useCatalog';
 import { NotFoundPage } from '../info/NotFoundPage';
 import { usePageTitle } from '../../shared/usePageTitle';
+import { can } from '../../domain/roles';
+import { credentialTitle } from './TrainingForms';
 export function CertificatePage() {
   const { id } = useParams();
-  const { state } = useDemo();
+  const { state, account } = useDemo();
   const { courses } = useCatalog();
   const record = state.platform.certificates.find((c) => c.id === id);
+  const training = state.platform.training;
+  const credential = training.credentials.find((c) => c.id === id);
+  const path =
+    credential && state.platform.incubations.find((row) => row.id === credential.incubationId);
+  const student = credential && training.students.find((row) => row.id === credential.learnerId);
+  const venture = path && state.platform.ventures.find((row) => row.id === path.ventureId);
   usePageTitle('Completion verification');
+  if (credential && path && venture) {
+    if (
+      student &&
+      !(account?.id === path.ownerId && can(account, 'school')) &&
+      !can(account, 'admin')
+    )
+      return <NotFoundPage />;
+    return (
+      <section className="container section narrow-content">
+        <div className="terms-document training-certificate">
+          <p className="eyebrow">YERH · DEVELOPMENT DEMO</p>
+          <h1>{credentialTitle(training, credential.kind)}</h1>
+          <h2>
+            {student?.name ?? state.accounts.find((row) => row.id === credential.learnerId)?.name}
+          </h2>
+          <p>
+            {student ? 'Venture contributor' : 'Venture owner'} · {venture.name}
+          </p>
+          <p>
+            Issued{' '}
+            {new Date(credential.issuedAt).toLocaleDateString('en-KE', {
+              dateStyle: 'medium',
+              timeZone: 'Africa/Nairobi',
+            })}
+          </p>
+          <p>Record ID: {credential.id}</p>
+          <p className="source-note">
+            This certificate verifies a browser-local demonstration record.
+          </p>
+          <button
+            type="button"
+            className="button button-outline training-certificate-print"
+            onClick={() => window.print()}
+          >
+            Print certificate
+          </button>
+        </div>
+      </section>
+    );
+  }
   if (!record) return <NotFoundPage />;
   return (
     <section className="container section narrow-content">

@@ -35,28 +35,61 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
     });
 
   if (can(account, 'mentor'))
-    updates.push({
-      label: 'Mentorship requests to review',
-      itemIds: state.requests
-        .filter((r) => r.status === 'pending' && (admin || r.mentorId === id))
-        .map((r) => r.id),
-      to: '/dashboard/mentorship',
-    });
+    updates.push(
+      {
+        label: 'Mentorship requests to review',
+        itemIds: state.requests
+          .filter((r) => r.status === 'pending' && (admin || r.mentorId === id))
+          .map((r) => r.id),
+        to: '/dashboard/mentorship',
+      },
+      {
+        label: 'Incubation reviews and exams',
+        itemIds: platform.training.stages
+          .filter((work) =>
+            platform.incubations.some(
+              (path) => path.id === work.incubationId && (admin || path.mentorId === id),
+            ),
+          )
+          .flatMap((work) => [
+            ...(work.reviewRequestedAt && !work.examOpenedAt
+              ? [`${work.id}:review:${work.reviewRequestedAt}`]
+              : []),
+            ...work.steps
+              .filter((step) => step.requested)
+              .map((step) => `${work.id}:step:${step.id}`),
+            ...work.attempts
+              .filter((attempt) => attempt.score === null)
+              .map((attempt) => attempt.id),
+          ]),
+        to: workspaceHref('mentees'),
+      },
+    );
 
   if (admin)
-    updates.push({
-      label: 'Items awaiting approval',
-      itemIds: [
-        ...pendingIds(platform.applications, 'role'),
-        ...pendingIds(platform.ventures, 'venture'),
-        ...pendingIds(platform.products, 'product'),
-        ...pendingIds(platform.incubations, 'incubation'),
-        ...platform.organisations
-          .filter((organisation) => organisation.status === 'pending')
-          .map(({ accountId }) => `organisation:${accountId}`),
-      ],
-      to: workspaceHref('approvals'),
-    });
+    updates.push(
+      {
+        label: 'Items awaiting approval',
+        itemIds: [
+          ...pendingIds(platform.applications, 'role'),
+          ...pendingIds(platform.ventures, 'venture'),
+          ...pendingIds(platform.products, 'product'),
+          ...pendingIds(platform.incubations, 'incubation'),
+          ...platform.training.productReviews
+            .filter((row) => row.status === 'pending')
+            .map((row) => `evidence:${row.productId}`),
+          ...platform.organisations
+            .filter((organisation) => organisation.status === 'pending')
+            .map(({ accountId }) => `organisation:${accountId}`),
+        ],
+        to: workspaceHref('approvals'),
+      },
+      {
+        label: 'Payments awaiting confirmation',
+        itemIds: pendingIds(platform.training.payments, 'payment'),
+        to: workspaceHref('payments'),
+      },
+    );
 
   if (can(account, 'cms'))
     updates.push(

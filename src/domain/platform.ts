@@ -1,6 +1,7 @@
 import type { Catalog } from './content';
 import type { CommunitySession } from './community';
 import type { AppliedRole, Role } from './roles';
+import type { TrainingAction, TrainingState } from './incubation';
 export type ReviewStatus = 'pending' | 'approved' | 'rejected';
 export interface RoleApplication {
   id: string;
@@ -54,6 +55,7 @@ export interface OpportunityApplication {
 export interface Venture {
   id: string;
   ownerId: string;
+  groupId?: string;
   name: string;
   sector: string;
   stage: string;
@@ -74,6 +76,7 @@ export interface Incubation {
   id: string;
   ownerId: string;
   ventureId: string;
+  productIds?: string[];
   goal: string;
   mentorId: string;
   status: 'pending' | 'active' | 'completed' | 'rejected';
@@ -127,6 +130,7 @@ export interface CmsRelease {
   createdAt: string;
 }
 export interface PlatformState {
+  training: TrainingState;
   certificates: {
     id: string;
     accountId: string;
@@ -150,6 +154,7 @@ export interface PlatformState {
   cmsRevision: number;
 }
 export type PlatformAction =
+  | TrainingAction
   | { type: 'certificate-issue'; id: string; accountId: string; courseId: string; now: string }
   | {
       type: 'signup';
@@ -207,7 +212,14 @@ export type PlatformAction =
       status: OpportunityApplication['status'];
       now: string;
     }
-  | { type: 'incubation-apply'; id: string; ventureId: string; goal: string; now: string }
+  | {
+      type: 'incubation-apply';
+      id: string;
+      ventureId: string;
+      productIds?: string[];
+      goal: string;
+      now: string;
+    }
   | { type: 'incubation-complete'; id: string; now: string }
   | {
       type: 'incubation-assign';

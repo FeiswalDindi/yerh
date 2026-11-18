@@ -1,5 +1,12 @@
 export type Role =
-  'guest' | 'entrepreneur' | 'mentor' | 'content_manager' | 'partner' | 'investor' | 'admin';
+  | 'guest'
+  | 'entrepreneur'
+  | 'mentor'
+  | 'content_manager'
+  | 'partner'
+  | 'investor'
+  | 'admin'
+  | 'school_admin';
 export type AppliedRole = 'entrepreneur' | 'mentor' | 'partner' | 'investor';
 export const roleLabels: Record<Role, string> = {
   guest: 'Guest',
@@ -9,6 +16,7 @@ export const roleLabels: Record<Role, string> = {
   partner: 'Partner',
   investor: 'Investor',
   admin: 'Platform Administrator',
+  school_admin: 'Institutional Administrator',
 };
 export const applicationRoles: AppliedRole[] = ['entrepreneur', 'mentor', 'partner', 'investor'];
 export type Capability =
@@ -20,6 +28,7 @@ export type Capability =
   | 'mentor'
   | 'organisation'
   | 'cms'
+  | 'school'
   | 'admin';
 const permissions: Record<Role, Capability[]> = {
   guest: ['learn', 'attend'],
@@ -28,6 +37,7 @@ const permissions: Record<Role, Capability[]> = {
   partner: ['community', 'attend', 'organisation'],
   investor: ['community', 'attend', 'organisation'],
   content_manager: ['community', 'cms'],
+  school_admin: ['school', 'venture'],
   admin: [
     'community',
     'learn',

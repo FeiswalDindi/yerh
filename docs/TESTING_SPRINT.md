@@ -56,7 +56,7 @@ On a phone, use the hamburger to open the same role links shown in the desktop d
 1. As the new approved entrepreneur, open **Ventures & products** → **My ventures**. Submit a venture with a useful description, sector, stage and location.
 2. Confirm **pending**. Switch to administrator and approve it from the approval queue after reviewing its details.
 3. Return to the owner. Create a product under that venture, then approve the product as administrator.
-4. Check `/marketplace`: approved ventures/products appear. A pending/rejected product does not.
+4. Check `/marketplace`. Approved ventures appear. Products also need product-specific incubation clearance or a confirmed listing payment. Use the [incubation walkthrough](INCUBATION_TESTING.md) to test both routes.
 5. Use **Edit & resubmit** on the venture/product. It returns to pending and requires approval again. A second learner cannot edit the owner's records or use that venture in their own applications.
 
 ## 4. Partner/Investor → opportunity → applicant
@@ -76,11 +76,7 @@ On a phone, use the hamburger to open the same role links shown in the desktop d
 
 1. As Mentor, open **Mentor workspace** → **Mentor profile**. Save biography, expertise and availability including timezone. Check `/yem/mentors` for the updated profile.
 2. As Founder, request guidance from that mentor. In the Mentor's **Mentorship requests**, accept/decline the assigned request. Other mentors cannot decide it.
-3. As Founder, open **Incubation**, select the approved venture and submit goals. A second active application for that venture is blocked.
-4. As Administrator, approve the pending incubation and assign an active mentor.
-5. As that Mentor, open **Mentees & milestones**, add a milestone with progress notes, then expand the saved milestone and update it. Check **Validate milestone** after reviewing evidence.
-6. As Founder, check the same progress under **Incubation**. The founder cannot validate it.
-7. As Administrator, review active incubations. **Graduate incubation** remains disabled until at least one milestone exists and every milestone is validated. Graduate it, then confirm completed progress remains visible and can no longer be changed by the active-incubation editor.
+3. Follow the [incubation walkthrough](INCUBATION_TESTING.md) to launch a venture, pass the three stages, and graduate. Use **Mentees & milestones** to add optional mentor notes alongside the stage work.
 
 ## 6. Learning and completion records
 

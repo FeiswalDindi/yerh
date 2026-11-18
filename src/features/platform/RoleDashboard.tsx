@@ -9,6 +9,7 @@ import { dashboardCataloguePaths } from '../dashboard/catalogue-paths';
 import { dashboardGroups, guestResourceLinks } from '../dashboard/dashboard-navigation';
 import { dashboardMetrics, dashboardTitles } from '../dashboard/dashboard-overview';
 import { DemoNotice } from '../demo/DemoNotice';
+import './workspace.css';
 
 const guestResourceIcons: Record<string, typeof Award> = {
   '/dashboard/learning': GraduationCap,
@@ -38,6 +39,7 @@ export function RoleDashboard() {
   return (
     <>
       <PageIntro
+        className={isGuest ? undefined : 'workspace-page-intro'}
         eyebrow={title}
         title={`Welcome, ${account.name.split(' ')[0]}.`}
         description={`Signed in as ${roleLabels[account.role]}.`}
@@ -73,18 +75,31 @@ export function RoleDashboard() {
           </div>
         )}
         <h2 className="dashboard-section-title">{isGuest ? 'Explore the hub' : 'Quick actions'}</h2>
-        <div className={isGuest ? 'guest-resource-grid' : 'workspace-links'}>
+        <div className={isGuest ? 'guest-resource-grid' : 'workspace-quick-links'}>
           {shortcuts.map((link) => {
             const Icon = isGuest ? guestResourceIcons[link.to] : undefined;
             return (
-              <Link className="collection-card" key={link.to} to={link.to}>
+              <Link
+                className={isGuest ? 'collection-card' : 'workspace-quick-link'}
+                key={link.to}
+                to={link.to}
+              >
                 {Icon && (
                   <span className="guest-resource-icon">
                     <Icon size={22} aria-hidden="true" />
                   </span>
                 )}
-                <h3>{link.label}</h3>
-                <p>{link.description}</p>
+                {isGuest ? (
+                  <>
+                    <h3>{link.label}</h3>
+                    <p>{link.description}</p>
+                  </>
+                ) : (
+                  <div>
+                    <h3>{link.label}</h3>
+                    <p>{link.description}</p>
+                  </div>
+                )}
                 <ArrowRight size={18} aria-hidden="true" />
               </Link>
             );

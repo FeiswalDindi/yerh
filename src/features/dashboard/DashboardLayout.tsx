@@ -95,7 +95,11 @@ export function DashboardLayout() {
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const pagePath = location.pathname.replace(/\/+$/, '');
   const sectionQuery =
-    pagePath === '/dashboard/workspace' || pagePath === '/dashboard/cms' ? location.search : '';
+    pagePath === '/dashboard/workspace'
+      ? new URLSearchParams(location.search).get('tab')
+      : pagePath === '/dashboard/cms'
+        ? location.search
+        : '';
 
   useLayoutEffect(() => {
     const root = shell.current;

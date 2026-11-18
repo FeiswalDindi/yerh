@@ -1,14 +1,27 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
 import { useCatalog } from '../../app/useCatalog';
 import { can, roleLabels, type Role } from '../../domain/roles';
-import type { PlatformAction } from '../../domain/platform';
-import { OpportunityForm, MilestoneEditor } from './WorkspaceEditors';
+import type { Opportunity, PlatformAction } from '../../domain/platform';
+import { OpportunityForm } from './WorkspaceEditors';
 import { PageIntro } from '../../shared/PageIntro';
 import { DemoNotice } from '../demo/DemoNotice';
 import { usePageTitle } from '../../shared/usePageTitle';
-import { activeWorkspaceModule } from '../dashboard/dashboard-navigation';
+import { activeWorkspaceModule, workspaceHref } from '../dashboard/dashboard-navigation';
+import { MentorWorkspace } from './MentorWorkspace';
+import {
+  WorkspaceDialog,
+  WorkspaceFormDialog,
+  WorkspaceStatus,
+  WorkspaceTable,
+} from './WorkspaceControls';
+import { ApprovalWorkspace } from './ApprovalWorkspace';
+import { ProductRegistry, VentureRegistry } from './VentureWorkspace';
+import { IncubationWorkspace, UniversitySelection } from './IncubationWorkspace';
+import { InstitutionPortal, InstitutionsAdmin } from './InstitutionWorkspace';
+import { InstitutionResults } from './InstitutionResults';
+import { TrainingCertificates, TrainingPayments } from './TrainingReview';
 
 const now = () => new Date().toISOString();
 function Field({
@@ -49,10 +62,18 @@ function Field({
     </label>
   );
 }
-function Panel({ title, children }: { title: string; children: ReactNode }) {
+function Panel({
+  title,
+  children,
+  showTitle = false,
+}: {
+  title: string;
+  children: ReactNode;
+  showTitle?: boolean;
+}) {
   return (
     <section className="workspace-panel">
-      <h2>{title}</h2>
+      <h2 className={showTitle ? undefined : 'workspace-panel-title'}>{title}</h2>
       {children}
     </section>
   );
@@ -68,43 +89,63 @@ export function WorkspacePage() {
   usePageTitle(activeModule?.label ?? 'Workspace');
   if (!account) return null;
   const p = state.platform;
-  const myVentures = p.ventures.filter((v) => v.ownerId === account.id);
+  const school = p.training.institutions.find((entry) => entry.adminId === account.id);
+  const schoolStaff = can(account, 'school');
+  const schoolLocked =
+    schoolStaff &&
+    (school?.status !== 'active' || school.kind !== 'high-school') &&
+    tab !== 'school' &&
+    tab !== 'member-results';
   const org = p.organisations.find((o) => o.accountId === account.id);
   const mentor = p.mentors.find((m) => m.accountId === account.id);
   function run(action: PlatformAction) {
     const ok = execute(action);
-    if (ok) setSuccess('Saved successfully.');
+    if (ok) {
+      const messages: Record<string, string> = {
+        'institution-contributions': 'Team contributions saved.',
+        'product-save':
+          'Product submitted. A platform administrator can review it under Approval queue → Product listings.',
+        'incubation-apply':
+          'Venture submitted. A platform administrator can assign a mentor under Approval queue → Incubation applications.',
+        'product-evidence':
+          'Product evidence submitted. The mentor or platform administrator can review it under Product evidence reviews.',
+      };
+      setSuccess(messages[action.type] ?? 'Saved successfully.');
+    }
     return ok;
   }
-  function form(event: FormEvent<HTMLFormElement>, build: (data: FormData) => PlatformAction) {
-    event.preventDefault();
-    const node = event.currentTarget;
-    if (run(build(new FormData(node)))) node.reset();
-  }
-  const selectVenture = (
-    <label>
-      Venture
-      <select name="ventureId" required>
-        {myVentures
-          .filter((v) => v.status === 'approved')
-          .map((v) => (
-            <option value={v.id} key={v.id}>
-              {v.name}
-            </option>
-          ))}
-      </select>
-    </label>
+  const opportunityEditor = (opportunity?: Opportunity) => (
+    <WorkspaceDialog
+      action={opportunity ? 'Edit opportunity' : 'Add opportunity'}
+      title={opportunity?.title}
+      create={!opportunity}
+    >
+      {(finish) => (
+        <OpportunityForm
+          opportunity={opportunity}
+          ownerId={account.id}
+          organiser={org?.name ?? account.name}
+          image={media.business}
+          onSave={(action) => {
+            const saved = run(action);
+            finish(saved);
+            return saved;
+          }}
+        />
+      )}
+    </WorkspaceDialog>
   );
   const name = (id: string) =>
     state.accounts.find((a) => a.id === id)?.name ?? 'Member unavailable';
   return (
     <>
       <PageIntro
+        className="workspace-page-intro"
         eyebrow={activeModule?.label ?? 'Workspace'}
         title={activeModule?.label ?? 'Workspace'}
         description={activeModule?.description ?? 'Choose an available tool from your dashboard.'}
       />
-      <section className="container section">
+      <section className="container section workspace-content">
         <DemoNotice />
         <div className="workspace-main">
           {success && (
@@ -112,324 +153,191 @@ export function WorkspacePage() {
               {success}
             </p>
           )}
-          {tab === 'ventures' && (
-            <Panel title="My ventures">
-              <form
-                className="workspace-form"
-                onSubmit={(e) =>
-                  form(e, (f) => ({
-                    type: 'venture-save',
-                    now: now(),
-                    venture: {
-                      id: crypto.randomUUID(),
-                      ownerId: account.id,
-                      name: String(f.get('name')),
-                      description: String(f.get('description')),
-                      sector: String(f.get('sector')),
-                      stage: String(f.get('stage')),
-                      location: String(f.get('location')),
-                      status: 'pending',
-                    },
-                  }))
-                }
-              >
-                <Field label="Venture name" name="name" minLength={3} />
-                <Field
-                  label="What problem do you solve?"
-                  name="description"
-                  type="textarea"
-                  minLength={30}
-                />
-                <div className="form-field-grid">
-                  <Field label="Sector" name="sector" />
-                  <Field label="Stage" name="stage" />
-                  <Field label="Location" name="location" />
-                </div>
-                <button className="button">Submit venture for approval</button>
-              </form>
-              {myVentures.map((v) => (
-                <article className="workspace-record" key={v.id}>
-                  <h3>{v.name}</h3>
-                  <span className={`status-pill ${v.status}`}>{v.status}</span>
-                  <p>{v.description}</p>
-                  <details>
-                    <summary>Edit & resubmit</summary>
-                    <p>Changes require approval again before the venture appears publicly.</p>
-                    <form
-                      className="workspace-form"
-                      onSubmit={(e) =>
-                        form(e, (f) => ({
-                          type: 'venture-save',
-                          now: now(),
-                          venture: {
-                            ...v,
-                            name: String(f.get('name')),
-                            description: String(f.get('description')),
-                            sector: String(f.get('sector')),
-                            stage: String(f.get('stage')),
-                            location: String(f.get('location')),
-                          },
-                        }))
-                      }
-                    >
-                      <Field label="Venture name" name="name" minLength={3} defaultValue={v.name} />
-                      <Field
-                        label="Description"
-                        name="description"
-                        type="textarea"
-                        minLength={30}
-                        defaultValue={v.description}
-                      />
-                      <Field label="Sector" name="sector" defaultValue={v.sector} />
-                      <Field label="Stage" name="stage" defaultValue={v.stage} />
-                      <Field label="Location" name="location" defaultValue={v.location} />
-                      <button className="button button-outline">Resubmit venture</button>
-                    </form>
-                  </details>
-                </article>
-              ))}
+          {schoolLocked && (
+            <p>
+              Group venture tools are available in active high-school portals.{' '}
+              <Link to="/dashboard/workspace?tab=school">Open institution portal</Link>
+            </p>
+          )}
+          {tab === 'school' && (
+            <Panel title="Institution portal">
+              <InstitutionPortal p={p} account={account} save={run} />
             </Panel>
           )}
-          {tab === 'products' && (
-            <Panel title="Products & services">
-              {myVentures.some((v) => v.status === 'approved') ? (
-                <form
-                  className="workspace-form"
-                  onSubmit={(e) =>
-                    form(e, (f) => ({
-                      type: 'product-save',
-                      now: now(),
-                      product: {
-                        id: crypto.randomUUID(),
-                        ventureId: String(f.get('ventureId')),
-                        ownerId: account.id,
-                        name: String(f.get('name')),
-                        description: String(f.get('description')),
-                        price: Number(f.get('price')),
-                        status: 'pending',
-                      },
-                    }))
-                  }
-                >
-                  {selectVenture}
-                  <Field label="Product / service name" name="name" minLength={3} />
-                  <Field label="Description" name="description" type="textarea" minLength={20} />
-                  <Field label="Price (KES)" name="price" type="number" />
-                  <button className="button">Submit product for approval</button>
-                </form>
+          {tab === 'member-results' && (
+            <Panel title="Member results and certificates">
+              {school?.status === 'active' ? (
+                <InstitutionResults p={p} school={school} accounts={state.accounts} save={run} />
               ) : (
-                <p>Create an approved venture before listing products.</p>
+                <p>
+                  Member results are available once your institution portal is active.{' '}
+                  <Link to={workspaceHref('school')}>Check your portal status</Link>
+                </p>
               )}
-              {p.products
-                .filter((v) => v.ownerId === account.id)
-                .map((v) => (
-                  <article className="workspace-record" key={v.id}>
-                    <h3>{v.name}</h3>
-                    <p>
-                      KES {v.price.toLocaleString()} · {v.status}
-                    </p>
-                    <details>
-                      <summary>Edit & resubmit</summary>
-                      <form
-                        className="workspace-form"
-                        onSubmit={(e) =>
-                          form(e, (f) => ({
-                            type: 'product-save',
-                            now: now(),
-                            product: {
-                              ...v,
-                              name: String(f.get('name')),
-                              description: String(f.get('description')),
-                              price: Number(f.get('price')),
-                            },
-                          }))
-                        }
-                      >
-                        <Field
-                          label="Product name"
-                          name="name"
-                          minLength={3}
-                          defaultValue={v.name}
-                        />
-                        <Field
-                          label="Description"
-                          name="description"
-                          type="textarea"
-                          minLength={20}
-                          defaultValue={v.description}
-                        />
-                        <Field
-                          label="Price (KES)"
-                          name="price"
-                          type="number"
-                          defaultValue={String(v.price)}
-                        />
-                        <button className="button button-outline">Resubmit product</button>
-                      </form>
-                    </details>
-                  </article>
-                ))}
             </Panel>
           )}
-          {tab === 'incubation' && (
-            <Panel title="Incubation applications">
-              <form
-                className="workspace-form"
-                onSubmit={(e) =>
-                  form(e, (f) => ({
-                    type: 'incubation-apply',
-                    id: crypto.randomUUID(),
-                    ventureId: String(f.get('ventureId')),
-                    goal: String(f.get('goal')),
-                    now: now(),
-                  }))
-                }
-              >
-                {selectVenture}
-                <Field label="Your incubation goals" name="goal" type="textarea" minLength={30} />
-                <button
-                  className="button"
-                  disabled={!myVentures.some((v) => v.status === 'approved')}
-                >
-                  Apply for incubation
-                </button>
-              </form>
-              {p.incubations
-                .filter((i) => i.ownerId === account.id)
-                .map((i) => (
-                  <article className="workspace-record" key={i.id}>
-                    <h3>{p.ventures.find((v) => v.id === i.ventureId)?.name}</h3>
-                    <p>
-                      {i.status} ·{' '}
-                      {i.mentorId ? `Mentor: ${name(i.mentorId)}` : 'Awaiting administrator review'}
-                    </p>
-                    <p>{i.goal}</p>
-                    {i.milestones.map((m) => (
-                      <p key={m.id}>
-                        <strong>{m.title}</strong> · {m.validated ? 'Validated' : 'In progress'}
-                        <br />
-                        {m.note}
-                      </p>
-                    ))}
-                  </article>
-                ))}
+          {tab === 'institutions' && (
+            <Panel title="Institution onboarding">
+              <InstitutionsAdmin p={p} accounts={state.accounts} save={run} />
+            </Panel>
+          )}
+          {tab === 'payments' && (
+            <Panel title="Payments">
+              <TrainingPayments p={p} save={run} name={name} />
+            </Panel>
+          )}
+          {tab === 'ventures' && !schoolLocked && (
+            <Panel title="My ventures">
+              <VentureRegistry p={p} account={account} save={run} />
+            </Panel>
+          )}
+          {tab === 'products' && !schoolLocked && (
+            <Panel title="Products & services">
+              <ProductRegistry p={p} account={account} save={run} />
+            </Panel>
+          )}
+          {tab === 'incubation' && !schoolLocked && (
+            <Panel title="Venture incubation">
+              {schoolStaff && (
+                <p>
+                  <Link to={workspaceHref('member-results')}>
+                    View member results and certificates
+                  </Link>
+                </p>
+              )}
+              {can(account, 'learn') && (
+                <UniversitySelection p={p} account={account} save={run} modal />
+              )}
+              <IncubationWorkspace p={p} account={account} save={run} accountName={name} />
             </Panel>
           )}
           {tab === 'applications' && (
             <Panel title="My opportunity applications">
-              {p.opportunityApplications
-                .filter((a) => a.accountId === account.id)
-                .map((a) => (
-                  <article className="workspace-record" key={a.id}>
-                    <h3>{p.opportunities.find((o) => o.id === a.opportunityId)?.title}</h3>
-                    <p>{a.status}</p>
-                    <p>{a.motivation}</p>
-                  </article>
-                ))}
-              <Link className="button" to="/opportunities">
-                Find opportunities
-              </Link>
+              <WorkspaceTable
+                label="opportunity applications"
+                columns={['Opportunity', 'Status', 'Action']}
+                actions={
+                  <Link to="/opportunities" className="button button-outline workspace-action">
+                    Find opportunities
+                  </Link>
+                }
+                rows={p.opportunityApplications
+                  .filter((a) => a.accountId === account.id)
+                  .map((application) => {
+                    const title =
+                      p.opportunities.find((o) => o.id === application.opportunityId)?.title ??
+                      'Opportunity';
+                    return {
+                      id: application.id,
+                      search: title + ' ' + application.status,
+                      cells: [
+                        title,
+                        <WorkspaceStatus>{application.status}</WorkspaceStatus>,
+                        <WorkspaceDialog action="View application" title={title}>
+                          {() => <p className="workspace-detail-copy">{application.motivation}</p>}
+                        </WorkspaceDialog>,
+                      ],
+                    };
+                  })}
+              />
             </Panel>
           )}
           {tab === 'mentor' && (
             <Panel title="Mentor profile & availability">
-              <form
-                className="workspace-form"
-                onSubmit={(e) =>
-                  form(e, (f) => ({
-                    type: 'mentor-profile',
-                    now: now(),
-                    profile: {
-                      accountId: account.id,
-                      expertise: String(f.get('expertise')),
-                      availability: String(f.get('availability')),
-                      bio: String(f.get('bio')),
-                    },
-                  }))
-                }
-              >
-                <Field
-                  label="Expertise"
-                  name="expertise"
-                  minLength={5}
-                  defaultValue={mentor?.expertise}
-                />
-                <Field
-                  label="Availability (include timezone)"
-                  name="availability"
-                  minLength={5}
-                  defaultValue={mentor?.availability}
-                />
-                <Field
-                  label="Mentor biography"
-                  name="bio"
-                  type="textarea"
-                  minLength={20}
-                  defaultValue={mentor?.bio}
-                />
-                <button className="button">Save mentor profile</button>
-              </form>
-              <Link to="/dashboard/mentorship">Review mentorship requests →</Link>
+              {mentor && (
+                <dl className="workspace-profile">
+                  <div>
+                    <dt>Expertise</dt>
+                    <dd>{mentor.expertise}</dd>
+                  </div>
+                  <div>
+                    <dt>Availability</dt>
+                    <dd>{mentor.availability}</dd>
+                  </div>
+                  <div>
+                    <dt>Biography</dt>
+                    <dd>{mentor.bio}</dd>
+                  </div>
+                </dl>
+              )}
+              <div className="workspace-toolbar-actions">
+                <WorkspaceFormDialog
+                  action={mentor ? 'Edit mentor profile' : 'Set up mentor profile'}
+                  create={!mentor}
+                  submit="Save mentor profile"
+                  onSave={(f) =>
+                    run({
+                      type: 'mentor-profile',
+                      now: now(),
+                      profile: {
+                        accountId: account.id,
+                        expertise: String(f.get('expertise')),
+                        availability: String(f.get('availability')),
+                        bio: String(f.get('bio')),
+                      },
+                    })
+                  }
+                >
+                  <Field
+                    label="Expertise"
+                    name="expertise"
+                    minLength={5}
+                    defaultValue={mentor?.expertise}
+                  />
+                  <Field
+                    label="Availability (include timezone)"
+                    name="availability"
+                    minLength={5}
+                    defaultValue={mentor?.availability}
+                  />
+                  <Field
+                    label="Mentor biography"
+                    name="bio"
+                    type="textarea"
+                    minLength={20}
+                    defaultValue={mentor?.bio}
+                  />
+                </WorkspaceFormDialog>
+                <Link to="/dashboard/mentorship">Review mentorship requests →</Link>
+              </div>
             </Panel>
           )}
           {tab === 'mentees' && (
             <Panel title="Assigned incubation milestones">
-              {p.incubations
-                .filter(
-                  (i) =>
-                    (i.mentorId === account.id || can(account, 'admin')) && i.status === 'active',
-                )
-                .map((i) => (
-                  <article className="workspace-record" key={i.id}>
-                    <h3>
-                      {p.ventures.find((v) => v.id === i.ventureId)?.name} · {name(i.ownerId)}
-                    </h3>
-                    <p>{i.goal}</p>
-                    {i.milestones.map((m) => (
-                      <MilestoneEditor key={m.id} incubationId={i.id} milestone={m} onSave={run} />
-                    ))}
-                    <form
-                      className="workspace-form"
-                      onSubmit={(e) =>
-                        form(e, (f) => ({
-                          type: 'milestone',
-                          id: i.id,
-                          milestoneId: crypto.randomUUID(),
-                          title: String(f.get('title')),
-                          note: String(f.get('note')),
-                          validated: f.get('validated') === 'on',
-                          now: now(),
-                        }))
-                      }
-                    >
-                      <Field label="Milestone title" name="title" minLength={3} />
-                      <Field
-                        label="Guidance / progress notes"
-                        name="note"
-                        type="textarea"
-                        minLength={10}
-                      />
-                      <label className="inline-checkbox">
-                        <input type="checkbox" name="validated" />
-                        Validate this milestone
-                      </label>
-                      <button className="button">Save milestone</button>
-                    </form>
-                  </article>
-                ))}
-              {!p.incubations.some((i) => i.mentorId === account.id) && (
-                <p>No active incubation has been assigned to you yet.</p>
-              )}
+              <MentorWorkspace p={p} account={account} save={run} name={name} />
             </Panel>
           )}
           {tab === 'organisation' && (
             <Panel title={`${roleLabels[account.role]} organisation profile`}>
               <p>Profile approval is required before opportunities can be submitted.</p>
-              {org && <p className="status-pill">{org.status}</p>}
-              <form
-                className="workspace-form"
-                onSubmit={(e) =>
-                  form(e, (f) => ({
+              {org && (
+                <dl className="workspace-profile">
+                  <div>
+                    <dt>Organisation</dt>
+                    <dd>{org.name}</dd>
+                  </div>
+                  <div>
+                    <dt>Type</dt>
+                    <dd>{org.type}</dd>
+                  </div>
+                  <div>
+                    <dt>Sectors</dt>
+                    <dd>{org.sectors}</dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>
+                      <WorkspaceStatus>{org.status}</WorkspaceStatus>
+                    </dd>
+                  </div>
+                </dl>
+              )}
+              <WorkspaceFormDialog
+                action={org ? 'Edit organisation' : 'Add organisation'}
+                create={!org}
+                submit="Submit profile for approval"
+                onSave={(f) =>
+                  run({
                     type: 'organisation-save',
                     now: now(),
                     organisation: {
@@ -441,7 +349,7 @@ export function WorkspacePage() {
                       website: String(f.get('website')),
                       status: 'pending',
                     },
-                  }))
+                  })
                 }
               >
                 <Field
@@ -460,99 +368,121 @@ export function WorkspacePage() {
                   required={false}
                   defaultValue={org?.website}
                 />
-                <button className="button">Submit profile for approval</button>
-              </form>
+              </WorkspaceFormDialog>
             </Panel>
           )}
           {tab === 'opportunities' && (
             <Panel title="My opportunities">
-              <details>
-                <summary>Create an opportunity</summary>
-                <OpportunityForm
-                  ownerId={account.id}
-                  organiser={org?.name ?? account.name}
-                  image={media.business}
-                  onSave={run}
-                />
-              </details>
-              {p.opportunities
-                .filter((o) => o.ownerId === account.id)
-                .map((o) => (
-                  <article className="workspace-record" key={o.id}>
-                    <h3>{o.title}</h3>
-                    <p>{o.status}</p>
-                    {o.status !== 'archived' && (
-                      <details>
-                        <summary>Edit opportunity</summary>
-                        <p>
-                          Saving an edit returns this listing to draft. Submit it for review to
-                          publish the new version.
-                        </p>
-                        <OpportunityForm
-                          opportunity={o}
-                          ownerId={account.id}
-                          organiser={org?.name ?? account.name}
-                          image={media.business}
-                          onSave={run}
-                        />
-                      </details>
-                    )}
-                    {o.status === 'draft' && (
-                      <button
-                        className="button"
-                        onClick={() =>
-                          run({
-                            type: 'opportunity-status',
-                            id: o.id,
-                            status: 'review',
-                            now: now(),
-                          })
-                        }
-                      >
-                        Submit for review
-                      </button>
-                    )}
-                    {['published', 'closed'].includes(o.status) && (
-                      <Link to={`/opportunities/${o.slug}`}>View public listing →</Link>
-                    )}
-                  </article>
-                ))}
+              <WorkspaceTable
+                label="opportunities"
+                columns={['Opportunity', 'Category', 'Status', 'Actions']}
+                actions={opportunityEditor()}
+                rows={p.opportunities
+                  .filter((item) => item.ownerId === account.id)
+                  .map((item) => ({
+                    id: item.id,
+                    search: [item.title, item.category, item.status].join(' '),
+                    cells: [
+                      item.title,
+                      item.category,
+                      <WorkspaceStatus>{item.status}</WorkspaceStatus>,
+                      <div className="workspace-row-actions">
+                        {item.status !== 'archived' && opportunityEditor(item)}
+                        {item.status === 'draft' && (
+                          <button
+                            type="button"
+                            className="button button-outline workspace-action"
+                            onClick={() =>
+                              run({
+                                type: 'opportunity-status',
+                                id: item.id,
+                                status: 'review',
+                                now: now(),
+                              })
+                            }
+                          >
+                            Submit for review
+                          </button>
+                        )}
+                        {['published', 'closed'].includes(item.status) && (
+                          <Link to={'/opportunities/' + item.slug}>View public listing</Link>
+                        )}
+                      </div>,
+                    ],
+                  }))}
+              />
             </Panel>
           )}
           {tab === 'applicants' && (
             <Panel title="Opportunity applicants">
-              {p.opportunityApplications
-                .filter((a) =>
-                  p.opportunities.some(
-                    (o) =>
-                      o.id === a.opportunityId &&
-                      (o.ownerId === account.id || can(account, 'admin')),
-                  ),
-                )
-                .map((a) => (
-                  <article className="workspace-record" key={a.id}>
-                    <h3>{name(a.accountId)}</h3>
-                    <p>
-                      {p.opportunities.find((o) => o.id === a.opportunityId)?.title} · {a.status}
-                    </p>
-                    <p>{a.motivation}</p>
-                    {['submitted', 'shortlisted'].includes(a.status) && (
-                      <div className="form-actions">
-                        {(['shortlisted', 'accepted', 'rejected'] as const).map((status) => (
-                          <button
-                            className="button button-outline"
-                            key={status}
-                            onClick={() =>
-                              run({ type: 'opportunity-review', id: a.id, status, now: now() })
-                            }
-                          >
-                            {status}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </article>
-                ))}
+              <WorkspaceTable
+                label="applicants"
+                columns={['Applicant', 'Opportunity', 'Status', 'Action']}
+                rows={p.opportunityApplications.flatMap((application) => {
+                  const opportunity = p.opportunities.find(
+                    (item) => item.id === application.opportunityId,
+                  );
+                  if (
+                    !opportunity ||
+                    (opportunity.ownerId !== account.id && !can(account, 'admin'))
+                  )
+                    return [];
+                  const applicant = name(application.accountId);
+                  const canDecide = ['submitted', 'shortlisted'].includes(application.status);
+                  return [
+                    {
+                      id: application.id,
+                      search: [applicant, opportunity.title, application.status].join(' '),
+                      cells: [
+                        applicant,
+                        opportunity.title,
+                        <WorkspaceStatus>{application.status}</WorkspaceStatus>,
+                        <WorkspaceDialog
+                          action={canDecide ? 'Review applicant' : 'View application'}
+                          title={applicant}
+                        >
+                          {(finish) => (
+                            <>
+                              <p className="workspace-detail-copy">{application.motivation}</p>
+                              {canDecide && (
+                                <div className="workspace-form-footer">
+                                  {(['shortlisted', 'accepted', 'rejected'] as const).map(
+                                    (status) => (
+                                      <button
+                                        key={status}
+                                        type="button"
+                                        className="button button-outline"
+                                        onClick={() =>
+                                          finish(
+                                            run({
+                                              type: 'opportunity-review',
+                                              id: application.id,
+                                              status,
+                                              now: now(),
+                                            }),
+                                          )
+                                        }
+                                      >
+                                        {
+                                          {
+                                            shortlisted: 'Shortlist',
+                                            accepted: 'Accept',
+                                            rejected: 'Reject',
+                                          }[status]
+                                        }
+                                      </button>
+                                    ),
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </WorkspaceDialog>,
+                      ],
+                    },
+                  ];
+                })}
+              />
             </Panel>
           )}
           {tab === 'discovery' && (
@@ -588,285 +518,134 @@ export function WorkspacePage() {
           )}
           {tab === 'approvals' && (
             <Panel title="Approval queue">
-              <h3>Role requests</h3>
-              {p.applications
-                .filter((a) => a.status === 'pending')
-                .map((a) => (
-                  <article className="workspace-record" key={a.id}>
-                    <h3>
-                      {name(a.accountId)} · {roleLabels[a.role]}
-                    </h3>
-                    <p>
-                      {a.fromRole && a.fromRole !== 'guest'
-                        ? `Role change from ${roleLabels[a.fromRole]}`
-                        : 'Role application'}
-                    </p>
-                    <p>{a.motivation}</p>
-                    <p>
-                      {a.organisation} {a.expertise}
-                    </p>
-                    <form
-                      className="workspace-form"
-                      onSubmit={(e) =>
-                        form(e, (f) => ({
-                          type: 'role-review',
-                          id: a.id,
-                          decision: String(f.get('decision')) as 'approved' | 'rejected',
-                          reason: String(f.get('reason')),
-                          now: now(),
-                        }))
-                      }
-                    >
-                      <label>
-                        Decision
-                        <select name="decision">
-                          <option value="approved">Approve</option>
-                          <option value="rejected">Reject</option>
-                        </select>
-                      </label>
-                      <Field
-                        label="Decision reason / feedback"
-                        name="reason"
-                        type="textarea"
-                        minLength={10}
-                      />
-                      <button className="button">Save decision</button>
-                    </form>
-                  </article>
-                ))}
-              <h3>Ventures, products & organisations</h3>
-              {[
-                ...p.ventures
-                  .filter((v) => v.status === 'pending')
-                  .map((v) => ({
-                    id: v.id,
-                    name: v.name,
-                    detail: `${v.description} · ${v.sector} · ${v.stage} · ${v.location}`,
-                    ownerId: v.ownerId,
-                    entity: 'venture' as const,
-                  })),
-                ...p.products
-                  .filter((v) => v.status === 'pending')
-                  .map((v) => ({
-                    id: v.id,
-                    name: v.name,
-                    detail: `${v.description} · KES ${v.price}`,
-                    ownerId: v.ownerId,
-                    entity: 'product' as const,
-                  })),
-                ...p.organisations
-                  .filter((v) => v.status === 'pending')
-                  .map((v) => ({
-                    id: v.accountId,
-                    name: v.name,
-                    detail: `${v.type} · ${v.sectors} · ${v.contact} · ${v.website}`,
-                    ownerId: v.accountId,
-                    entity: 'organisation' as const,
-                  })),
-              ].map((v) => (
-                <article className="workspace-record" key={v.id}>
-                  <h3>{v.name}</h3>
-                  <p>
-                    {v.entity} · {name(v.ownerId)}
-                  </p>
-                  <p>{v.detail}</p>
-                  <div className="form-actions">
-                    {(['approved', 'rejected'] as const).map((decision) => (
-                      <button
-                        className="button button-outline"
-                        key={decision}
-                        onClick={() =>
-                          run({
-                            type: 'venture-review',
-                            id: v.id,
-                            entity: v.entity,
-                            decision,
-                            now: now(),
-                          })
-                        }
-                      >
-                        {decision}
-                      </button>
-                    ))}
-                  </div>
-                </article>
-              ))}
-              <h3>Active incubations</h3>
-              {p.incubations
-                .filter((i) => i.status === 'active')
-                .map((i) => (
-                  <article className="workspace-record" key={i.id}>
-                    <h3>{p.ventures.find((v) => v.id === i.ventureId)?.name}</h3>
-                    <p>
-                      {name(i.ownerId)} · Mentor: {name(i.mentorId)}
-                    </p>
-                    <p>
-                      {i.milestones.filter((m) => m.validated).length} / {i.milestones.length}{' '}
-                      milestones validated
-                    </p>
-                    <Link to="/dashboard/workspace?tab=mentees">Review milestone notes →</Link>
-                    <button
-                      className="button button-outline"
-                      disabled={!i.milestones.length || i.milestones.some((m) => !m.validated)}
-                      onClick={() => run({ type: 'incubation-complete', id: i.id, now: now() })}
-                    >
-                      Graduate incubation
-                    </button>
-                  </article>
-                ))}
-              <h3>Incubation applications</h3>
-              {p.incubations
-                .filter((i) => i.status === 'pending')
-                .map((i) => (
-                  <form
-                    className="workspace-form"
-                    key={i.id}
-                    onSubmit={(e) =>
-                      form(e, (f) => ({
-                        type: 'incubation-assign',
-                        id: i.id,
-                        mentorId: String(f.get('mentor')),
-                        decision: String(f.get('decision')) as 'active' | 'rejected',
-                        now: now(),
-                      }))
-                    }
-                  >
-                    <h3>{name(i.ownerId)}</h3>
-                    <p>{i.goal}</p>
-                    <label>
-                      Mentor
-                      <select name="mentor">
-                        {state.accounts
-                          .filter((a) => a.role === 'mentor' && !a.suspended)
-                          .map((a) => (
-                            <option value={a.id} key={a.id}>
-                              {a.name}
-                            </option>
-                          ))}
-                      </select>
-                    </label>
-                    <label>
-                      Decision
-                      <select name="decision">
-                        <option value="active">Accept & assign</option>
-                        <option value="rejected">Reject</option>
-                      </select>
-                    </label>
-                    <button className="button">Save incubation decision</button>
-                  </form>
-                ))}
+              <ApprovalWorkspace p={p} accounts={state.accounts} save={run} name={name} />
             </Panel>
           )}
           {tab === 'users' && (
             <Panel title="Users & access">
-              <div className="platform-table-wrap">
-                <table className="platform-table">
-                  <thead>
-                    <tr>
-                      <th>Member</th>
-                      <th>Role</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {state.accounts.map((a) => (
-                      <tr key={a.id}>
-                        <td>
-                          {a.name}
-                          <small>{a.email}</small>
-                        </td>
-                        <td>
-                          <select
-                            aria-label={`Role for ${a.name}`}
-                            disabled={a.id === account.id}
-                            value={a.role}
-                            onChange={(e) =>
-                              run({
-                                type: 'account-admin',
-                                accountId: a.id,
-                                role: e.target.value as Role,
-                                now: now(),
-                              })
-                            }
-                          >
-                            {Object.entries(roleLabels).map(([id, label]) => (
-                              <option value={id} key={id}>
-                                {label}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>{a.suspended ? 'Suspended' : 'Active'}</td>
-                        <td>
-                          <button
-                            className="text-link"
-                            disabled={a.id === account.id}
-                            onClick={() =>
-                              run({
-                                type: 'account-admin',
-                                accountId: a.id,
-                                suspended: !a.suspended,
-                                now: now(),
-                              })
-                            }
-                          >
-                            {a.suspended ? 'Restore' : 'Suspend'}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <WorkspaceTable
+                label="members"
+                columns={['Member', 'Email', 'Role', 'Status', 'Action']}
+                rows={state.accounts.map((member) => {
+                  const status = member.suspended ? 'Suspended' : 'Active';
+                  return {
+                    id: member.id,
+                    search: [member.name, member.email, roleLabels[member.role], status].join(' '),
+                    cells: [
+                      member.name,
+                      member.email,
+                      roleLabels[member.role],
+                      <WorkspaceStatus>{status}</WorkspaceStatus>,
+                      member.id === account.id ? (
+                        'Your account'
+                      ) : (
+                        <WorkspaceFormDialog
+                          action="Manage access"
+                          title={member.name}
+                          submit="Save access"
+                          onSave={(data) =>
+                            run({
+                              type: 'account-admin',
+                              accountId: member.id,
+                              role: String(data.get('role')) as Role,
+                              suspended: data.get('suspended') === 'on',
+                              now: now(),
+                            })
+                          }
+                        >
+                          <label>
+                            Role
+                            <select name="role" defaultValue={member.role}>
+                              {Object.entries(roleLabels).map(([id, label]) => (
+                                <option key={id} value={id}>
+                                  {label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="inline-checkbox">
+                            <input
+                              type="checkbox"
+                              name="suspended"
+                              defaultChecked={member.suspended}
+                            />
+                            Suspend account
+                          </label>
+                        </WorkspaceFormDialog>
+                      ),
+                    ],
+                  };
+                })}
+              />
             </Panel>
           )}
           {tab === 'certificates' && (
             <Panel title="Certificates">
-              <form
-                className="workspace-form"
-                onSubmit={(e) =>
-                  form(e, (f) => ({
-                    type: 'certificate-issue',
-                    id: crypto.randomUUID(),
-                    accountId: String(f.get('account')),
-                    courseId: String(f.get('course')),
-                    now: now(),
-                  }))
+              <TrainingCertificates
+                p={p}
+                save={run}
+                name={name}
+                courseRecords={
+                  <WorkspaceTable
+                    label="course completion records"
+                    columns={['Learner', 'Course', 'Action']}
+                    empty="No course completion records have been issued."
+                    actions={
+                      <WorkspaceFormDialog
+                        action="Issue course record"
+                        create
+                        submit="Issue completion record"
+                        onSave={(data) =>
+                          run({
+                            type: 'certificate-issue',
+                            id: crypto.randomUUID(),
+                            accountId: String(data.get('account')),
+                            courseId: String(data.get('course')),
+                            now: now(),
+                          })
+                        }
+                      >
+                        <p>All lessons must be completed before a demo record can be issued.</p>
+                        <label>
+                          Learner
+                          <select name="account">
+                            {state.accounts.map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {a.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Course
+                          <select name="course">
+                            {courses.map((course) => (
+                              <option key={course.id} value={course.id}>
+                                {course.title}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </WorkspaceFormDialog>
+                    }
+                    rows={p.certificates.map((record) => {
+                      const title =
+                        courses.find((course) => course.id === record.courseId)?.title ??
+                        'Course completion';
+                      const learner = name(record.accountId);
+                      return {
+                        id: record.id,
+                        search: learner + ' ' + title,
+                        cells: [
+                          learner,
+                          title,
+                          <Link to={'/certificates/' + record.id}>View verification record</Link>,
+                        ],
+                      };
+                    })}
+                  />
                 }
-              >
-                <label>
-                  Learner
-                  <select name="account">
-                    {state.accounts.map((a) => (
-                      <option value={a.id} key={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Course
-                  <select name="course">
-                    {courses.map((c) => (
-                      <option value={c.id} key={c.id}>
-                        {c.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <p>
-                  All lessons must be completed. This issues a local demo record, not an academic
-                  qualification.
-                </p>
-                <button className="button">Issue completion record</button>
-              </form>
-              {p.certificates.map((c) => (
-                <p key={c.id}>
-                  {name(c.accountId)} · {courses.find((course) => course.id === c.courseId)?.title}{' '}
-                  · <Link to={`/certificates/${c.id}`}>View verification record</Link>
-                </p>
-              ))}
+              />
             </Panel>
           )}
           {tab === 'reports' && (
@@ -943,7 +722,7 @@ export function WorkspacePage() {
             </Panel>
           )}
           {!tab && (
-            <Panel title="This workspace is unavailable for your role">
+            <Panel title="This workspace is unavailable for your role" showTitle>
               <Link className="button" to="/dashboard">
                 Return to your dashboard
               </Link>

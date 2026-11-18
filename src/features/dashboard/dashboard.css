@@ -185,7 +185,7 @@
   margin: auto;
   padding: 0;
   border: 1px solid var(--yerh-border);
-  border-radius: 8px;
+  border-radius: 0;
   color: var(--yerh-ink);
   background: var(--yerh-white);
   box-shadow: 0 16px 48px #11203e30;
@@ -231,7 +231,6 @@
   gap: 10px;
   min-height: 44px;
   padding: 8px 10px;
-  border-radius: 4px;
   background: var(--yerh-surface);
   color: var(--yerh-navy);
 }
@@ -292,7 +291,6 @@ html:has(.dashboard-drawer[open], .dashboard-notifications-dialog[open]) {
   color: var(--yerh-navy);
   background: var(--yerh-white);
   border: 1px solid var(--yerh-border);
-  border-radius: 6px;
   padding: 18px;
 }
 
@@ -311,6 +309,18 @@ html:has(.dashboard-drawer[open], .dashboard-notifications-dialog[open]) {
 }
 .dashboard-overview .profile-panel {
   margin-bottom: 22px;
+}
+
+.dashboard-shell
+  :is(
+    .collection-card,
+    .profile-panel,
+    .request-card,
+    .review-card,
+    .status-pill,
+    .workspace-record
+  ) {
+  border-radius: 0;
 }
 .dashboard-overview .profile-panel .button {
   margin-top: 12px;
@@ -365,7 +375,6 @@ html:has(.dashboard-drawer[open], .dashboard-notifications-dialog[open]) {
   place-items: center;
   width: 42px;
   height: 42px;
-  border-radius: 6px;
   background: var(--yerh-gold-light);
   color: var(--yerh-navy);
 }
@@ -410,7 +419,6 @@ html:has(.dashboard-drawer[open], .dashboard-notifications-dialog[open]) {
   margin: 0;
   padding: clamp(15px, 2vw, 23px);
   background: var(--yerh-white);
-  border-radius: 4px;
   box-shadow: 0 2px 8px #192c5708;
 }
 
@@ -698,7 +706,6 @@ html:has(.dashboard-drawer[open], .dashboard-notifications-dialog[open]) {
   min-width: 0;
   padding: 12px;
   border: 1px solid var(--yerh-border);
-  border-radius: 4px;
   background: var(--yerh-white);
   color: var(--yerh-navy);
   overflow-wrap: anywhere;
@@ -711,14 +718,12 @@ html:has(.dashboard-drawer[open], .dashboard-notifications-dialog[open]) {
 .dashboard-entry-card img {
   width: 52px;
   height: 52px;
-  border-radius: 3px;
   object-fit: cover;
 }
 
 .dashboard-entry-icon {
   box-sizing: content-box;
   padding: 9px;
-  border-radius: 4px;
   background: var(--yerh-gold-light);
 }
 

@@ -94,5 +94,29 @@
     "handle": "investor",
     "joinedAt": "2026-11-01",
     "email": "demo-investor@example.test"
+  },
+  {
+    "id": "demo-school",
+    "name": "Sam Njeri",
+    "role": "school_admin",
+    "headline": "Lakeview Demo High School",
+    "location": "Nairobi",
+    "bio": "Fictional high school administrator for offline cohort testing.",
+    "skills": [],
+    "handle": "demo-school",
+    "joinedAt": "2026-11-01",
+    "email": "demo-school@example.test"
+  },
+  {
+    "id": "demo-university-staff",
+    "name": "Ari Kamau",
+    "role": "school_admin",
+    "headline": "Lakeside Demo University",
+    "location": "Nairobi",
+    "bio": "Fictional university administrator for institution onboarding testing.",
+    "skills": [],
+    "handle": "demo-university-staff",
+    "joinedAt": "2026-11-01",
+    "email": "demo-university-staff@example.test"
   }
 ]

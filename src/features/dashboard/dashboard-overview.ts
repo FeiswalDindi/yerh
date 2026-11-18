@@ -11,6 +11,7 @@ export const dashboardTitles: Record<Role, string> = {
   investor: 'Investor dashboard',
   partner: 'Partner dashboard',
   admin: 'Administration dashboard',
+  school_admin: 'Institution dashboard',
 };
 
 type Metric = { label: string; value: string | number; to: string };
@@ -19,6 +20,17 @@ export function dashboardMetrics(state: DemoState, account: DemoAccount): Metric
   const p = state.platform;
   const id = account.id;
   switch (account.role) {
+    case 'school_admin': {
+      const school = p.training.institutions.find((entry) => entry.adminId === id);
+      return [
+        { label: 'Portal status', value: school?.status ?? 'Setup', to: workspaceHref('school') },
+        {
+          label: 'Venture teams',
+          value: p.training.groups.filter((g) => g.institutionId === school?.id).length,
+          to: workspaceHref('school'),
+        },
+      ];
+    }
     case 'guest':
       return [
         {
@@ -114,9 +126,14 @@ export function dashboardMetrics(state: DemoState, account: DemoAccount): Metric
     case 'admin':
       return [
         {
+          label: 'Product listings awaiting approval',
+          value: p.products.filter((product) => product.status === 'pending').length,
+          to: workspaceHref('approvals'),
+        },
+        {
           label: 'Pending role requests',
           value: p.applications.filter((a) => a.status === 'pending').length,
-          to: workspaceHref('approvals'),
+          to: workspaceHref('approvals') + '&view=roles',
         },
         {
           label: 'Active accounts',
@@ -130,8 +147,13 @@ export function dashboardMetrics(state: DemoState, account: DemoAccount): Metric
         },
         {
           label: 'Certificates issued',
-          value: p.certificates.length,
+          value: p.certificates.length + p.training.credentials.length,
           to: workspaceHref('certificates'),
+        },
+        {
+          label: 'Payments awaiting confirmation',
+          value: p.training.payments.filter((payment) => payment.status === 'pending').length,
+          to: workspaceHref('payments'),
         },
       ];
   }

@@ -97,6 +97,41 @@
 .workspace-main {
   min-width: 0;
 }
+.training-stage,
+.training-step,
+.training-status {
+  border-top: 1px solid var(--yerh-border);
+  padding-block: 14px;
+  margin-block: 10px;
+}
+.training-stage > summary {
+  color: var(--yerh-navy);
+  font-weight: 600;
+  cursor: pointer;
+}
+.training-stage > :last-child,
+.training-step > :last-child {
+  margin-bottom: 0;
+}
+.workspace-form fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--yerh-border);
+}
+.training-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+@media print {
+  body:has(.training-certificate) :is(header, footer, .training-certificate-print) {
+    display: none;
+  }
+  .training-certificate {
+    box-shadow: none;
+  }
+}
 .workspace-panel > h2 {
   font-size: 29px;
   margin-bottom: 20px;

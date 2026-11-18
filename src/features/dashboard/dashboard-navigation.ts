@@ -2,7 +2,7 @@ import { can, type Capability, type Role } from '../../domain/roles';
 import { dashboardCataloguePaths } from './catalogue-paths';
 
 type AccountAccess = { role: Role; suspended?: boolean };
-type WorkspaceGroup = 'venture' | 'mentor' | 'organisation' | 'admin';
+type WorkspaceGroup = 'venture' | 'mentor' | 'organisation' | 'admin' | 'school';
 type WorkspaceModule = { id: string; label: string; description: string };
 
 const workspaceGroups = {
@@ -16,7 +16,7 @@ const workspaceGroups = {
     {
       id: 'incubation',
       label: 'Incubation',
-      description: 'Apply for incubation and follow your milestones.',
+      description: 'Launch a venture and complete its three incubation stages.',
     },
     {
       id: 'applications',
@@ -58,7 +58,8 @@ const workspaceGroups = {
     {
       id: 'approvals',
       label: 'Approval queue',
-      description: 'Decide role, venture, organisation and incubation requests.',
+      description:
+        'Moderate product listings, assign incubation mentors, and review other requests.',
     },
     { id: 'users', label: 'Users & roles', description: 'Assign roles and manage account access.' },
     {
@@ -66,7 +67,33 @@ const workspaceGroups = {
       label: 'Analytics & reports',
       description: 'Check platform activity and export the audit log.',
     },
-    { id: 'certificates', label: 'Certificates', description: 'Issue course completion records.' },
+    {
+      id: 'certificates',
+      label: 'Certificates',
+      description: 'Approve incubation and course certificates.',
+    },
+    {
+      id: 'payments',
+      label: 'Payments',
+      description: 'Set fees and review demo payments by purpose.',
+    },
+    {
+      id: 'institutions',
+      label: 'Institutions',
+      description: 'Onboard institutions and feature their success stories.',
+    },
+  ],
+  school: [
+    {
+      id: 'school',
+      label: 'Institution portal',
+      description: 'Manage your agreement, students and venture teams.',
+    },
+    {
+      id: 'member-results',
+      label: 'Member results and certificates',
+      description: 'Review stage results, record offline resits, and download issued certificates.',
+    },
   ],
 } satisfies Record<WorkspaceGroup, WorkspaceModule[]>;
 
@@ -78,6 +105,7 @@ const workspaceOrder: Record<Role, WorkspaceGroup[]> = {
   investor: ['organisation'],
   partner: ['organisation'],
   admin: ['admin', 'venture', 'mentor', 'organisation'],
+  school_admin: ['school', 'venture'],
 };
 
 export const cmsModules = [
@@ -109,6 +137,8 @@ export const cmsHref = (id: string) =>
 
 function modulesFor(account: AccountAccess, group: WorkspaceGroup) {
   const modules = workspaceGroups[group];
+  if (account.role === 'school_admin' && group === 'venture')
+    return modules.filter((module) => module.id !== 'applications');
   if (account.role === 'investor' && group === 'organisation')
     return [
       ...modules.filter((module) => module.id === 'discovery'),
@@ -139,6 +169,7 @@ const groupLabels: Record<WorkspaceGroup, string> = {
   venture: 'Venture & learning',
   mentor: 'Mentorship',
   organisation: 'Organisation',
+  school: 'Institution',
 };
 
 const learningLink = {
@@ -203,7 +234,7 @@ export function dashboardGroups(
       description,
       to: workspaceHref(id),
     }));
-    if (group === 'venture') links.push(learningLink);
+    if (group === 'venture' && can(account, 'learn')) links.push(learningLink);
     if (group === 'mentor') links.unshift(mentorshipLink);
     if (group === 'venture' && !can(account, 'mentor') && can(account, 'apply'))
       links.push(mentorshipLink);
@@ -226,7 +257,7 @@ export function dashboardGroups(
   } else {
     if (can(account, 'attend')) accountLinks.push(eventsLink);
     if (can(account, 'learn') && !can(account, 'venture')) accountLinks.push(learningLink);
-    accountLinks.push(certificatesLink);
+    if (!can(account, 'school')) accountLinks.push(certificatesLink);
   }
   if (can(account, 'community') && !can(account, 'cms'))
     accountLinks.push({ label: 'My contributions', to: '/dashboard/content' });

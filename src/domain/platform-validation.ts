@@ -1,5 +1,6 @@
 import type { PlatformState } from './platform';
 import { applicationRoles, roleLabels } from './roles.ts';
+import { isTrainingState } from './incubation-validation.ts';
 const record = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === 'object' && !Array.isArray(v);
 const fields = (v: unknown, keys: string[]): v is Record<string, unknown> =>
@@ -63,6 +64,7 @@ export function isPlatformState(v: unknown): v is PlatformState {
     return false;
   const p = v as unknown as PlatformState;
   return (
+    isTrainingState(p.training) &&
     record(p.courseLessons) &&
     Object.values(p.courseLessons).every(
       (ids) => Array.isArray(ids) && ids.every((id) => typeof id === 'string'),
@@ -82,7 +84,11 @@ export function isPlatformState(v: unknown): v is PlatformState {
             a.fromRole !== a.role)) &&
         ['pending', 'approved', 'rejected'].includes(a.status),
     ) &&
-    p.ventures.every((a) => ['pending', 'approved', 'rejected'].includes(a.status)) &&
+    p.ventures.every(
+      (a) =>
+        ['pending', 'approved', 'rejected'].includes(a.status) &&
+        (a.groupId === undefined || typeof a.groupId === 'string'),
+    ) &&
     p.products.every(
       (a) =>
         ['pending', 'approved', 'rejected'].includes(a.status) &&
@@ -92,6 +98,8 @@ export function isPlatformState(v: unknown): v is PlatformState {
     p.incubations.every(
       (i) =>
         ['pending', 'active', 'completed', 'rejected'].includes(i.status) &&
+        (i.productIds === undefined ||
+          (Array.isArray(i.productIds) && i.productIds.every((id) => typeof id === 'string'))) &&
         Array.isArray(i.milestones) &&
         i.milestones.every(
           (m) => fields(m, ['id', 'title', 'note']) && typeof m.validated === 'boolean',

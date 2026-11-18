@@ -1,3 +1,4 @@
+import { WorkspaceFormDialog } from './WorkspaceControls';
 import type { FormEvent } from 'react';
 import type { Incubation, Opportunity, PlatformAction } from '../../domain/platform';
 
@@ -155,40 +156,34 @@ export function MilestoneEditor({
   onSave: Save;
 }) {
   return (
-    <details className="milestone-editor">
-      <summary>
-        {m.title} · {m.validated ? 'Validated' : 'In progress'}
-      </summary>
-      <form
-        className="workspace-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const f = new FormData(e.currentTarget);
-          onSave({
-            type: 'milestone',
-            id: incubationId,
-            milestoneId: m.id,
-            title: String(f.get('title')),
-            note: String(f.get('note')),
-            validated: f.get('validated') === 'on',
-            now: new Date().toISOString(),
-          });
-        }}
-      >
-        <label>
-          Title
-          <input name="title" required minLength={3} defaultValue={m.title} />
-        </label>
-        <label>
-          Progress notes
-          <textarea name="note" required minLength={10} defaultValue={m.note} />
-        </label>
-        <label className="inline-checkbox">
-          <input type="checkbox" name="validated" defaultChecked={m.validated} />
-          Validate milestone
-        </label>
-        <button className="button button-outline">Update milestone</button>
-      </form>
-    </details>
+    <WorkspaceFormDialog
+      action="Edit milestone"
+      title={m.title}
+      submit="Update milestone"
+      onSave={(f) =>
+        onSave({
+          type: 'milestone',
+          id: incubationId,
+          milestoneId: m.id,
+          title: String(f.get('title')),
+          note: String(f.get('note')),
+          validated: f.get('validated') === 'on',
+          now: new Date().toISOString(),
+        })
+      }
+    >
+      <label>
+        Title
+        <input name="title" required minLength={3} defaultValue={m.title} />
+      </label>
+      <label>
+        Progress notes
+        <textarea name="note" required minLength={10} defaultValue={m.note} />
+      </label>
+      <label className="inline-checkbox">
+        <input type="checkbox" name="validated" defaultChecked={m.validated} />
+        Validate milestone
+      </label>
+    </WorkspaceFormDialog>
   );
 }

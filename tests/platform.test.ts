@@ -7,6 +7,8 @@ import { can } from '../src/domain/roles.ts';
 import { assertCmsSnapshot } from '../src/domain/cms.ts';
 import type { Catalog } from '../src/domain/content.ts';
 import { mediaAssets } from '../src/config/media.ts';
+import { canPublishProduct, stageUnlocked, type StageId } from '../src/domain/incubation.ts';
+import type { PlatformAction } from '../src/domain/platform.ts';
 const fixture = (n: string) =>
   JSON.parse(readFileSync(new URL(`../src/mocks/data/${n}.json`, import.meta.url), 'utf8'));
 const seed = (): DemoState => ({
@@ -437,7 +439,7 @@ test('venture approval, incubation assignment, mentor updates and graduation pre
   });
   assert.throws(
     () => applyDemoAction(s, { type: 'incubation-complete', id: 'incubation', now }),
-    /milestone/,
+    /all three stage exams/,
   );
   s = login(s, 'demo-mentor');
   act({
@@ -475,21 +477,364 @@ test('venture approval, incubation assignment, mentor updates and graduation pre
   });
   assert.equal(s.platform.incubations[0]!.milestones.length, 1);
   s = login(s, 'demo-admin');
-  act({ type: 'incubation-complete', id: 'incubation', now });
-  assert.equal(s.platform.incubations[0]!.status, 'completed');
   assert.throws(
-    () =>
-      applyDemoAction(login(s, 'demo-mentor'), {
-        type: 'milestone',
-        id: 'incubation',
-        milestoneId: 'one',
-        title: 'Changed milestone',
-        note: 'Cannot change an already completed incubation.',
-        validated: true,
-        now,
-      }),
-    /assigned/,
+    () => applyDemoAction(s, { type: 'incubation-complete', id: 'incubation', now }),
+    /all three stage exams/,
   );
+});
+
+function trainingScenario() {
+  let state = seed();
+  const act = (accountId: string, action: PlatformAction) => {
+    state = applyDemoAction(login(state, accountId), action);
+    assert.ok(isDemoState(state, fixture('accounts')), action.type);
+  };
+  const reject = (accountId: string, action: PlatformAction, message: RegExp) =>
+    assert.throws(() => applyDemoAction(login(state, accountId), action), message);
+  const owner = 'demo-founder';
+  const mentor = 'demo-mentor';
+  const admin = 'demo-admin';
+  function launch(accountId: string, ventureId: string, productIds: string[] = []) {
+    act(accountId, {
+      type: 'incubation-apply',
+      id: 'pathway',
+      ventureId,
+      productIds,
+      now,
+      goal: 'Test the offer and build a viable enterprise with customer evidence.',
+    });
+    act(admin, {
+      type: 'incubation-assign',
+      id: 'pathway',
+      mentorId: mentor,
+      decision: 'active',
+      now,
+    });
+  }
+  function openStage(accountId: string, stage: StageId) {
+    const key = { incubationId: 'pathway', stage, now };
+    for (const step of state.platform.training.curriculum.find((row) => row.id === stage)!.steps) {
+      act(accountId, {
+        ...key,
+        type: 'stage-evidence',
+        stepId: step.id,
+        evidence: 'Evidence from a completed classroom challenge and a real customer conversation.',
+        requestFeedback: true,
+      });
+    }
+    act(mentor, {
+      ...key,
+      type: 'stage-feedback',
+      stepId: state.platform.training.curriculum.find((row) => row.id === stage)!.steps[0]!.id,
+      feedback: 'Give a concrete customer example.',
+    });
+    act(accountId, { ...key, type: 'stage-request' });
+    act(mentor, { ...key, type: 'stage-meeting', meetingAt: now });
+    reject(admin, { ...key, type: 'stage-open-exam', note: 'Ready for the stage exam.' }, /access/);
+    act(mentor, {
+      ...key,
+      type: 'stage-open-exam',
+      note: 'Reviewed evidence together and ready for the stage exam.',
+    });
+    return key;
+  }
+  function product(id: string, ventureId = 'demo-venture-green') {
+    act(owner, {
+      type: 'product-save',
+      now,
+      product: {
+        id,
+        ventureId,
+        ownerId: owner,
+        name: `Product ${id}`,
+        description: 'A test product for the venture marketplace.',
+        price: 200,
+        status: 'pending',
+      },
+    });
+    act(admin, { type: 'venture-review', entity: 'product', id, decision: 'approved', now });
+  }
+  const visible = (id: string) =>
+    canPublishProduct(
+      state.platform,
+      state.platform.products.find((row) => row.id === id)!,
+    );
+  return {
+    act,
+    reject,
+    owner,
+    mentor,
+    admin,
+    launch,
+    openStage,
+    product,
+    visible,
+    state: () => state,
+  };
+}
+
+test('stages pass in order independently of fees, with product-specific graduation and a free final credential', () => {
+  const { act, reject, owner, mentor, admin, launch, openStage, product, visible, state } =
+    trainingScenario();
+  product('original');
+  launch(owner, 'demo-venture-green', ['original']);
+  act(owner, {
+    type: 'product-evidence',
+    productId: 'original',
+    evidence: 'Described the offer and two completed customer trials.',
+    now,
+  });
+  act(mentor, {
+    type: 'product-evidence-review',
+    productId: 'original',
+    decision: 'approved',
+    feedback: 'Product tested with prospective customers.',
+    now,
+  });
+  assert.equal(visible('original'), false);
+  const final = {
+    type: 'training-credential-issue',
+    id: 'final',
+    incubationId: 'pathway',
+    learnerId: owner,
+    kind: 'venture',
+    now,
+  } as const;
+  reject(admin, final, /all required stages/);
+  const key = openStage(owner, 'getting-started');
+  const attempt = (id: string, score: number, stageKey = key) => {
+    act(owner, {
+      ...stageKey,
+      type: 'stage-take-exam',
+      attemptId: id,
+      answer: 'I tested the offer and can explain the results and next steps.',
+    });
+    act(mentor, {
+      ...stageKey,
+      type: 'stage-grade',
+      attemptId: id,
+      score,
+      note: 'Assessed the evidence and answers using the stage rubric.',
+    });
+  };
+  attempt('failed', 40);
+  assert.equal(
+    stageUnlocked(state().platform, state().platform.incubations[0]!, 'advanced'),
+    false,
+  );
+  attempt('resit', 75);
+  assert.equal(stageUnlocked(state().platform, state().platform.incubations[0]!, 'advanced'), true);
+  const first = { ...final, id: 'first', kind: 'getting-started' } as const;
+  reject(admin, first, /payment/);
+  act(owner, {
+    type: 'training-payment-request',
+    id: 'stage-payment',
+    purpose: 'getting-started',
+    targetId: 'pathway',
+    now,
+  });
+  reject(admin, first, /payment/);
+  act(admin, { type: 'training-payment-review', id: 'stage-payment', decision: 'confirmed', now });
+  act(admin, first);
+  reject(admin, first, /already been issued/);
+  attempt('stage-two', 75, openStage(owner, 'advanced'));
+  attempt('stage-three', 75, openStage(owner, 'funding'));
+  act(admin, final);
+  assert.equal(state().platform.incubations[0]!.status, 'completed');
+  assert.equal(visible('original'), true);
+  product('later');
+  assert.equal(visible('later'), false);
+  act(owner, {
+    type: 'product-evidence',
+    productId: 'later',
+    evidence: 'New service trial with two paying clients.',
+    now,
+  });
+  act(mentor, {
+    type: 'product-evidence-review',
+    productId: 'later',
+    decision: 'approved',
+    feedback: 'Targeted product evidence approved.',
+    now,
+  });
+  assert.equal(visible('later'), true);
+  const later = state().platform.products.find((row) => row.id === 'later')!;
+  act(owner, {
+    type: 'product-save',
+    now,
+    product: { ...later, description: 'The new offer changes what the customer buys.' },
+  });
+  act(admin, { type: 'venture-review', id: 'later', entity: 'product', decision: 'approved', now });
+  assert.equal(visible('later'), false);
+});
+
+test('paid listings need confirmed payment and moderation, with settings and amounts scoped by purpose', () => {
+  const { act, reject, owner, admin, product, visible, state } = trainingScenario();
+  product('paid');
+  product('unpaid');
+  const settings = {
+    type: 'training-fees-save',
+    fees: { 'getting-started': 600, advanced: 800, marketplace: 1500 },
+    bypassEnabled: true,
+    now,
+  } as const;
+  reject(owner, settings, /administrator/);
+  act(admin, settings);
+  const payment = {
+    type: 'training-payment-request',
+    id: 'listing-payment',
+    purpose: 'marketplace',
+    targetId: 'paid',
+    now,
+  } as const;
+  act(owner, payment);
+  const confirmed = {
+    type: 'training-payment-review',
+    id: payment.id,
+    decision: 'confirmed',
+    now,
+  } as const;
+  reject(owner, confirmed, /pending payment/);
+  assert.equal(visible('paid'), false);
+  act(admin, { ...settings, fees: { ...settings.fees, marketplace: 2000 }, bypassEnabled: false });
+  assert.equal(state().platform.training.payments[0]!.amount, 1500);
+  reject(owner, { ...payment, id: 'next-payment', targetId: 'unpaid' }, /ineligible/);
+  act(admin, { type: 'venture-review', entity: 'product', id: 'paid', decision: 'pending', now });
+  act(admin, confirmed);
+  assert.equal(visible('paid'), false);
+  act(admin, { type: 'venture-review', entity: 'product', id: 'paid', decision: 'approved', now });
+  assert.equal(visible('paid'), true);
+  assert.equal(visible('unpaid'), false);
+});
+
+test('school agreements gate activation and group venture certification respects individual contributions and marks', () => {
+  const { act, reject, owner, admin, launch, openStage, state } = trainingScenario();
+  const school = 'demo-school';
+  const pupil = 'demo-student-a';
+  const teammate = 'demo-student-b';
+  act(admin, { type: 'account-admin', accountId: 'demo-guest', role: 'school_admin', now });
+  act(admin, {
+    type: 'institution-create',
+    id: 'pending-school',
+    adminId: 'demo-guest',
+    name: 'Second Test School',
+    kind: 'high-school',
+    amount: 25000,
+    now,
+  });
+  reject(admin, { type: 'institution-activate', id: 'pending-school', now }, /agreement/);
+  reject(
+    'demo-guest',
+    { type: 'institution-student', id: 'new-student', name: 'Fictional Student', now },
+    /active high school/,
+  );
+  act('demo-guest', {
+    type: 'institution-proof',
+    id: 'pending-school',
+    name: 'agreement.pdf',
+    data: 'data:application/pdf;base64,JVBERi0xLjQK',
+    now,
+  });
+  act(admin, { type: 'institution-activate', id: 'pending-school', now });
+  act(admin, {
+    type: 'institution-story',
+    id: 'pending-school',
+    story: 'Test cohort ran enterprise challenges for the local community.',
+    featured: true,
+    now,
+  });
+  reject(
+    'demo-guest',
+    {
+      type: 'institution-group',
+      id: 'wrong-group',
+      name: 'Other school',
+      studentIds: [pupil, teammate],
+      now,
+    },
+    /your high school/,
+  );
+  act(owner, { type: 'institution-affiliation', id: 'demo-university', now });
+  act(school, {
+    type: 'institution-class',
+    id: 'class',
+    groupId: 'demo-school-group',
+    date: '2026-11-10',
+    challenge: 'Interview customers in the school community.',
+    attendance: [pupil, teammate],
+    now,
+  });
+  act(school, {
+    type: 'venture-save',
+    now,
+    venture: {
+      id: 'group-venture',
+      ownerId: school,
+      groupId: 'demo-school-group',
+      name: 'School Venture',
+      sector: 'Services',
+      stage: 'Idea',
+      description: 'A group venture testing an after-school service.',
+      location: 'Nairobi',
+      status: 'pending',
+    },
+  });
+  act(admin, {
+    type: 'venture-review',
+    entity: 'venture',
+    id: 'group-venture',
+    decision: 'approved',
+    now,
+  });
+  launch(school, 'group-venture');
+  const record = (learnerId: string, score: number, key: ReturnType<typeof openStage>) => ({
+    ...key,
+    type: 'stage-offline-result' as const,
+    learnerId,
+    score,
+    attemptId: `${learnerId}-${key.stage}`,
+    note: 'Recorded the paper exam mark and archived the paper with the school.',
+  });
+  const first = openStage(school, 'getting-started');
+  act(school, record(pupil, 80, first));
+  act(school, record(teammate, 40, first));
+  const second = openStage(school, 'advanced');
+  reject(school, record(teammate, 80, second), /earlier stages/);
+  act(school, record(pupil, 80, second));
+  act(school, record(pupil, 90, openStage(school, 'funding')));
+  const final = {
+    type: 'training-credential-issue',
+    id: 'school-final',
+    incubationId: 'pathway',
+    learnerId: pupil,
+    kind: 'venture',
+    now,
+  } as const;
+  reject(admin, final, /required stages/);
+  const batch = {
+    type: 'institution-contributions' as const,
+    ventureId: 'group-venture',
+    entries: [
+      { learnerId: pupil, evidence: 'Led interviews and tested the lesson format.' },
+      { learnerId: teammate, evidence: 'Recorded the costs of the pilot.' },
+    ],
+    now,
+  };
+  reject(
+    school,
+    { ...batch, entries: [batch.entries[0]!, { learnerId: teammate, evidence: 'short' }] },
+    /./,
+  );
+  assert.equal(state().platform.training.contributions.length, 0);
+  act(school, batch);
+  assert.deepEqual(
+    state().platform.training.contributions,
+    batch.entries.map((entry) => ({ ...entry, ventureId: batch.ventureId })),
+  );
+  act(admin, final);
+  act(admin, { ...final, id: 'school-stage-one', kind: 'getting-started' });
+  reject(admin, { ...final, id: 'teammate-final', learnerId: teammate }, /required stages/);
+  assert.equal(state().platform.training.payments.length, 0);
 });
 
 test('organisation approval gates opportunity creation and later owner edits invalidate older CMS drafts', () => {

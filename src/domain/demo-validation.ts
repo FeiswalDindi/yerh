@@ -2,6 +2,7 @@ import type { DemoState, DemoAccount } from './demo';
 import { canonicalRole, roleLabels } from './roles.ts';
 import { isPlatformState } from './platform-validation.ts';
 import { assertCmsSnapshot, assertOpportunity } from './cms.ts';
+import { validTrainingReferences } from './incubation-validation.ts';
 type RecordValue = Record<string, unknown>;
 const record = (v: unknown): v is RecordValue => !!v && typeof v === 'object' && !Array.isArray(v);
 const strings = (v: unknown): v is string[] =>
@@ -29,9 +30,22 @@ export function migrateDemoState(value: unknown, seed: DemoState): unknown {
     record(value) &&
     value.version === 2 &&
     record(value.platform) &&
-    (!value.platform.courseLessons || !value.platform.certificates)
+    (!value.platform.courseLessons || !value.platform.certificates || !value.platform.training)
   )
-    return { ...value, platform: { ...structuredClone(seed.platform), ...value.platform } };
+    return {
+      ...value,
+      platform: { ...structuredClone(seed.platform), ...value.platform },
+      accounts: Array.isArray(value.accounts)
+        ? [
+            ...value.accounts,
+            ...seed.accounts.filter(
+              (s) =>
+                s.role === 'school_admin' &&
+                !(value.accounts as unknown[]).some((a) => record(a) && a.id === s.id),
+            ),
+          ]
+        : value.accounts,
+    };
   if (record(value) && value.version === 2 && !value.platform && Array.isArray(value.accounts)) {
     return {
       ...value,
@@ -331,7 +345,8 @@ export function isDemoState(
         Object.hasOwn(p.courseLessons, c.courseId) &&
         date(c.issuedAt),
     ) ||
-    !p.audit.every((e) => accounts.has(e.actorId) && date(e.createdAt))
+    !p.audit.every((e) => accounts.has(e.actorId) && date(e.createdAt)) ||
+    !validTrainingReferences(p, state.accounts)
   )
     return false;
   return (

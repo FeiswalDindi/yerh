@@ -30,6 +30,8 @@ import { DashboardEvents } from '../src/features/dashboard/DashboardEvents';
 import { ContentDetail } from '../src/features/content/ContentDetail';
 import { MarketplacePage } from '../src/features/content/MarketplacePage';
 import { DashboardCertificates } from '../src/features/dashboard/DashboardCertificates';
+import { CertificatePage } from '../src/features/platform/CertificatePage';
+import { StoriesSection } from '../src/features/home/StoriesSection';
 import { ProfilePage } from '../src/features/dashboard/ProfilePage';
 import { dashboardAccess } from '../src/features/dashboard/dashboard-navigation';
 import {
@@ -66,43 +68,47 @@ export async function checkPlatformRendering() {
         >
           <MemoryRouter initialEntries={[path]}>
             {child ?? (
-              <Routes>
-                <Route path="/demo" element={<LoginPage />} />
-                <Route path="/join" element={<JoinPage />} />
-                <Route path="/about" element={<AboutPage />} />
-                <Route path="/apply" element={<ApplicationsPage />} />
-                <Route path="/events" element={<EventsPage />} />
-                <Route path="/marketplace" element={<MarketplacePage />} />
-                <Route path="/marketplace/:slug" element={<ContentDetail />} />
-                <Route path="/opportunities" element={<OpportunitiesPage />} />
-                <Route path="/opportunities/:slug" element={<OpportunityDetail />} />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <RequireDemo>
-                      <DashboardLayout />
-                    </RequireDemo>
-                  }
-                >
-                  <Route index element={<RoleDashboard />} />
-                  <Route path="profile" element={<ProfilePage />} />
-                  <Route path="learning" element={<DashboardCatalogue kind="learning" />} />
-                  <Route path="events" element={<DashboardEvents />} />
-                  <Route path="marketplace" element={<DashboardCatalogue kind="marketplace" />} />
-                  <Route path="marketplace/:slug" element={<ContentDetail dashboard />} />
-                  <Route path="certificates" element={<DashboardCertificates />} />
-                  <Route path="workspace" element={<WorkspacePage />} />
+              <DemoCatalogOverlay>
+                <Routes>
+                  <Route path="/" element={<StoriesSection />} />
+                  <Route path="/demo" element={<LoginPage />} />
+                  <Route path="/join" element={<JoinPage />} />
+                  <Route path="/about" element={<AboutPage />} />
+                  <Route path="/apply" element={<ApplicationsPage />} />
+                  <Route path="/events" element={<EventsPage />} />
+                  <Route path="/marketplace" element={<MarketplacePage />} />
+                  <Route path="/marketplace/:slug" element={<ContentDetail />} />
+                  <Route path="/certificates/:id" element={<CertificatePage />} />
+                  <Route path="/opportunities" element={<OpportunitiesPage />} />
+                  <Route path="/opportunities/:slug" element={<OpportunityDetail />} />
                   <Route
-                    path="cms"
+                    path="/dashboard"
                     element={
-                      <RequireDemo capabilities={dashboardAccess.cms}>
-                        <CmsPage />
+                      <RequireDemo>
+                        <DashboardLayout />
                       </RequireDemo>
                     }
-                  />
-                </Route>
-                <Route path="/learn/:courseId" element={<LearningPage />} />
-              </Routes>
+                  >
+                    <Route index element={<RoleDashboard />} />
+                    <Route path="profile" element={<ProfilePage />} />
+                    <Route path="learning" element={<DashboardCatalogue kind="learning" />} />
+                    <Route path="events" element={<DashboardEvents />} />
+                    <Route path="marketplace" element={<DashboardCatalogue kind="marketplace" />} />
+                    <Route path="marketplace/:slug" element={<ContentDetail dashboard />} />
+                    <Route path="certificates" element={<DashboardCertificates />} />
+                    <Route path="workspace" element={<WorkspacePage />} />
+                    <Route
+                      path="cms"
+                      element={
+                        <RequireDemo capabilities={dashboardAccess.cms}>
+                          <CmsPage />
+                        </RequireDemo>
+                      }
+                    />
+                  </Route>
+                  <Route path="/learn/:courseId" element={<LearningPage />} />
+                </Routes>
+              </DemoCatalogOverlay>
             )}
           </MemoryRouter>
         </DemoContext.Provider>
@@ -417,13 +423,212 @@ export async function checkPlatformRendering() {
     ['demo-mentor', ['mentor', 'mentees']],
     ['demo-partner', ['organisation', 'opportunities', 'applicants', 'discovery']],
     ['demo-investor', ['organisation', 'opportunities']],
-    ['demo-admin', ['approvals', 'users', 'certificates', 'reports']],
+    ['demo-admin', ['approvals', 'users', 'certificates', 'reports', 'payments', 'institutions']],
+    ['demo-school', ['school', 'member-results', 'ventures', 'products', 'incubation']],
   ] as const) {
     for (const tab of tabs) {
       assert.ok(render(`/dashboard/workspace?tab=${tab}`, id).length > 1000);
       count++;
     }
   }
+  const trainingPreview = structuredClone(state);
+  const submittedListing = applyDemoAction(
+    { ...state, activeAccountId: 'demo-founder' },
+    {
+      type: 'product-save',
+      now: '2026-11-10T09:00:00Z',
+      product: {
+        id: 'submitted-listing',
+        ventureId: 'demo-venture-green',
+        ownerId: 'demo-founder',
+        name: 'Demo seedling starter kit',
+        description: 'A collection of pots and seeds for new home growers.',
+        price: 120,
+        status: 'pending',
+      },
+    },
+  );
+  const launchedVenture = applyDemoAction(submittedListing, {
+    type: 'incubation-apply',
+    now: '2026-11-10T09:01:00Z',
+    id: 'seedling-incubation',
+    ventureId: 'demo-venture-green',
+    goal: 'Validate the product with prospective home growers.',
+    productIds: ['submitted-listing'],
+  });
+  const approvals = render(
+    '/dashboard/workspace?tab=approvals',
+    'demo-admin',
+    undefined,
+    launchedVenture,
+  );
+  assert.ok(approvals.includes('Product listings'));
+  assert.ok(approvals.includes('Review listing'));
+  assert.ok(approvals.includes('Demo seedling starter kit'));
+  assert.ok(!approvals.includes('Review application'));
+  const incubationApprovals = render(
+    '/dashboard/workspace?tab=approvals&view=incubation',
+    'demo-admin',
+    undefined,
+    launchedVenture,
+  );
+  assert.ok(incubationApprovals.includes('Review application'));
+  assert.ok(incubationApprovals.includes('Demo seedling starter kit'));
+  assert.ok(!incubationApprovals.includes('Review listing'));
+  const founderProducts = render(
+    '/dashboard/workspace?tab=products',
+    'demo-founder',
+    undefined,
+    submittedListing,
+  );
+  assert.ok(founderProducts.includes('Switch demo role to review'));
+  const reviewLink = founderProducts.match(/href="(\/demo\?redirect=[^"]+)"/)?.[1];
+  assert.ok(reviewLink);
+  const destination = accountDestination(
+    new URL(reviewLink, 'http://127.0.0.1').search,
+    '/dashboard',
+  );
+  assert.equal(destination, '/dashboard/workspace?tab=approvals');
+  const sameBrowserAdmin = applyDemoAction(submittedListing, {
+    type: 'login',
+    accountId: 'demo-admin',
+  });
+  assert.ok(
+    render(destination, 'demo-admin', undefined, sameBrowserAdmin).includes(
+      'Demo seedling starter kit',
+    ),
+  );
+  trainingPreview.platform.products.push({
+    id: 'test-listing',
+    ventureId: 'demo-venture-green',
+    ownerId: 'demo-founder',
+    name: 'Fictional pending publication',
+    description: 'Test that moderation alone does not publish this product.',
+    price: 120,
+    status: 'approved',
+  });
+  const listing = '/marketplace/product-test-listing';
+  assert.ok(
+    !render(listing, null, undefined, trainingPreview).includes('Fictional pending publication'),
+  );
+  assert.ok(
+    render(
+      '/dashboard/workspace?tab=products',
+      'demo-founder',
+      undefined,
+      trainingPreview,
+    ).includes('Listing details'),
+  );
+  assert.ok(
+    !render('/dashboard/workspace?tab=payments&view=settings', 'demo-founder').includes(
+      'Edit payment settings',
+    ),
+  );
+  trainingPreview.platform.training.payments.push({
+    id: 'test-payment',
+    accountId: 'demo-founder',
+    purpose: 'marketplace',
+    targetId: 'test-listing',
+    status: 'confirmed',
+    amount: 1000,
+    submittedAt: '2026-11-10T09:00:00Z',
+  });
+  assert.ok(
+    render(listing, null, undefined, trainingPreview).includes('Fictional pending publication'),
+  );
+  const school = trainingPreview.platform.training.institutions.find(
+    (row) => row.id === 'demo-high-school',
+  )!;
+  school.featured = true;
+  school.story = 'An institution success story with only school-level results.';
+  assert.ok(render('/', null, undefined, trainingPreview).includes(school.name));
+  assert.ok(!render('/', null, undefined, trainingPreview).includes('Robin Kimani'));
+  assert.ok(
+    render('/dashboard/workspace?tab=school&view=students', 'demo-school').includes(
+      'Professional profile draft',
+    ),
+  );
+  assert.ok(
+    !render('/dashboard/workspace?tab=school', 'demo-university-staff').includes('Robin Kimani'),
+  );
+  assert.ok(render('/dashboard/profile', 'demo-guest').includes('Lakeside Demo University'));
+  const teamPreview = structuredClone(trainingPreview);
+  teamPreview.platform.ventures.push({
+    ...teamPreview.platform.ventures[0]!,
+    id: 'test-school-venture',
+    ownerId: 'demo-school',
+    groupId: 'demo-school-group',
+    name: 'Class enterprise',
+    status: 'approved',
+  });
+  teamPreview.platform.incubations.push({
+    id: 'test-school-path',
+    ownerId: 'demo-school',
+    ventureId: 'test-school-venture',
+    goal: 'Run a school enterprise.',
+    mentorId: 'demo-mentor',
+    status: 'active',
+    milestones: [],
+  });
+  teamPreview.platform.training.stages.push({
+    id: 'test-school-path:getting-started',
+    incubationId: 'test-school-path',
+    stage: 'getting-started',
+    steps: [],
+    reviewRequestedAt: now,
+    meetingAt: now,
+    meetingNote: 'Ready',
+    examOpenedAt: now,
+    attempts: ['demo-student-a', 'demo-student-b'].map((learnerId, i) => ({
+      id: learnerId + '-attempt',
+      learnerId,
+      recordedBy: 'demo-school',
+      submittedAt: now,
+      answer: '',
+      score: i === 0 ? 75 : 45,
+      note: 'Offline assessment',
+    })),
+  });
+  teamPreview.platform.training.credentials.push({
+    id: 'test-issued',
+    incubationId: 'test-school-path',
+    learnerId: 'demo-student-a',
+    kind: 'getting-started',
+    issuedAt: now,
+    issuedBy: 'demo-admin',
+  });
+  const teamResults = render(
+    '/dashboard/workspace?tab=member-results',
+    'demo-school',
+    undefined,
+    teamPreview,
+  );
+  assert.match(
+    teamResults,
+    /<a(?=[^>]*href="\/dashboard\/workspace\?tab=member-results")(?=[^>]*aria-current="page")[^>]*>Member results and certificates<\/a>/,
+  );
+  assert.ok(teamResults.includes('Class enterprise'));
+  assert.ok(teamResults.includes('View results: Robin Kimani · Class enterprise'));
+  assert.ok(teamResults.includes('Resit available'));
+  assert.ok(teamResults.includes('Certificates'));
+  assert.ok(
+    !render(
+      '/dashboard/workspace?tab=member-results',
+      'demo-university-staff',
+      undefined,
+      teamPreview,
+    ).includes('Class enterprise'),
+  );
+  assert.ok(
+    render('/dashboard/workspace?tab=school', 'demo-school').includes(
+      'View member results and certificates',
+    ),
+  );
+  assert.ok(
+    render('/dashboard/workspace?tab=member-results', 'demo-founder').includes(
+      'This workspace is unavailable for your role',
+    ),
+  );
   for (const id of ['demo-editor', 'demo-admin']) {
     assert.ok(render('/dashboard/cms', id).includes('YERH CONTENT STUDIO'));
     count++;
@@ -488,7 +693,7 @@ export async function checkPlatformRendering() {
         }}
         onSave={() => false}
       />,
-    ).includes('Update milestone'),
+    ).includes('Edit milestone: Customer interviews'),
   );
   // Archiving retains an editorial record for restoration but removes it from public catalogues.
   const archived = structuredClone(snapshot);

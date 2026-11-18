@@ -27,6 +27,10 @@ export function LoginPage() {
         <DemoNotice />
         {enabled ? (
           <>
+            <p>
+              Choose a role here to keep working with the demo records saved in this browser
+              profile.
+            </p>
             <div className="demo-account-grid">
               {state.accounts.map((person) => (
                 <article key={person.id} className="demo-account-card">

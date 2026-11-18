@@ -37,9 +37,10 @@ Select **Login** or **Register** in the site navigation to open the account dial
 - Mentor: profile/expertise/availability, guidance requests, assigned incubation notes and validated milestones.
 - Partner/Investor: approved organisation, own opportunities/applicants and venture discovery.
 - Content Manager: full editorial studio, draft/publish/restore, contribution review and discussion moderation.
-- Administrator: all capabilities, role/staff assignment, suspension, entity approvals, completion records and reporting.
+- Institutional Administrator: agreements, offline classes, student profiles, group ventures and individual exam marks.
+- Administrator: staff assignment, institution onboarding, venture and certificate approvals, payment settings and reporting.
 
-**Start the full acceptance walkthrough in [docs/TESTING_SPRINT.md](docs/TESTING_SPRINT.md).** The running session uses http://127.0.0.1:5174; `npm run dev -- --port 5174` restarts that port. The default development command still uses 5173.
+Use the [general acceptance walkthrough](docs/TESTING_SPRINT.md) or the [incubation and payments walkthrough](docs/INCUBATION_TESTING.md). The default development command uses port 5173.
 
 Only published demo contributions appear in public listings. Use Reset demo data on `/demo` to restore fixtures. Bookmarks use a separate browser key and are retained by the demo reset. Demo accounts work in local development and on the Vercel deployment domain. See [deployment settings](docs/DEPLOYMENT.md) for the disable switch and custom-domain behavior. The backend must supply real authorization; frontend role checks are only a development simulation.
 
