@@ -39,6 +39,25 @@
   padding-inline: 0.65rem;
 }
 
+.workspace-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.workspace-mark .workspace-icon-action {
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0.25rem;
+  border-color: transparent;
+  background: transparent;
+  color: var(--yerh-navy);
+}
+
+.workspace-mark .workspace-icon-action:hover {
+  background: var(--yerh-card-surface);
+}
+
 .venture-approved {
   display: inline-flex;
   align-items: center;

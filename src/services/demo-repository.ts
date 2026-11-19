@@ -31,6 +31,7 @@ export const browserDemoRepository: DemoRepository = {
       if (raw) {
         const value: unknown = migrateDemoState(JSON.parse(raw), createDemoSeed());
         if (isDemoState(value, accounts as DemoState['accounts'])) {
+          Reflect.deleteProperty(value.platform.training, 'contributions');
           migrateSchoolPathways(value.platform);
           return value;
         }

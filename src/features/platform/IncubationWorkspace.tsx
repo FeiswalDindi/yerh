@@ -13,7 +13,7 @@ import {
   incubationLearners,
   managesVenture,
   passMark,
-  passedStage,
+  completedStage,
   paymentFor,
   productClearedByIncubation,
   stageUnlocked,
@@ -149,45 +149,6 @@ export function IncubationWorkspace({
         {path.status === 'pending' && <p>Waiting for an administrator to assign a mentor.</p>}
         {path.status === 'rejected' && (
           <p>You can submit a new incubation application for this venture.</p>
-        )}
-        {venture.groupId && (path.status === 'active' || path.status === 'completed') && (
-          <div className="training-step">
-            <TrainingForm
-              save={save}
-              label="Save all contributions"
-              dialog={{ action: 'Individual contributions' }}
-              build={(data) => ({
-                type: 'institution-contributions',
-                ventureId: venture.id,
-                entries: incubationLearners(p, path)
-                  .map((learnerId) => ({
-                    learnerId,
-                    evidence: field(data, learnerId).trim(),
-                  }))
-                  .filter((entry) => entry.evidence.length > 0),
-              })}
-            >
-              <p>
-                Enter at least 10 characters per contribution. Blank fields keep any previously
-                saved notes.
-              </p>
-              {incubationLearners(p, path).map((id) => (
-                <label key={id}>
-                  {p.training.students.find((student) => student.id === id)?.name}
-                  <textarea
-                    name={id}
-                    minLength={10}
-                    maxLength={3000}
-                    defaultValue={
-                      p.training.contributions.find(
-                        (item) => item.learnerId === id && item.ventureId === venture.id,
-                      )?.evidence
-                    }
-                  />
-                </label>
-              ))}
-            </TrainingForm>
-          </div>
         )}
         {(path.status === 'active' || path.status === 'completed') &&
           p.training.curriculum.map((stage) => (
@@ -370,7 +331,7 @@ function LearnerStage({
     return (
       <div className="training-stage">
         <h4>{stage.title}</h4>
-        <p>Locked until the previous stage is passed.</p>
+        <p>Locked until the previous stage assessment is recorded.</p>
       </div>
     );
   const learners = incubationLearners(p, path);
@@ -379,7 +340,7 @@ function LearnerStage({
   const available = learners.filter(
     (id) =>
       stageUnlocked(p, path, stage.id, id) &&
-      !passedStage(p.training, path.id, stage.id, id) &&
+      !completedStage(p.training, path.id, stage.id, id) &&
       !work?.attempts.some((attempt) => attempt.learnerId === id && attempt.score === null),
   );
   return (
@@ -474,7 +435,7 @@ function LearnerStage({
         <>
           <h4>Stage exam</h4>
           <p>{stage.examPrompt}</p>
-          <p>Pass mark {passMark}%</p>
+          <p>Pass benchmark {passMark}%. A recorded result completes the stage.</p>
           {work.attempts.map((attempt) => (
             <p key={attempt.id}>
               {studentName(attempt.learnerId)} ·{' '}

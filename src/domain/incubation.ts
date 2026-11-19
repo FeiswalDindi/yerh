@@ -11,7 +11,7 @@ export const feeLabels: Record<FeePurpose, string> = {
   advanced: 'Intermediate / Advanced certificate',
   marketplace: 'Marketplace listing without incubation',
 };
-export const passMark = 60;
+export const passMark = 50;
 
 export interface StageDefinition {
   id: StageId;
@@ -40,6 +40,7 @@ export interface StageWork {
     note: string;
     recordedBy: string;
     submittedAt: string;
+    corrections?: { previousScore: number; correctedBy: string; correctedAt: string }[];
   }[];
 }
 
@@ -50,6 +51,7 @@ export interface IncubationCredential {
   kind: CredentialKind;
   issuedAt: string;
   issuedBy: string;
+  schoolScore?: number;
 }
 
 export interface Institution {
@@ -99,6 +101,8 @@ export type CertificateSelection = {
 export type CertificateRequest = CertificateSelection & {
   requestedBy: string;
   requestedAt: string;
+  status?: 'pending' | 'rejected';
+  rejections?: { reason: string; reviewedBy: string; reviewedAt: string }[];
 };
 export const credentialKinds: CredentialKind[] = [...stageIds, 'venture'];
 export function certificateKey(entry: CertificateSelection) {
@@ -145,7 +149,6 @@ export interface TrainingState {
     challenge: string;
     attendance: string[];
   }[];
-  contributions: { ventureId: string; learnerId: string; evidence: string }[];
   affiliations: Record<string, string>;
   yerhSignIn?: boolean;
 }
@@ -200,6 +203,15 @@ export type TrainingCommand =
       learnerId: string;
       score: number;
       note: string;
+    }
+  | {
+      type: 'stage-offline-score-edit';
+      incubationId: string;
+      stage: StageId;
+      learnerId: string;
+      attemptId: string;
+      expectedScore: number;
+      score: number;
     }
   | {
       type: 'training-credential-issue';
@@ -271,6 +283,13 @@ export type TrainingCommand =
       kind: CredentialKind;
       recipients: { learnerId: string; id: string }[];
     }
+  | {
+      type: 'school-certificates-reject';
+      incubationId: string;
+      kind: CredentialKind;
+      learnerIds: string[];
+      reason: string;
+    }
   | { type: 'institution-profile'; id: string; headline: string; about: string; skills: string }
   | { type: 'institution-group'; id: string; name: string; studentIds: string[] }
   | {
@@ -281,12 +300,6 @@ export type TrainingCommand =
       date: string;
       challenge: string;
       attendance: string[];
-    }
-  | { type: 'institution-contribution'; ventureId: string; learnerId: string; evidence: string }
-  | {
-      type: 'institution-contributions';
-      ventureId: string;
-      entries: { learnerId: string; evidence: string }[];
     }
   | { type: 'institution-affiliation'; id: string };
 
@@ -339,6 +352,18 @@ export function migrateSchoolPathways(p: PlatformState) {
     if (!schoolVentureIds.has(path.ventureId)) continue;
     if (path.status === 'pending') path.status = 'active';
     path.mentorId = '';
+    const learners = incubationLearners(p, path);
+    if (
+      learners.length &&
+      learners.every((learner) => credentialReady(p, path, learner, 'venture'))
+    )
+      path.status = 'completed';
+    for (const record of p.training.credentials) {
+      if (record.incubationId === path.id && record.schoolScore === undefined) {
+        const score = schoolCertificateScore(p.training, record);
+        if (score !== undefined) record.schoolScore = score;
+      }
+    }
   }
 }
 
@@ -378,15 +403,14 @@ export function incubationLearners(p: PlatformState, incubation: Incubation) {
     : [incubation.ownerId];
 }
 
-export function passedStage(
+export function completedStage(
   t: TrainingState,
   incubationId: string,
   stage: StageId,
   learnerId: string,
 ) {
   return !!getStage(t, incubationId, stage)?.attempts.some(
-    (attempt) =>
-      attempt.learnerId === learnerId && attempt.score !== null && attempt.score >= passMark,
+    (attempt) => attempt.learnerId === learnerId && attempt.score !== null,
   );
 }
 
@@ -399,13 +423,13 @@ export function stageUnlocked(
   const previous = stageIds.slice(0, stageIds.indexOf(stage));
   const learners = learnerId ? [learnerId] : incubationLearners(p, incubation);
   return learners.some((id) =>
-    previous.every((key) => passedStage(p.training, incubation.id, key, id)),
+    previous.every((key) => completedStage(p.training, incubation.id, key, id)),
   );
 }
 
 export function finishedIncubation(p: PlatformState, incubation: Incubation) {
   return incubationLearners(p, incubation).some((id) =>
-    stageIds.every((stage) => passedStage(p.training, incubation.id, stage, id)),
+    credentialReady(p, incubation, id, 'venture'),
   );
 }
 
@@ -421,30 +445,53 @@ export function certificateFee(p: PlatformState, incubation: Incubation, kind: C
   return venture?.groupId ? 0 : p.training.fees[kind];
 }
 
+export function certificateStages(kind: CredentialKind) {
+  return stageIds.slice(0, kind === 'venture' ? stageIds.length : stageIds.indexOf(kind) + 1);
+}
+
 export function credentialReady(
   p: PlatformState,
   incubation: Incubation,
   learnerId: string,
   kind: CredentialKind,
 ) {
-  if (!incubationLearners(p, incubation).includes(learnerId)) return false;
-  if (
-    p.ventures.some((venture) => venture.id === incubation.ventureId && venture.groupId) &&
-    !p.training.contributions.some(
-      (row) => row.ventureId === incubation.ventureId && row.learnerId === learnerId,
+  return (
+    (incubation.status === 'active' || incubation.status === 'completed') &&
+    incubationLearners(p, incubation).includes(learnerId) &&
+    certificateStages(kind).every((stage) =>
+      completedStage(p.training, incubation.id, stage, learnerId),
     )
-  )
-    return false;
-  const required = stageIds.slice(
-    0,
-    kind === 'venture' ? stageIds.length : stageIds.indexOf(kind) + 1,
   );
-  return required.every((stage) => passedStage(p.training, incubation.id, stage, learnerId));
+}
+
+export function schoolCertificateScore(t: TrainingState, entry: CertificateSelection) {
+  const stages = entry.kind === 'venture' ? stageIds : [entry.kind];
+  const scores = stages.map(
+    (stage) =>
+      getStage(t, entry.incubationId, stage)
+        ?.attempts.filter(
+          (attempt) => attempt.learnerId === entry.learnerId && attempt.score !== null,
+        )
+        .at(-1)?.score,
+  );
+  if (!scores.every((score): score is number => typeof score === 'number')) return undefined;
+  return scores.reduce((total, score) => total + score, 0) / scores.length;
+}
+
+export function schoolDivision(score: number) {
+  if (score >= 70) return 'First Class';
+  if (score >= 60) return 'Second Class Upper';
+  if (score >= passMark) return 'Second Class Lower';
+  return 'Completion';
 }
 
 export function incubationCertificateQueue(p: PlatformState) {
   const issued = new Set(p.training.credentials.map(certificateKey));
-  const requested = new Set((p.training.certificateRequests ?? []).map(certificateKey));
+  const requested = new Map(
+    (p.training.certificateRequests ?? [])
+      .filter((entry) => entry.status !== 'rejected')
+      .map((entry) => [certificateKey(entry), entry]),
+  );
   return p.incubations.flatMap((path) => {
     const school = !!schoolForVenture(
       p,
@@ -453,12 +500,9 @@ export function incubationCertificateQueue(p: PlatformState) {
     return incubationLearners(p, path).flatMap((learnerId) =>
       credentialKinds.flatMap((kind) => {
         const key = certificateKey({ incubationId: path.id, learnerId, kind });
-        if (
-          issued.has(key) ||
-          (school && !requested.has(key)) ||
-          !credentialReady(p, path, learnerId, kind)
-        )
-          return [];
+        const request = school ? requested.get(key) : undefined;
+        const eligible = credentialReady(p, path, learnerId, kind);
+        if (issued.has(key) || (school ? !request : !eligible)) return [];
         const fee = certificateFee(p, path, kind);
         const payment =
           kind === 'getting-started' || kind === 'advanced'
@@ -472,7 +516,8 @@ export function incubationCertificateQueue(p: PlatformState) {
             kind,
             fee,
             payment,
-            ready: fee === 0 || payment?.status === 'confirmed',
+            request,
+            ready: eligible && (fee === 0 || payment?.status === 'confirmed'),
           },
         ];
       }),

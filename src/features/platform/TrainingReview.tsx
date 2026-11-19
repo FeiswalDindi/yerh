@@ -2,21 +2,23 @@ import type { ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   WorkspaceDialog,
+  WorkspaceFormDialog,
   WorkspaceStatus,
   WorkspaceTable,
   WorkspaceTabs,
 } from './WorkspaceControls';
 import {
+  certificateStages,
   incubationCertificateQueue,
   feeLabels,
   feePurposes,
   getStage,
   incubationLearners,
   institutionForPath,
-  passedStage,
-  passMark,
+  completedStage,
+  schoolCertificateScore,
+  schoolDivision,
   schoolForVenture,
-  stageIds,
   type CredentialKind,
 } from '../../domain/incubation';
 import type { Incubation, PlatformState } from '../../domain/platform';
@@ -414,7 +416,7 @@ function SchoolCertificateReview({
   recipients,
   save,
   back,
-  onIssued,
+  onReviewed,
 }: {
   p: PlatformState;
   path: Incubation;
@@ -422,18 +424,69 @@ function SchoolCertificateReview({
   recipients: CertificateCandidate[];
   save: Save;
   back: string;
-  onIssued: () => void;
+  onReviewed: () => void;
 }) {
   const venture = p.ventures.find((row) => row.id === path.ventureId);
   const school = schoolForVenture(p, venture);
-  const requiredStages = stageIds.slice(
-    0,
-    kind === 'venture' ? undefined : stageIds.indexOf(kind) + 1,
-  );
+  const requiredStages = certificateStages(kind);
   const classes = p.training.classes.filter((record) =>
     (record.groupIds ?? [record.groupId]).some((id) => id === venture?.groupId),
   );
   const title = credentialTitle(p.training, kind);
+  const ready = recipients.filter((entry) => entry.ready);
+  const learnerName = (id: string) =>
+    p.training.students.find((student) => student.id === id)?.name ?? id;
+  const reviewBatch = (
+    entries: CertificateCandidate[],
+    action: 'accept' | 'reject',
+    all = false,
+  ) => {
+    if (!entries.length) return null;
+    const count = entries.length;
+    const heading = all ? title : learnerName(entries[0]!.learnerId);
+    const accept = action === 'accept';
+    return (
+      <WorkspaceFormDialog
+        action={all ? (accept ? 'Accept eligible' : 'Reject all') : accept ? 'Accept' : 'Reject'}
+        title={heading}
+        submit={accept ? 'Accept and issue' : 'Reject with reason'}
+        onSave={(data) => {
+          const success = submitTraining(
+            save,
+            accept
+              ? {
+                  type: 'school-credentials-issue',
+                  incubationId: path.id,
+                  kind,
+                  recipients: entries.map(({ learnerId }) => ({
+                    id: crypto.randomUUID(),
+                    learnerId,
+                  })),
+                }
+              : {
+                  type: 'school-certificates-reject',
+                  incubationId: path.id,
+                  kind,
+                  learnerIds: entries.map(({ learnerId }) => learnerId),
+                  reason: field(data, 'reason'),
+                },
+          );
+          if (success && count === recipients.length) onReviewed();
+          return success;
+        }}
+      >
+        <p>
+          {venture?.name} · {count} {count === 1 ? 'request' : 'requests'}
+        </p>
+        {!accept && (
+          <label>
+            Reason shared with the school
+            <textarea name="reason" minLength={5} maxLength={3000} required />
+          </label>
+        )}
+      </WorkspaceFormDialog>
+    );
+  };
   return (
     <section className="workspace-record">
       <Link to={back}>← Awaiting approval</Link>
@@ -481,23 +534,32 @@ function SchoolCertificateReview({
         label="certificate recipients"
         columns={[
           'Student',
-          'Contribution',
+          'Classification',
           ...requiredStages.map(
             (id) => p.training.curriculum.find((stage) => stage.id === id)?.title ?? id,
           ),
+          'Decision',
         ]}
-        rows={recipients.map(({ key, learnerId }) => {
-          const student =
-            p.training.students.find((row) => row.id === learnerId)?.name ?? learnerId;
-          const contribution = p.training.contributions.find(
-            (row) => row.ventureId === path.ventureId && row.learnerId === learnerId,
-          )?.evidence;
+        actions={
+          <div className="workspace-row-actions">
+            {reviewBatch(ready, 'accept', true)}
+            {reviewBatch(recipients, 'reject', true)}
+          </div>
+        }
+        rows={recipients.map((entry) => {
+          const { key, learnerId } = entry;
+          const student = learnerName(learnerId);
+          const score = schoolCertificateScore(p.training, {
+            incubationId: path.id,
+            learnerId,
+            kind,
+          });
           return {
             id: key,
             search: student,
             cells: [
               student,
-              contribution,
+              score === undefined ? '—' : schoolDivision(score),
               ...requiredStages.map((id) => {
                 const attempts =
                   getStage(p.training, path.id, id)?.attempts.filter(
@@ -509,41 +571,18 @@ function SchoolCertificateReview({
                   </p>
                 ));
               }),
+              <div className="workspace-row-actions">
+                {entry.ready ? (
+                  reviewBatch([entry], 'accept')
+                ) : (
+                  <span>Requirements no longer met</span>
+                )}
+                {reviewBatch([entry], 'reject')}
+              </div>,
             ],
           };
         })}
       />
-      <WorkspaceDialog action="Issue certificates" title={title}>
-        {(finish) => (
-          <>
-            <p>
-              Issue {recipients.length} certificates for {venture?.name}.
-            </p>
-            <button
-              className="button"
-              type="button"
-              onClick={() => {
-                if (
-                  submitTraining(save, {
-                    type: 'school-credentials-issue',
-                    incubationId: path.id,
-                    kind,
-                    recipients: recipients.map(({ learnerId }) => ({
-                      id: crypto.randomUUID(),
-                      learnerId,
-                    })),
-                  })
-                ) {
-                  finish(true);
-                  onIssued();
-                } else finish(false);
-              }}
-            >
-              Confirm and issue
-            </button>
-          </>
-        )}
-      </WorkspaceDialog>
     </section>
   );
 }
@@ -587,7 +626,7 @@ export function TrainingCertificates({
         recipients={selected}
         save={save}
         back={approvalHref}
-        onIssued={() => setParams({ tab: 'certificates', view: 'approval' }, { replace: true })}
+        onReviewed={() => setParams({ tab: 'certificates', view: 'approval' }, { replace: true })}
       />
     );
   const queue = individualRequests.map(({ key, path, learnerId, kind, fee, payment, ready }) => {
@@ -730,15 +769,9 @@ export function TrainingCertificates({
                 .filter((path) => path.status === 'active' || path.status === 'pending')
                 .flatMap((path) =>
                   incubationLearners(p, path).map((learnerId) => {
-                    const venture = p.ventures.find((venture) => venture.id === path.ventureId);
                     const next = p.training.curriculum.find(
-                      (stage) => !passedStage(p.training, path.id, stage.id, learnerId),
+                      (stage) => !completedStage(p.training, path.id, stage.id, learnerId),
                     );
-                    const missingContribution =
-                      venture?.groupId &&
-                      !p.training.contributions.some(
-                        (row) => row.ventureId === venture.id && row.learnerId === learnerId,
-                      );
                     const learner = learnerName(learnerId);
                     const title = ventureName(path.ventureId);
                     return {
@@ -751,14 +784,10 @@ export function TrainingCertificates({
                           <Link to="/dashboard/workspace?tab=approvals&view=incubation">
                             Assign a mentor
                           </Link>
+                        ) : next ? (
+                          `Complete the ${next.title} assessment.`
                         ) : (
-                          <>
-                            {next
-                              ? `Pass ${next.title} (${passMark}% required).`
-                              : 'All stages passed.'}
-                            {missingContribution &&
-                              ' Record the learner’s contribution for certificate eligibility.'}
-                          </>
+                          'All stages completed.'
                         ),
                       ],
                     };

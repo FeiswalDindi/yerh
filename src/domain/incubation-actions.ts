@@ -13,7 +13,8 @@ import {
   institutionForPath,
   managesVenture,
   migrateSchoolPathways,
-  passedStage,
+  completedStage,
+  schoolCertificateScore,
   paymentFor,
   productClearedByIncubation,
   schoolForVenture,
@@ -33,8 +34,10 @@ const trainingActionTypes = {
   'stage-take-exam': true,
   'stage-grade': true,
   'stage-offline-result': true,
+  'stage-offline-score-edit': true,
   'training-credential-issue': true,
   'school-credentials-issue': true,
+  'school-certificates-reject': true,
   'training-fees-save': true,
   'training-payment-request': true,
   'training-payment-review': true,
@@ -56,8 +59,6 @@ const trainingActionTypes = {
   'institution-group': true,
   'institution-affiliation': true,
   'institution-class': true,
-  'institution-contribution': true,
-  'institution-contributions': true,
 } satisfies Record<TrainingAction['type'], true>;
 
 export function isTrainingAction(action: { type: string }): action is TrainingAction {
@@ -107,7 +108,7 @@ export function applyTrainingAction(
     const owner = managesVenture(p, actor, venture);
     check(owner || mentor, 'You do not have access to this incubation.');
     const definition = t.curriculum.find((stage) => stage.id === action.stage);
-    check(definition && stageUnlocked(p, path, action.stage), 'Pass the previous stage first.');
+    check(definition && stageUnlocked(p, path, action.stage), 'Complete the previous stage first.');
     let work = getStage(t, path.id, action.stage);
     if (!work) {
       work = {
@@ -210,16 +211,16 @@ export function applyTrainingAction(
         check(
           incubationLearners(p, path).includes(learnerId) &&
             stageUnlocked(p, path, action.stage, learnerId),
-          'The learner must pass the earlier stages first.',
+          'The learner must complete the earlier stages first.',
         );
         check(
-          !passedStage(t, path.id, action.stage, learnerId) &&
+          !completedStage(t, path.id, action.stage, learnerId) &&
             !work.attempts.some(
               (attempt) =>
                 attempt.id === action.attemptId ||
                 (attempt.learnerId === learnerId && attempt.score === null),
             ),
-          'A passing or ungraded attempt already exists.',
+          'A graded or submitted attempt already exists.',
         );
         if (offline) check(validScore(action.score), 'Enter a whole-number score from 0 to 100.');
         work.attempts.push({
@@ -234,7 +235,7 @@ export function applyTrainingAction(
         if (
           offline &&
           action.stage === 'funding' &&
-          incubationLearners(p, path).every((id) => passedStage(t, path.id, action.stage, id))
+          incubationLearners(p, path).every((id) => completedStage(t, path.id, action.stage, id))
         )
           path.status = 'completed';
         break;
@@ -245,6 +246,24 @@ export function applyTrainingAction(
         check(validScore(action.score), 'Enter a whole-number score from 0 to 100.');
         attempt.score = action.score;
         attempt.note = text(action.note, 5);
+        break;
+      }
+      case 'stage-offline-score-edit': {
+        check(owner && institution && work.examOpenedAt, 'Choose an assessment from your school.');
+        check(validScore(action.score), 'Enter a whole-number score from 0 to 100.');
+        const attempts = work.attempts.filter((item) => item.learnerId === action.learnerId);
+        const latest = attempts.at(-1);
+        check(
+          latest && latest.id === action.attemptId && latest.score === action.expectedScore,
+          'This mark changed. Reopen it and try again.',
+        );
+        if (latest.score === action.score) break;
+        (latest.corrections ??= []).push({
+          previousScore: latest.score,
+          correctedBy: operatorId,
+          correctedAt: now,
+        });
+        latest.score = action.score;
         break;
       }
     }
@@ -346,14 +365,49 @@ export function applyTrainingAction(
         );
       }
       for (const entry of action.entries) {
-        if (
-          requests.some((row) => sameCertificate(row, entry)) ||
-          t.credentials.some((row) => sameCertificate(row, entry))
-        )
-          continue;
-        requests.push({ ...entry, requestedBy: operatorId, requestedAt: now });
+        if (t.credentials.some((row) => sameCertificate(row, entry))) continue;
+        const prior = requests.find((row) => sameCertificate(row, entry));
+        if (!prior)
+          requests.push({
+            incubationId: entry.incubationId,
+            learnerId: entry.learnerId,
+            kind: entry.kind,
+            requestedBy: operatorId,
+            requestedAt: now,
+          });
+        else if (prior.status === 'rejected')
+          Object.assign(prior, { status: 'pending', requestedBy: operatorId, requestedAt: now });
       }
       return ownSchool.id;
+    }
+    case 'school-certificates-reject': {
+      check(admin, 'Only a platform administrator can review certificates.');
+      const path = p.incubations.find((item) => item.id === action.incubationId);
+      check(
+        path &&
+          institutionForPath(p, path)?.kind === 'high-school' &&
+          credentialKinds.includes(action.kind) &&
+          action.learnerIds.length > 0 &&
+          new Set(action.learnerIds).size === action.learnerIds.length,
+        'Choose distinct students from a school certificate request.',
+      );
+      const reason = text(action.reason, 5);
+      const requests = action.learnerIds.map((learnerId) => {
+        const entry = { incubationId: path.id, kind: action.kind, learnerId };
+        const request = t.certificateRequests?.find((row) => sameCertificate(row, entry));
+        check(
+          request &&
+            request.status !== 'rejected' &&
+            !t.credentials.some((row) => sameCertificate(row, entry)),
+          'Every selected request must be awaiting review.',
+        );
+        return request;
+      });
+      for (const request of requests) {
+        request.status = 'rejected';
+        (request.rejections ??= []).push({ reason, reviewedBy: operatorId, reviewedAt: now });
+      }
+      return path.id;
     }
     case 'training-credential-issue':
     case 'school-credentials-issue': {
@@ -380,10 +434,13 @@ export function applyTrainingAction(
       for (const entry of entries) {
         check(
           credentialReady(p, path, entry.learnerId, entry.kind),
-          'The learner must pass all required stages.',
+          'The learner must complete all required stages.',
         );
         check(
-          !school || t.certificateRequests?.some((row) => sameCertificate(row, entry)),
+          !school ||
+            t.certificateRequests?.some(
+              (row) => row.status !== 'rejected' && sameCertificate(row, entry),
+            ),
           'The institution must request this certificate first.',
         );
         check(
@@ -400,7 +457,15 @@ export function applyTrainingAction(
         'Confirm the stage certificate payment first.',
       );
       t.credentials.push(
-        ...entries.map((entry) => ({ ...entry, issuedBy: actor.id, issuedAt: now })),
+        ...entries.map((entry) => {
+          const schoolScore = school ? schoolCertificateScore(t, entry) : undefined;
+          return {
+            ...entry,
+            issuedBy: actor.id,
+            issuedAt: now,
+            ...(schoolScore === undefined ? {} : { schoolScore }),
+          };
+        }),
       );
       if (!school && action.kind === 'venture' && path.status === 'active')
         path.status = 'completed';
@@ -452,7 +517,7 @@ export function applyTrainingAction(
         );
         check(
           path && credentialReady(p, path, actor.id, action.purpose),
-          'Pass the stage exam before requesting a certificate payment.',
+          'Complete the stage assessment before requesting a certificate payment.',
         );
         check(
           !t.credentials.some(
@@ -798,36 +863,6 @@ export function applyTrainingAction(
         attendance,
       });
       return action.id;
-    }
-    case 'institution-contribution':
-    case 'institution-contributions': {
-      const venture = p.ventures.find(
-        (row) => row.id === action.ventureId && row.ownerId === actor.id,
-      );
-      const group = t.groups.find(
-        (row) => row.id === venture?.groupId && row.institutionId === ownSchool?.id,
-      );
-      check(isSchoolAdmin && venture && group, 'Choose a venture from your school.');
-      const entries = action.type === 'institution-contribution' ? [action] : action.entries;
-      check(entries.length > 0, 'Enter at least one contribution before saving.');
-      const learnerIds = new Set(entries.map((entry) => entry.learnerId));
-      check(
-        learnerIds.size === entries.length &&
-          entries.every((entry) => group.studentIds.includes(entry.learnerId)),
-        'Choose distinct students from this venture group.',
-      );
-      const notes = entries.map(({ learnerId, evidence }) => ({
-        ventureId: venture.id,
-        learnerId,
-        evidence: text(evidence, 10),
-      }));
-      t.contributions = [
-        ...t.contributions.filter(
-          (row) => row.ventureId !== venture.id || !learnerIds.has(row.learnerId),
-        ),
-        ...notes,
-      ];
-      return venture.id;
     }
     case 'institution-affiliation':
       check(

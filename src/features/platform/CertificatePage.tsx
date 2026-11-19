@@ -5,7 +5,7 @@ import { NotFoundPage } from '../info/NotFoundPage';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { can } from '../../domain/roles';
 import { institutionAccess } from '../../domain/incubation';
-import { credentialTitle } from './TrainingForms';
+import { certificateDetails, credentialTitle } from './TrainingForms';
 export function CertificatePage() {
   const { id } = useParams();
   const { state, account } = useDemo();
@@ -26,6 +26,7 @@ export function CertificatePage() {
       !can(account, 'admin')
     )
       return <NotFoundPage />;
+    const { division, achievements } = certificateDetails(state.platform, credential);
     return (
       <section className="container section narrow-content">
         <div className="terms-document training-certificate">
@@ -35,8 +36,23 @@ export function CertificatePage() {
             {student?.name ?? state.accounts.find((row) => row.id === credential.learnerId)?.name}
           </h2>
           <p>
-            {student ? 'Venture contributor' : 'Venture owner'} · {venture.name}
+            {student ? 'School venture participant' : 'Venture owner'} · {venture.name}
           </p>
+          {division && (
+            <p>
+              <strong>Classification</strong> · {division}
+            </p>
+          )}
+          {achievements.length > 0 && (
+            <>
+              <h3>Achievements</h3>
+              <ul>
+                {achievements.map((achievement) => (
+                  <li key={achievement}>{achievement}</li>
+                ))}
+              </ul>
+            </>
+          )}
           <p>
             Issued{' '}
             {new Date(credential.issuedAt).toLocaleDateString('en-KE', {

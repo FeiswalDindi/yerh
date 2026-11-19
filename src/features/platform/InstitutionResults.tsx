@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Pencil } from 'lucide-react';
 import {
   certificateKey,
   cohortForVenture,
@@ -10,17 +10,24 @@ import {
   incubationLearners,
   institutionForPath,
   schoolForVenture,
+  schoolCertificateScore,
+  schoolDivision,
   passMark,
-  passedStage,
+  completedStage,
   stageUnlocked,
-  type CertificateSelection,
   type Cohort,
   type Institution,
   type StageId,
 } from '../../domain/incubation';
 import type { DemoAccount } from '../../domain/demo';
 import type { PlatformState } from '../../domain/platform';
-import { credentialTitle, field, TrainingForm, type Save } from './TrainingForms';
+import {
+  certificateDetails,
+  credentialTitle,
+  field,
+  TrainingForm,
+  type Save,
+} from './TrainingForms';
 import { WorkspaceTable, WorkspaceTabs } from './WorkspaceControls';
 
 function certificateFile(
@@ -30,13 +37,19 @@ function certificateFile(
   role: string,
   issued: string,
   id: string,
+  { division, achievements }: ReturnType<typeof certificateDetails>,
 ) {
   const escape = (value: string) =>
     value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  const outcome = division
+    ? `<p>Classification · ${escape(division)}</p>`
+    : achievements.length
+      ? `<p>Achievements</p><ul>${achievements.map((item) => `<li>${escape(item)}</li>`).join('')}</ul>`
+      : '';
   const document = `<!doctype html><html lang="en"><meta charset="utf-8"><title>${escape(title)}</title>
   <style>body{max-width:48rem;margin:8vh auto;padding:3rem;border:4px double #243962;text-align:center;color:#17294a;font:1.15rem Georgia,serif;overflow-wrap:anywhere}h1{margin:2rem 0}small{display:block;margin-top:2rem}</style>
   <p>Youth Entrepreneurship Resource Hub · Kenya</p><h1>${escape(title)}</h1><h2>${escape(learner)}</h2>
-  <p>${role} · ${escape(venture)}</p><p>Issued ${escape(new Date(issued).toLocaleDateString('en-KE', { dateStyle: 'medium', timeZone: 'Africa/Nairobi' }))}</p>
+  <p>${role} · ${escape(venture)}</p>${outcome}<p>Issued ${escape(new Date(issued).toLocaleDateString('en-KE', { dateStyle: 'medium', timeZone: 'Africa/Nairobi' }))}</p>
   <small>Record ID: ${escape(id)}</small><p>YERH development demo · Browser-local certificate</p></html>`;
   return 'data:text/html;charset=utf-8,' + encodeURIComponent(document);
 }
@@ -236,19 +249,27 @@ export function InstitutionResults({
       const work = getStage(p.training, row.path.id, stage.id);
       const attempts =
         work?.attempts.filter((attempt) => attempt.learnerId === row.learner.id) ?? [];
+      const latestAttempt = attempts.at(-1);
       return {
         ...row,
         stage,
         assessmentId: JSON.stringify([row.path.id, row.learner.id, stage.id]),
         attempts,
-        latest: attempts.at(-1)?.score ?? null,
+        latestAttempt,
+        latest: latestAttempt?.score ?? null,
+        canEdit:
+          !readonly &&
+          school.kind === 'high-school' &&
+          row.path.status !== 'pending' &&
+          !!work?.examOpenedAt &&
+          stageUnlocked(p, row.path, stage.id, row.learner.id),
         canRecord:
           school.kind === 'high-school' &&
           row.path.status !== 'pending' &&
           !!work?.examOpenedAt &&
           !attempts.some((attempt) => attempt.score === null) &&
           stageUnlocked(p, row.path, stage.id, row.learner.id) &&
-          !passedStage(p.training, row.path.id, stage.id, row.learner.id),
+          !completedStage(p.training, row.path.id, stage.id, row.learner.id),
       };
     }),
   );
@@ -258,7 +279,7 @@ export function InstitutionResults({
     const scores = marks
       .filter((mark) => mark.key === row.key)
       .flatMap((mark) => (mark.latest === null ? [] : [mark.latest]));
-    if (outcome === 'resit') return scores.some((score) => score < passMark);
+    if (outcome === 'below-benchmark') return scores.some((score) => score < passMark);
     if (outcome === 'assessed') return scores.length > 0;
     return scores.length === 0;
   });
@@ -309,6 +330,51 @@ export function InstitutionResults({
     new Date(date).toLocaleDateString('en-KE', { dateStyle: 'medium', timeZone: 'Africa/Nairobi' });
   const scoreFor = (key: string, stage: StageId) =>
     marks.find((row) => row.key === key && row.stage.id === stage)?.latest ?? '—';
+  function markCell(mark: (typeof marks)[number] | undefined) {
+    const attempt = mark?.latestAttempt;
+    if (!mark || !attempt || attempt.score === null) return '—';
+    const score = attempt.score;
+    if (!mark.canEdit) return score;
+    return (
+      <div className="workspace-mark">
+        <span>{score}</span>
+        <TrainingForm
+          save={save}
+          label="Save mark"
+          dialog={{
+            action: `Edit mark for ${mark.learner.name}, ${mark.stage.title}`,
+            title: 'Edit mark',
+            icon: <Pencil size={15} aria-hidden="true" />,
+          }}
+          build={(data) => ({
+            type: 'stage-offline-score-edit',
+            incubationId: mark.path.id,
+            stage: mark.stage.id,
+            learnerId: mark.learner.id,
+            attemptId: attempt.id,
+            expectedScore: score,
+            score: Number(field(data, 'score')),
+          })}
+        >
+          <p>
+            {mark.learner.name} · {mark.venture} · {mark.stage.title}
+          </p>
+          <label>
+            Mark (%)
+            <input
+              name="score"
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              defaultValue={score}
+              required
+            />
+          </label>
+        </TrainingForm>
+      </div>
+    );
+  }
   const requests = new Map(
     (p.training.certificateRequests ?? []).map((row) => [certificateKey(row), row]),
   );
@@ -318,15 +384,28 @@ export function InstitutionResults({
       const selection = { incubationId: row.path.id, learnerId: row.learner.id, kind };
       const key = certificateKey(selection);
       const issued = issuedByKey.get(key);
-      const qualifies = credentialReady(p, row.path, row.learner.id, kind);
-      if (!qualifies && !issued) return [];
+      const requested = requests.get(key);
+      const completed = credentialReady(p, row.path, row.learner.id, kind);
+      if (!issued && !requested && !(school.kind === 'high-school' && completed)) return [];
+      const score =
+        school.kind === 'high-school' ? schoolCertificateScore(p.training, selection) : undefined;
       return [
         {
           ...row,
           selection,
-          key,
+          certificateId: key,
           issued,
-          requested: requests.get(key),
+          requested,
+          division: issued
+            ? certificateDetails(p, issued).division
+            : score === undefined
+              ? undefined
+              : schoolDivision(score),
+          canRequest:
+            school.kind === 'high-school' &&
+            !issued &&
+            completed &&
+            (!requested || requested.status === 'rejected'),
           title: credentialTitle(p.training, kind),
         },
       ];
@@ -335,22 +414,31 @@ export function InstitutionResults({
   const shownCertificates = certificates.filter(
     (row) => !certificateKind || row.selection.kind === certificateKind,
   );
-  const eligible = shownCertificates.filter((row) => !row.issued && !row.requested);
+  const eligible = shownCertificates.filter((row) => row.canRequest);
   const showAssessmentHelp =
     !readonly &&
     school.kind === 'high-school' &&
-    marks.some((row) => (row.latest ?? -1) < passMark) &&
+    marks.some(
+      (row) => row.latest === null && stageUnlocked(p, row.path, row.stage.id, row.learner.id),
+    ) &&
     !marks.some((row) => row.canRecord);
-  const request = (entries: CertificateSelection[], all = false) =>
+  const request = (entries: typeof certificates, all = false) =>
     !readonly && (
       <TrainingForm
         save={save}
         label={all ? 'Send all requests' : 'Send certificate request'}
         dialog={{
-          action: all ? `Request all eligible (${entries.length})` : 'Request certificate',
+          action: all
+            ? `Request all eligible (${entries.length})`
+            : entries[0]?.requested?.status === 'rejected'
+              ? 'Request again'
+              : 'Request certificate',
           title: all ? 'Request certificates' : undefined,
         }}
-        build={() => ({ type: 'institution-certificates-request', entries })}
+        build={() => ({
+          type: 'institution-certificates-request',
+          entries: entries.map((row) => row.selection),
+        })}
       >
         <p>
           {entries.length === 1
@@ -374,7 +462,9 @@ export function InstitutionResults({
               <strong>
                 {scores.length ? Math.round((100 * passed) / scores.length) + '%' : '—'}
               </strong>
-              <span>{stage.title} pass rate</span>
+              <span>
+                {stage.title} · {passMark}% benchmark
+              </span>
               <small>
                 {passed} of {scores.length} venture assessments
               </small>
@@ -416,7 +506,7 @@ export function InstitutionResults({
               <select value={outcome} onChange={(event) => setOutcome(event.target.value)}>
                 <option value="">All results</option>
                 <option value="assessed">Has marks</option>
-                <option value="resit">Resit available</option>
+                <option value="below-benchmark">Below {passMark}% benchmark</option>
                 <option value="unassessed">No marks yet</option>
               </select>
             </label>
@@ -426,10 +516,17 @@ export function InstitutionResults({
         rows={filteredRows.map((row) => ({
           id: row.key,
           search: [row.learner.name, row.venture].join(' '),
-          cells: [
+          csv: [
             row.learner.name,
             row.venture,
             ...p.training.curriculum.map((stage) => scoreFor(row.key, stage.id)),
+          ],
+          cells: [
+            row.learner.name,
+            row.venture,
+            ...p.training.curriculum.map((stage) =>
+              markCell(marks.find((mark) => mark.key === row.key && mark.stage.id === stage.id)),
+            ),
             <Link to={href({ learner: row.key })} aria-label="View results">
               View
             </Link>,
@@ -458,8 +555,21 @@ export function InstitutionResults({
       </div>
       <WorkspaceTable
         label="certificates"
-        columns={['Student', 'Certificate', 'Venture', 'Requested on', 'Issued on', 'Action']}
-        empty="Certificates appear here as learners qualify."
+        columns={[
+          'Student',
+          'Certificate',
+          'Venture',
+          ...(school.kind === 'high-school' ? ['Classification'] : []),
+          'Requested on',
+          'Issued on',
+          'Decision',
+          'Action',
+        ]}
+        empty={
+          school.kind === 'high-school'
+            ? 'Students appear here after a stage assessment is recorded.'
+            : 'Issued certificates appear here.'
+        }
         exportName="yerh-cohort-certificates.csv"
         actions={
           <>
@@ -478,22 +588,26 @@ export function InstitutionResults({
                 ))}
               </select>
             </label>
-            {eligible.length > 0 &&
-              request(
-                eligible.map((row) => row.selection),
-                true,
-              )}
+            {eligible.length > 0 && request(eligible, true)}
           </>
         }
         rows={shownCertificates.map((row) => ({
-          id: row.key,
+          id: row.certificateId,
           search: [row.learner.name, row.title, row.venture].join(' '),
           cells: [
             row.learner.name,
             row.title,
             row.venture,
+            ...(school.kind === 'high-school' ? [row.division ?? '—'] : []),
             row.requested ? dateName(row.requested.requestedAt) : '—',
             row.issued ? dateName(row.issued.issuedAt) : '—',
+            row.issued
+              ? 'Issued'
+              : row.requested?.status === 'rejected'
+                ? `Rejected. ${row.requested.rejections?.at(-1)?.reason ?? ''}`
+                : row.requested
+                  ? 'Awaiting review'
+                  : 'Ready to request',
             row.issued ? (
               <div className="workspace-row-actions">
                 <Link to={'/certificates/' + row.issued.id} aria-label="View certificate">
@@ -505,16 +619,17 @@ export function InstitutionResults({
                     row.title,
                     row.learner.name,
                     row.venture,
-                    school.kind === 'high-school' ? 'Venture contributor' : 'Venture owner',
+                    school.kind === 'high-school' ? 'School venture participant' : 'Venture owner',
                     row.issued.issuedAt,
                     row.issued.id,
+                    certificateDetails(p, row.issued),
                   )}
                 >
                   Download HTML
                 </a>
               </div>
-            ) : !row.requested ? (
-              request([row.selection])
+            ) : row.canRequest ? (
+              request([row])
             ) : (
               '—'
             ),

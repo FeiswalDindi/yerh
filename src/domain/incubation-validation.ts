@@ -4,6 +4,7 @@ import {
   certificateKey,
   feePurposes,
   incubationLearners,
+  institutionForPath,
   schoolForVenture,
   stageIds,
   type TrainingState,
@@ -16,6 +17,8 @@ const fields = (value: unknown, keys: string[]): value is Record<string, unknown
 const isStage = (value: unknown) => stageIds.some((id) => id === value);
 const money = (value: unknown) =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+const score = (value: unknown) =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 100;
 const date = (value: string) => Number.isFinite(Date.parse(value));
 const rows = (value: unknown, check: (item: unknown) => boolean) =>
   Array.isArray(value) && value.every(check);
@@ -65,11 +68,14 @@ export function isTrainingState(value: unknown): value is TrainingState {
           row.attempts,
           (attempt) =>
             fields(attempt, ['id', 'learnerId', 'answer', 'note', 'recordedBy', 'submittedAt']) &&
-            (attempt.score === null ||
-              (typeof attempt.score === 'number' &&
-                Number.isInteger(attempt.score) &&
-                attempt.score >= 0 &&
-                attempt.score <= 100)),
+            (attempt.score === null || score(attempt.score)) &&
+            (attempt.corrections === undefined ||
+              (score(attempt.score) &&
+                rows(
+                  attempt.corrections,
+                  (entry) =>
+                    fields(entry, ['correctedBy', 'correctedAt']) && score(entry.previousScore),
+                ))),
         ),
     ) &&
     rows(
@@ -85,7 +91,9 @@ export function isTrainingState(value: unknown): value is TrainingState {
       value.credentials,
       (row) =>
         fields(row, ['id', 'incubationId', 'learnerId', 'kind', 'issuedAt', 'issuedBy']) &&
-        (isStage(row.kind) || row.kind === 'venture'),
+        (isStage(row.kind) || row.kind === 'venture') &&
+        (row.schoolScore === undefined ||
+          (typeof row.schoolScore === 'number' && row.schoolScore >= 0 && row.schoolScore <= 100)),
     ) &&
     rows(
       value.productReviews,
@@ -144,7 +152,6 @@ export function isTrainingState(value: unknown): value is TrainingState {
         (row.groupIds === undefined || rows(row.groupIds, (id) => typeof id === 'string')) &&
         rows(row.attendance, (id) => typeof id === 'string'),
     ) &&
-    rows(value.contributions, (row) => fields(row, ['ventureId', 'learnerId', 'evidence'])) &&
     (value.cohorts === undefined ||
       rows(
         value.cohorts,
@@ -157,7 +164,21 @@ export function isTrainingState(value: unknown): value is TrainingState {
         value.certificateRequests,
         (row) =>
           fields(row, ['incubationId', 'learnerId', 'kind', 'requestedBy', 'requestedAt']) &&
-          (isStage(row.kind) || row.kind === 'venture'),
+          (isStage(row.kind) || row.kind === 'venture') &&
+          (row.status === undefined ||
+            row.status === 'pending' ||
+            (row.status === 'rejected' &&
+              Array.isArray(row.rejections) &&
+              row.rejections.length > 0)) &&
+          (row.rejections === undefined ||
+            rows(
+              row.rejections,
+              (entry) =>
+                fields(entry, ['reason', 'reviewedBy', 'reviewedAt']) &&
+                typeof entry.reason === 'string' &&
+                entry.reason.trim().length >= 5 &&
+                entry.reason.length <= 3000,
+            )),
       )) &&
     (value.yerhSignIn === undefined || typeof value.yerhSignIn === 'boolean') &&
     record(value.affiliations) &&
@@ -197,7 +218,11 @@ export function validTrainingReferences(p: PlatformState, accounts: DemoAccount[
         path &&
         incubationLearners(p, path).includes(row.learnerId) &&
         accountIds.has(row.requestedBy) &&
-        date(row.requestedAt)
+        date(row.requestedAt) &&
+        (!row.rejections ||
+          row.rejections.every(
+            (entry) => accountIds.has(entry.reviewedBy) && date(entry.reviewedAt),
+          ))
       );
     }) &&
     [t.stages, t.payments, t.credentials, t.institutions, t.students, t.groups].every(
@@ -253,16 +278,6 @@ export function validTrainingReferences(p: PlatformState, accounts: DemoAccount[
             cohort.institutionId === schoolForVenture(p, venture)?.id,
         ),
     ) &&
-    unique(t.contributions.map((entry) => JSON.stringify([entry.ventureId, entry.learnerId]))) &&
-    t.contributions.every((entry) =>
-      t.groups.some(
-        (group) =>
-          group.studentIds.includes(entry.learnerId) &&
-          p.ventures.some(
-            (venture) => venture.groupId === group.id && venture.id === entry.ventureId,
-          ),
-      ),
-    ) &&
     p.ventures.every(
       (venture) =>
         !venture.groupId ||
@@ -292,7 +307,12 @@ export function validTrainingReferences(p: PlatformState, accounts: DemoAccount[
           (attempt) =>
             learners.includes(attempt.learnerId) &&
             accountIds.has(attempt.recordedBy) &&
-            date(attempt.submittedAt),
+            date(attempt.submittedAt) &&
+            (!attempt.corrections ||
+              (school &&
+                attempt.corrections.every(
+                  (entry) => accountIds.has(entry.correctedBy) && date(entry.correctedAt),
+                ))),
         )
       );
     }) &&
@@ -314,7 +334,8 @@ export function validTrainingReferences(p: PlatformState, accounts: DemoAccount[
         path &&
         incubationLearners(p, path).includes(row.learnerId) &&
         accountIds.has(row.issuedBy) &&
-        date(row.issuedAt)
+        date(row.issuedAt) &&
+        (row.schoolScore === undefined || institutionForPath(p, path)?.kind === 'high-school')
       );
     }) &&
     Object.entries(t.affiliations).every(

@@ -10,7 +10,9 @@ import { mediaAssets } from '../src/config/media.ts';
 import {
   canPublishProduct,
   cohortForVenture,
+  incubationCertificateQueue,
   migrateSchoolPathways,
+  schoolDivision,
   stageUnlocked,
   type StageId,
 } from '../src/domain/incubation.ts';
@@ -553,7 +555,7 @@ test('venture approval, incubation assignment, mentor updates and graduation pre
   });
   assert.throws(
     () => applyDemoAction(s, { type: 'incubation-complete', id: 'incubation', now }),
-    /all three stage exams/,
+    /all three stage assessments/,
   );
   s = login(s, 'demo-mentor');
   act({
@@ -593,7 +595,7 @@ test('venture approval, incubation assignment, mentor updates and graduation pre
   s = login(s, 'demo-admin');
   assert.throws(
     () => applyDemoAction(s, { type: 'incubation-complete', id: 'incubation', now }),
-    /all three stage exams/,
+    /all three stage assessments/,
   );
 });
 
@@ -702,7 +704,7 @@ function trainingScenario() {
   };
 }
 
-test('stages pass in order independently of fees, with product-specific graduation and a free final credential', () => {
+test('graded stages complete in order independently of score and fees, with product-specific graduation and a free final credential', () => {
   const { act, reject, owner, mentor, admin, launch, openStage, product, visible, state } =
     trainingScenario();
   product('original');
@@ -746,12 +748,11 @@ test('stages pass in order independently of fees, with product-specific graduati
       note: 'Assessed the evidence and answers using the stage rubric.',
     });
   };
-  attempt('failed', 40);
   assert.equal(
     stageUnlocked(state().platform, state().platform.incubations[0]!, 'advanced'),
     false,
   );
-  attempt('resit', 75);
+  attempt('first-assessment', 0);
   assert.equal(stageUnlocked(state().platform, state().platform.incubations[0]!, 'advanced'), true);
   const first = { ...final, id: 'first', kind: 'getting-started' } as const;
   reject(admin, first, /payment/);
@@ -766,9 +767,13 @@ test('stages pass in order independently of fees, with product-specific graduati
   act(admin, { type: 'training-payment-review', id: 'stage-payment', decision: 'confirmed', now });
   act(admin, first);
   reject(admin, first, /already been issued/);
-  attempt('stage-two', 75, openStage(owner, 'advanced'));
-  attempt('stage-three', 75, openStage(owner, 'funding'));
+  attempt('stage-two', 45, openStage(owner, 'advanced'));
+  attempt('stage-three', 25, openStage(owner, 'funding'));
   act(admin, final);
+  assert.equal(
+    state().platform.training.credentials.find((record) => record.id === 'final')?.schoolScore,
+    undefined,
+  );
   assert.equal(state().platform.incubations[0]!.status, 'completed');
   assert.equal(visible('original'), true);
   product('later');
@@ -836,7 +841,7 @@ test('paid listings need confirmed payment and moderation, with settings and amo
   assert.equal(visible('unpaid'), false);
 });
 
-test('school agreements gate activation and group venture certification respects individual contributions and marks', () => {
+test('school agreements gate activation and school ventures issue certificates with classifications for all completed assessments', () => {
   const { act, reject, owner, admin, launch, openStage, state } = trainingScenario();
   const school = 'demo-school';
   const pupil = 'demo-student-a';
@@ -1096,9 +1101,10 @@ test('school agreements gate activation and group venture certification respects
   });
   const first = openStage(school, 'getting-started');
   act(school, record(pupil, 80, first));
-  act(school, record(teammate, 40, first));
   const second = openStage(school, 'advanced');
-  reject(school, record(teammate, 80, second), /earlier stages/);
+  reject(school, record(teammate, 50, second), /earlier stages/);
+  act(school, record(teammate, 0, first));
+  act(school, record(teammate, 50, second));
   act(school, record(pupil, 80, second));
   act(school, record(pupil, 90, openStage(school, 'funding')));
   const final = {
@@ -1109,27 +1115,6 @@ test('school agreements gate activation and group venture certification respects
     kind: 'venture',
     now,
   } as const;
-  reject(admin, final, /required stages/);
-  const batch = {
-    type: 'institution-contributions' as const,
-    ventureId: 'group-venture',
-    entries: [
-      { learnerId: pupil, evidence: 'Led interviews and tested the lesson format.' },
-      { learnerId: teammate, evidence: 'Recorded the costs of the pilot.' },
-    ],
-    now,
-  };
-  reject(
-    school,
-    { ...batch, entries: [batch.entries[0]!, { learnerId: teammate, evidence: 'short' }] },
-    /./,
-  );
-  assert.equal(state().platform.training.contributions.length, 0);
-  act(school, batch);
-  assert.deepEqual(
-    state().platform.training.contributions,
-    batch.entries.map((entry) => ({ ...entry, ventureId: batch.ventureId })),
-  );
   reject(admin, final, /request this certificate/);
   act(school, {
     type: 'institution-cohort',
@@ -1152,7 +1137,7 @@ test('school agreements gate activation and group venture certification respects
     school,
     {
       ...schoolRequest,
-      entries: [schoolRequest.entries[0], { ...schoolRequest.entries[1], learnerId: teammate }],
+      entries: [schoolRequest.entries[0], { ...schoolRequest.entries[0], learnerId: teammate }],
     },
     /every selected learner/i,
   );
@@ -1173,9 +1158,7 @@ test('school agreements gate activation and group venture certification respects
   } as const;
   const issue = { ...issueStage, recipients: [...issueStage.recipients] };
   reject(school, issue, /only a platform administrator/i);
-  reject(admin, issue, /required stages/);
   assert.equal(state().platform.training.credentials.length, 1);
-  act(school, { ...record(teammate, 75, first), attemptId: 'teammate-resit' });
   reject(admin, issue, /request this certificate/);
   act(school, {
     ...schoolRequest,
@@ -1187,6 +1170,10 @@ test('school agreements gate activation and group venture certification respects
       .platform.training.credentials.filter((row) => row.kind === 'getting-started')
       .map((row) => row.learnerId),
     [pupil, teammate],
+  );
+  assert.deepEqual(
+    state().platform.training.credentials.map((record) => record.schoolScore),
+    [250 / 3, 80, 0],
   );
   reject(admin, issue, /already been issued/);
   reject(admin, { ...final, id: 'teammate-final', learnerId: teammate }, /required stages/);
@@ -1243,6 +1230,104 @@ test('legacy school approvals release on load while retaining recorded pathway d
   });
   assert.equal(state().platform.training.stages.at(-1)?.examOpenedAt, now);
   assert.equal(state().platform.training.stages.at(-1)?.steps.length, definition.steps.length);
+});
+
+test('school staff can correct a stage mark and request its certificate before the next stage', () => {
+  const { act, reject, admin, launch, openStage, state } = trainingScenario();
+  const school = 'demo-school';
+  const learnerId = 'demo-student-a';
+  const ventureId = 'school-marks';
+  act(school, {
+    type: 'venture-save',
+    venture: {
+      ...state().platform.ventures[0]!,
+      id: ventureId,
+      groupId: 'demo-school-group',
+      name: 'Classroom enterprise',
+    },
+    now,
+  });
+  launch(school, ventureId);
+  const first = openStage(school, 'getting-started');
+  act(school, {
+    ...first,
+    type: 'stage-offline-result',
+    learnerId,
+    attemptId: 'school-paper',
+    score: 48,
+    note: 'Marks recorded from the classroom assessment.',
+  });
+  const correct = {
+    ...first,
+    type: 'stage-offline-score-edit',
+    learnerId,
+    attemptId: 'school-paper',
+    expectedScore: 48,
+    score: 74,
+  } as const;
+  reject(admin, correct, /access/);
+  reject(school, { ...correct, score: 101 }, /whole-number score/);
+  act(school, correct);
+  reject(school, correct, /mark changed/);
+  assert.ok(
+    stageUnlocked(state().platform, state().platform.incubations[0]!, 'advanced', learnerId),
+  );
+  const mark = state().platform.training.stages[0]!.attempts[0]!;
+  assert.equal(mark.score, 74);
+  assert.equal(mark.corrections?.[0]?.previousScore, 48);
+  assert.equal(state().platform.training.stages[0]!.attempts.length, 1);
+  const entry = { incubationId: 'pathway', learnerId, kind: 'getting-started' } as const;
+  const request = {
+    type: 'institution-certificates-request',
+    entries: [entry],
+    now,
+  } as const;
+  act(school, { ...request, entries: [...request.entries] });
+  assert.ok(incubationCertificateQueue(state().platform).some((row) => row.request && row.ready));
+  act(school, { ...correct, expectedScore: 74, score: 48 });
+  assert.ok(incubationCertificateQueue(state().platform).some((row) => row.request && row.ready));
+  const decision = {
+    type: 'school-certificates-reject',
+    incubationId: 'pathway',
+    kind: 'getting-started',
+    learnerIds: [learnerId],
+    reason: 'Please verify the evidence came from this cohort.',
+    now,
+  } as const;
+  const rejectRequest = { ...decision, learnerIds: [...decision.learnerIds] };
+  reject(school, rejectRequest, /only a platform administrator/i);
+  reject(admin, { ...rejectRequest, reason: '' }, /between 5/);
+  act(admin, rejectRequest);
+  assert.equal(incubationCertificateQueue(state().platform).length, 0);
+  assert.equal(
+    state().platform.training.certificateRequests?.[0]?.rejections?.[0]?.reason,
+    decision.reason,
+  );
+  const issue = {
+    type: 'school-credentials-issue',
+    incubationId: 'pathway',
+    kind: 'getting-started',
+    recipients: [{ learnerId, id: 'corrected-certificate' }],
+    now,
+  } as const;
+  reject(admin, { ...issue, recipients: [...issue.recipients] }, /request this certificate/);
+  act(school, { ...request, entries: [entry] });
+  assert.equal(state().platform.training.certificateRequests?.length, 1);
+  assert.equal(state().platform.training.certificateRequests?.[0]?.rejections?.length, 1);
+  act(admin, { ...issue, recipients: [...issue.recipients] });
+  reject(admin, rejectRequest, /awaiting review/);
+  act(school, { ...correct, expectedScore: 48, score: 50 });
+  assert.equal(state().platform.training.credentials[0]?.schoolScore, 48);
+  assert.deepEqual([0, 49, 50, 59, 60, 69, 70, 100].map(schoolDivision), [
+    'Completion',
+    'Completion',
+    'Second Class Lower',
+    'Second Class Lower',
+    'Second Class Upper',
+    'Second Class Upper',
+    'First Class',
+    'First Class',
+  ]);
 });
 
 test('administrators manage events and categories without dropping registrations or applying stale edits', () => {

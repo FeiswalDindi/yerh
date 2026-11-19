@@ -525,6 +525,24 @@ export async function checkPlatformRendering() {
   assert.ok(incubationApprovals.includes('Review application'));
   assert.ok(incubationApprovals.includes('Demo seedling starter kit'));
   assert.ok(!incubationApprovals.includes('Review listing'));
+  const founderCertificatePreview = structuredClone(launchedVenture);
+  founderCertificatePreview.platform.training.credentials.push({
+    id: 'founder-stage-certificate',
+    incubationId: 'seedling-incubation',
+    learnerId: 'demo-founder',
+    kind: 'getting-started',
+    issuedAt: now,
+    issuedBy: 'demo-admin',
+  });
+  const founderCertificate = render(
+    '/certificates/founder-stage-certificate',
+    'demo-founder',
+    undefined,
+    founderCertificatePreview,
+  );
+  assert.ok(founderCertificate.includes('Achievements'));
+  assert.ok(founderCertificate.includes('Customer discovery'));
+  assert.ok(!founderCertificate.includes('Classification'));
   const submittedVenture = applyDemoAction(
     { ...state, activeAccountId: 'demo-school' },
     {
@@ -668,6 +686,17 @@ export async function checkPlatformRendering() {
       note: 'Offline assessment',
     })),
   });
+  teamPreview.platform.training.stages.push({
+    id: 'test-school-path:advanced',
+    incubationId: 'test-school-path',
+    stage: 'advanced',
+    steps: [],
+    reviewRequestedAt: '',
+    meetingAt: '',
+    meetingNote: '',
+    examOpenedAt: now,
+    attempts: [],
+  });
   teamPreview.platform.training.credentials.push({
     id: 'test-issued',
     incubationId: 'test-school-path',
@@ -709,7 +738,7 @@ export async function checkPlatformRendering() {
     undefined,
     teamPreview,
   );
-  assert.ok(schoolPathway.includes('Individual contributions'));
+  assert.ok(!schoolPathway.includes('Individual contributions'));
   assert.ok(schoolPathway.includes('Record marks'));
   assert.ok(!schoolPathway.includes('Jordan Otieno'));
   assert.ok(!schoolPathway.includes('Mentor meeting'));
@@ -734,6 +763,16 @@ export async function checkPlatformRendering() {
   );
   assert.ok(certs.includes('/certificates/test-issued'));
   assert.ok(certs.includes('Download HTML'));
+  assert.ok(certs.includes('First Class'));
+  assert.ok(certs.includes('Request certificate'));
+  assert.ok(certs.includes('Completion'));
+  const printedCertificate = render(
+    '/certificates/test-issued',
+    'demo-school',
+    undefined,
+    teamPreview,
+  );
+  assert.ok(printedCertificate.includes('First Class'));
   assert.ok(!certs.includes('pass rate'));
   const teamResults = render(
     '/dashboard/workspace?tab=member-results&cohort=all',

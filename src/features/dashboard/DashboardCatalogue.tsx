@@ -9,7 +9,7 @@ import { DashboardCatalogueSearch } from './DashboardCatalogueSearch';
 import { DashboardCategoryRail } from './DashboardCategoryRail';
 import { useCatalogueFilters } from './useCatalogueFilters';
 import { coursePricing } from '../../domain/courses';
-import { managesVenture, passedStage } from '../../domain/incubation';
+import { completedStage, managesVenture } from '../../domain/incubation';
 import { WorkspaceDialog } from '../platform/WorkspaceControls';
 import { workspaceHref } from './dashboard-navigation';
 
@@ -33,7 +33,7 @@ export function DashboardCatalogue({ kind }: { kind: 'learning' | 'marketplace' 
     const path = [...p.incubations].reverse().find((entry) => entry.ventureId === venture.id);
     const complete = path
       ? p.training.curriculum.filter((stage) =>
-          passedStage(p.training, path.id, stage.id, account.id),
+          completedStage(p.training, path.id, stage.id, account.id),
         ).length
       : 0;
     return { venture, path, complete };
@@ -104,7 +104,7 @@ export function DashboardCatalogue({ kind }: { kind: 'learning' | 'marketplace' 
                     <strong>Incubation Pathway</strong>
                     <small>
                       {currentPath
-                        ? `${currentPath.venture.name} · ${currentPath.complete} of ${p.training.curriculum.length} stages passed`
+                        ? `${currentPath.venture.name} · ${currentPath.complete} of ${p.training.curriculum.length} stages completed`
                         : 'Choose a venture to start your pathway.'}
                     </small>
                   </span>

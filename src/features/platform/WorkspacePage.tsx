@@ -149,7 +149,6 @@ export function WorkspacePage() {
     const ok = execute(contextId ? { ...action, institutionContextId: contextId } : action);
     if (ok) {
       const messages: Record<string, string> = {
-        'institution-contributions': 'Team contributions saved.',
         'institution-certificates-request':
           'Certificate requests sent to the platform administrator.',
         'product-save': schoolStaff
@@ -161,6 +160,8 @@ export function WorkspacePage() {
         'product-evidence':
           'Product evidence submitted. The mentor or platform administrator can review it under Product evidence reviews.',
         'school-credentials-issue': 'School certificates issued.',
+        'school-certificates-reject': 'Certificate decision saved and shared with the school.',
+        'stage-offline-score-edit': 'Mark updated.',
         'school-stage-open': 'Assessment opened. You can now record marks.',
         'stage-request': 'Stage review requested.',
       };

@@ -31,6 +31,7 @@ const schoolCommands = new Set([
   'stage-evidence',
   'school-stage-open',
   'stage-offline-result',
+  'stage-offline-score-edit',
   'product-evidence',
   'training-payment-request',
   'institution-proof',
@@ -40,8 +41,6 @@ const schoolCommands = new Set([
   'institution-profile',
   'institution-group',
   'institution-class',
-  'institution-contribution',
-  'institution-contributions',
 ]);
 export function isPlatformAction(action: { type: string }): action is PlatformAction {
   return (
@@ -163,7 +162,9 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
   const schoolId =
     school?.id ??
     p.training.institutions.find((row) => row.adminId === operator.id)?.id ??
-    (action.type === 'training-credential-issue' || action.type === 'school-credentials-issue'
+    (action.type === 'training-credential-issue' ||
+    action.type === 'school-credentials-issue' ||
+    action.type === 'school-certificates-reject'
       ? schoolForVenture(
           p,
           p.ventures.find(
@@ -619,7 +620,7 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       require('admin');
       const i = p.incubations.find((i) => i.id === action.id && i.status === 'active');
       if (!i || p.ventures.some((v) => v.id === i.ventureId && v.groupId) || !canGraduate(p, i))
-        throw new Error('Pass all three stage exams before graduating this incubation.');
+        throw new Error('Complete all three stage assessments before graduating this incubation.');
       i.status = 'completed';
       audit(i.id);
       break;

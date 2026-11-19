@@ -6,7 +6,7 @@ import {
   incubationLearners,
   institutionAccess,
   institutionForPath,
-  passedStage,
+  completedStage,
   stageUnlocked,
 } from '../../domain/incubation';
 import { courseLessonIds } from '../../domain/courses';
@@ -160,10 +160,10 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
         to: workspaceHref('admin-courses'),
       },
       {
-        label: 'Incubation certificates ready to issue',
+        label: 'Incubation certificates to review',
         itemIds: incubationCertificateQueue(platform)
-          .filter((row) => row.ready)
-          .map((row) => row.key),
+          .filter((row) => row.ready || row.request)
+          .map((row) => (row.request ? `${row.key}:${row.request.requestedAt}` : row.key)),
         to: certificates,
       },
       {
@@ -224,7 +224,7 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
       const awaitingMarks = incubationLearners(platform, path).some(
         (learner) =>
           stageUnlocked(platform, path, work.stage, learner) &&
-          !passedStage(platform.training, path.id, work.stage, learner),
+          !completedStage(platform.training, path.id, work.stage, learner),
       );
       return awaitingMarks ? [`${work.id}:${work.examOpenedAt}`] : [];
     });

@@ -687,10 +687,7 @@ function AgreementTerms({
               </div>
               <div>
                 <dt>School commitments</dt>
-                <dd>
-                  Appoint a programme lead, supervise teams, and record attendance, marks, and
-                  individual contributions.
-                </dd>
+                <dd>Appoint a programme lead, supervise teams, and record attendance and marks.</dd>
               </div>
               <div>
                 <dt>YERH commitments</dt>
