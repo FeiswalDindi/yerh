@@ -171,7 +171,13 @@ export const cmsHref = (id: string) =>
 function modulesFor(account: AccountAccess, group: WorkspaceGroup) {
   const modules = workspaceGroups[group];
   if (account.role === 'school_admin' && group === 'venture')
-    return modules.filter((module) => module.id !== 'applications');
+    return modules
+      .filter((module) => module.id !== 'applications')
+      .map((module) =>
+        module.id === 'ventures'
+          ? { ...module, description: 'Manage team ventures and their cohorts.' }
+          : module,
+      );
   if (account.role === 'investor' && group === 'organisation')
     return [
       ...modules.filter((module) => module.id === 'discovery'),
@@ -284,10 +290,7 @@ export function dashboardGroups(
     if (group === 'admin')
       groups.push({
         label: 'Institutions',
-        links: [
-          { label: 'Institution directory', to: workspaceHref('institutions') },
-          { label: 'School assessments', to: workspaceHref('approvals') + '&view=school-reviews' },
-        ],
+        links: [{ label: 'Institution directory', to: workspaceHref('institutions') }],
       });
     if (group === 'admin' && can(account, 'cms'))
       groups.push({ label: 'Editorial', links: contentLinks });

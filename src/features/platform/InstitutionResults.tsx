@@ -385,8 +385,8 @@ export function InstitutionResults({
       {showAssessmentHelp && (
         <p>
           {selectedPaths.some((path) => path.status === 'pending')
-            ? 'The platform administrator activates the venture from Approval queue → Incubation applications.'
-            : 'Open the venture pathway and submit its stage evidence. Add result becomes available after a platform administrator approves the assessment.'}
+            ? 'Launch the team venture from Incubation to start recording its activities.'
+            : 'Open the venture pathway, save the stage evidence and open the assessment. Then return here to add results.'}
           {ventureId && selectedPaths[0] && (
             <>
               {' '}
@@ -430,7 +430,9 @@ export function InstitutionResults({
             row.learner.name,
             row.venture,
             ...p.training.curriculum.map((stage) => scoreFor(row.key, stage.id)),
-            <Link to={href({ learner: row.key })}>View results</Link>,
+            <Link to={href({ learner: row.key })} aria-label="View results">
+              View
+            </Link>,
           ],
         }))}
       />
@@ -494,7 +496,9 @@ export function InstitutionResults({
             row.issued ? dateName(row.issued.issuedAt) : '—',
             row.issued ? (
               <div className="workspace-row-actions">
-                <Link to={'/certificates/' + row.issued.id}>View certificate</Link>
+                <Link to={'/certificates/' + row.issued.id} aria-label="View certificate">
+                  View
+                </Link>
                 <a
                   download={row.learner.name + ' - ' + row.title + '.html'}
                   href={certificateFile(

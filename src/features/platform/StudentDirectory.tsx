@@ -273,7 +273,9 @@ export function StudentDirectory({
               student.form || '—',
               student.stream || '—',
               memberships.join(', ') || '—',
-              <Link to={studentHref(student.id)}>View student</Link>,
+              <Link to={studentHref(student.id)} aria-label="View student">
+                View
+              </Link>,
             ],
           };
         })}

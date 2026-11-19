@@ -23,8 +23,12 @@ export function DashboardPage() {
       <section className="container section">
         <DemoNotice />
         <p className="community-toolbar">
-          <Link className="text-link" to={`/network/members/${account.id}`}>
-            View my community profile →
+          <Link
+            className="text-link"
+            to={`/network/members/${account.id}`}
+            aria-label="View my community profile"
+          >
+            View
           </Link>
           <Link className="text-link" to={`/network/members/${account.id}?tab=events`}>
             My sessions & registrations →

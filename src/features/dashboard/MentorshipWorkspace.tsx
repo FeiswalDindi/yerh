@@ -82,7 +82,9 @@ export function MentorshipWorkspace() {
                 )}
               </WorkspaceDialog>
             ) : (
-              <Link to={requestHref(request.id)}>View request</Link>
+              <Link to={requestHref(request.id)} aria-label="View request">
+                View
+              </Link>
             ),
           ],
         };

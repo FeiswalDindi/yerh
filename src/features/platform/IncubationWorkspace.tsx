@@ -99,7 +99,7 @@ export function IncubationWorkspace({
   const ventures = p.ventures.filter(
     (v) =>
       managesVenture(p, account, v) &&
-      v.status === 'approved' &&
+      (v.groupId || v.status === 'approved') &&
       !p.incubations.some((path) => path.ventureId === v.id && path.status !== 'rejected'),
   );
   const [selected, select] = useState(selectedVenture ?? '');
@@ -146,13 +146,7 @@ export function IncubationWorkspace({
               .join(', ')}
           </p>
         ) : null}
-        {path.status === 'pending' && (
-          <p>
-            {venture.groupId
-              ? 'Waiting for the platform administrator to activate this pathway.'
-              : 'Waiting for an administrator to assign a mentor.'}
-          </p>
-        )}
+        {path.status === 'pending' && <p>Waiting for an administrator to assign a mentor.</p>}
         {path.status === 'rejected' && (
           <p>You can submit a new incubation application for this venture.</p>
         )}
@@ -309,12 +303,14 @@ export function IncubationWorkspace({
             </label>
             <p>
               {account.role === 'school_admin'
-                ? 'The platform administrator activates the school pathway. School staff guide the team.'
+                ? 'The pathway opens immediately so school staff can guide and assess the team.'
                 : 'The platform administrator assigns a mentor from the incubation application.'}
             </p>
           </WorkspaceFormDialog>
         ) : (
-          <Link to={portalHref('ventures')}>Find an approved venture</Link>
+          <Link to={portalHref('ventures')}>
+            {school ? 'Find a team venture' : 'Find an approved venture'}
+          </Link>
         )
       }
       rows={p.incubations.flatMap((path) => {
@@ -396,7 +392,7 @@ function LearnerStage({
           <div key={step.id} className="training-step">
             <h4>{step.title}</h4>
             <p>{step.instruction}</p>
-            {work?.reviewRequestedAt || work?.examOpenedAt ? (
+            {(!venture.groupId && work?.reviewRequestedAt) || work?.examOpenedAt ? (
               <p>{entry?.evidence}</p>
             ) : (
               <TrainingForm
@@ -433,7 +429,9 @@ function LearnerStage({
                 )}
               </TrainingForm>
             )}
-            {entry && !work?.reviewRequestedAt && !work?.examOpenedAt && <p>Evidence saved</p>}
+            {entry && (venture.groupId || !work?.reviewRequestedAt) && !work?.examOpenedAt && (
+              <p>Evidence saved</p>
+            )}
             {!venture.groupId && entry?.feedback && (
               <p>
                 <strong>Mentor feedback</strong> {entry.feedback}
@@ -443,22 +441,27 @@ function LearnerStage({
           </div>
         );
       })}
-      {!work?.reviewRequestedAt && !work?.examOpenedAt && (
+      {(venture.groupId || !work?.reviewRequestedAt) && !work?.examOpenedAt && (
         <>
           <p role="status">
             {missingSteps.length
               ? `Save evidence for: ${missingSteps.map((step) => step.title).join(', ')}.`
               : venture.groupId
-                ? 'All stage evidence is saved. Request administrator approval to record marks.'
+                ? 'All stage evidence is saved. Open the assessment to record marks.'
                 : 'All stage evidence is saved. You can request the mentor review.'}
           </p>
           <button
             type="button"
             className="button"
             disabled={missingSteps.length > 0}
-            onClick={() => submitTraining(save, { ...key, type: 'stage-request' })}
+            onClick={() =>
+              submitTraining(save, {
+                ...key,
+                type: venture.groupId ? 'school-stage-open' : 'stage-request',
+              })
+            }
           >
-            Request stage review
+            {venture.groupId ? 'Open assessment' : 'Request stage review'}
           </button>
         </>
       )}
@@ -467,9 +470,6 @@ function LearnerStage({
       )}
       {!venture.groupId && work?.meetingLocation && <p>{work.meetingLocation}</p>}
       {!venture.groupId && work?.meetingNote && <p>{work.meetingNote}</p>}
-      {venture.groupId && work?.schoolReviewNote && (
-        <p>Assessment feedback · {work.schoolReviewNote}</p>
-      )}
       {work?.examOpenedAt && (
         <>
           <h4>Stage exam</h4>
@@ -572,7 +572,11 @@ function CredentialStatus({
               {title}
             </strong>{' '}
           </p>
-          {issued && <Link to={`/certificates/${issued.id}`}>View certificate</Link>}
+          {issued && (
+            <Link to={`/certificates/${issued.id}`} aria-label="View certificate">
+              View
+            </Link>
+          )}
           {!issued &&
             fee > 0 &&
             kind !== 'funding' &&
@@ -618,7 +622,11 @@ export function ProductPathways({
   const visible = canPublishProduct(p, product);
   return (
     <div className="training-status">
-      {visible && <Link to={`/marketplace/product-${product.id}`}>View public listing</Link>}
+      {visible && (
+        <Link to={`/marketplace/product-${product.id}`} aria-label="View public listing">
+          View
+        </Link>
+      )}
       {review?.feedback && <p>{review.feedback}</p>}
       {path && (!review || review.status === 'rejected') && (
         <div>

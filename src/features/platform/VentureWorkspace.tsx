@@ -193,7 +193,13 @@ function VentureEditor({
       action={venture ? 'Edit venture' : 'Add venture'}
       title={venture ? venture.name : 'Add venture'}
       create={!venture}
-      submit={venture ? 'Resubmit venture' : 'Submit venture for approval'}
+      submit={
+        account.role === 'school_admin'
+          ? 'Save venture'
+          : venture
+            ? 'Resubmit venture'
+            : 'Submit venture for approval'
+      }
       onSave={(data) =>
         save({
           type: 'venture-save',
@@ -213,7 +219,7 @@ function VentureEditor({
         })
       }
     >
-      {venture && <p>Changes require a new approval.</p>}
+      {venture && account.role !== 'school_admin' && <p>Changes require a new approval.</p>}
       {!venture && teams.length > 0 && (
         <label>
           Venture team

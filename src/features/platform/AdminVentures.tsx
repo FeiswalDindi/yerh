@@ -110,7 +110,7 @@ export function AdminVentures({
             </dd>
           </div>
         </dl>
-        {review(venture)}
+        {!venture.groupId && review(venture)}
       </section>
     );
   }
@@ -179,8 +179,10 @@ export function AdminVentures({
                 ...values,
                 <WorkspaceStatus>{venture.status}</WorkspaceStatus>,
                 <div className="workspace-row-actions">
-                  <Link to={detailsHref(venture.id)}>View venture</Link>
-                  {review(venture)}
+                  <Link to={detailsHref(venture.id)} aria-label="View venture">
+                    View
+                  </Link>
+                  {!schools && review(venture)}
                 </div>,
               ],
             };

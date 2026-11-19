@@ -15,8 +15,12 @@ export function ModerationPage() {
       />
       <section className="container section">
         <DemoNotice />
-        <Link className="button" to="/dashboard/content">
-          Review content & business submissions
+        <Link
+          className="button"
+          to="/dashboard/content"
+          aria-label="Review content & business submissions"
+        >
+          Review
         </Link>
         <div className="section-heading section">
           <h2>Forum moderation</h2>

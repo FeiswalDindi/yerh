@@ -156,10 +156,13 @@ export function WorkspacePage() {
           ? 'Product saved.'
           : 'Product submitted. A platform administrator can review it under Approval queue → Product listings.',
         'incubation-apply': schoolStaff
-          ? 'Pathway submitted to the platform team.'
+          ? 'Pathway launched. Open it to record stage evidence.'
           : 'Venture submitted. A platform administrator can assign a mentor under Approval queue → Incubation applications.',
         'product-evidence':
           'Product evidence submitted. The mentor or platform administrator can review it under Product evidence reviews.',
+        'school-credentials-issue': 'School certificates issued.',
+        'school-stage-open': 'Assessment opened. You can now record marks.',
+        'stage-request': 'Stage review requested.',
       };
       setSuccess(messages[action.type] ?? 'Saved successfully.');
     }
@@ -346,7 +349,7 @@ export function WorkspacePage() {
             <Panel title="Venture incubation">
               {schoolStaff && (
                 <p>
-                  <Link to={schoolLink('member-results')}>View results and certificates</Link>
+                  <Link to={schoolLink('member-results')}>Results &amp; Certificates</Link>
                 </p>
               )}
               {can(workspaceAccount, 'learn') && (
@@ -401,8 +404,9 @@ export function WorkspacePage() {
                               '&application=' +
                               encodeURIComponent(application.id)
                             }
+                            aria-label="View application"
                           >
-                            View application
+                            View
                           </Link>,
                         ],
                       };
@@ -467,7 +471,9 @@ export function WorkspacePage() {
                     defaultValue={mentor?.bio}
                   />
                 </WorkspaceFormDialog>
-                <Link to="/dashboard/mentorship">Review mentorship requests →</Link>
+                <Link to="/dashboard/mentorship" aria-label="Review mentorship requests">
+                  Review
+                </Link>
               </div>
             </Panel>
           )}
@@ -567,7 +573,9 @@ export function WorkspacePage() {
                           </button>
                         )}
                         {['published', 'closed'].includes(item.status) && (
-                          <Link to={'/opportunities/' + item.slug}>View public listing</Link>
+                          <Link to={'/opportunities/' + item.slug} aria-label="View public listing">
+                            View
+                          </Link>
                         )}
                       </div>,
                     ],
@@ -651,8 +659,9 @@ export function WorkspacePage() {
                                 '&application=' +
                                 encodeURIComponent(application.id)
                               }
+                              aria-label="View application"
                             >
-                              View application
+                              View
                             </Link>
                           ),
                         ],
@@ -817,7 +826,12 @@ export function WorkspacePage() {
                         cells: [
                           learner,
                           title,
-                          <Link to={'/certificates/' + record.id}>View verification record</Link>,
+                          <Link
+                            to={'/certificates/' + record.id}
+                            aria-label="View verification record"
+                          >
+                            View
+                          </Link>,
                         ],
                       };
                     })}

@@ -249,8 +249,11 @@ export function MentorCourseWorkspace({
             purchases.length,
             amount(purchases.reduce((sum, row) => sum + row.royaltyCents, 0) / 100),
             <div className="workspace-row-actions">
-              <Link to={base + '&proposal=' + encodeURIComponent(proposal.id)}>
-                {proposal.status === 'approved' ? 'Build course' : 'View proposal'}
+              <Link
+                to={base + '&proposal=' + encodeURIComponent(proposal.id)}
+                aria-label={proposal.status === 'approved' ? undefined : 'View proposal'}
+              >
+                {proposal.status === 'approved' ? 'Build course' : 'View'}
               </Link>
             </div>,
           ],
@@ -348,8 +351,11 @@ export function AdminCourseWorkspace({
                       </label>
                     </WorkspaceFormDialog>
                   ) : (
-                    <Link to={proposalList + '&proposal=' + encodeURIComponent(proposal.id)}>
-                      View decision
+                    <Link
+                      to={proposalList + '&proposal=' + encodeURIComponent(proposal.id)}
+                      aria-label="View decision"
+                    >
+                      View
                     </Link>
                   ),
                 ],
@@ -412,8 +418,11 @@ export function AdminCourseWorkspace({
                           defaultValue={pricing.discount}
                         />
                       </label>
-                      <Link to={'/learn/' + encodeURIComponent(course.id)}>
-                        View public course description
+                      <Link
+                        to={'/learn/' + encodeURIComponent(course.id)}
+                        aria-label="View public course description"
+                      >
+                        View
                       </Link>
                     </WorkspaceFormDialog>,
                   ],

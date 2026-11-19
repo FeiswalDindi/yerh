@@ -136,6 +136,14 @@ function EventEditor({
           <input name="venue" maxLength={160} defaultValue={session?.venue} />
         </label>
         <label>
+          Starts (EAT)
+          <input name="start" type="datetime-local" defaultValue={localTime(session?.startsAt)} />
+        </label>
+        <label>
+          Ends (EAT)
+          <input name="end" type="datetime-local" defaultValue={localTime(session?.endsAt)} />
+        </label>
+        <label>
           Capacity
           <input
             name="capacity"
@@ -144,14 +152,6 @@ function EventEditor({
             step={1}
             defaultValue={session?.capacity ?? ''}
           />
-        </label>
-        <label>
-          Starts (EAT)
-          <input name="start" type="datetime-local" defaultValue={localTime(session?.startsAt)} />
-        </label>
-        <label>
-          Ends (EAT)
-          <input name="end" type="datetime-local" defaultValue={localTime(session?.endsAt)} />
         </label>
         <label>
           Registration deadline (EAT)
@@ -273,8 +273,9 @@ export function AdminEvents({ preview }: { preview: ReactNode }) {
                       '?eventView=' +
                       (archive ? 'archive' : 'upcoming')
                     }
+                    aria-label="View event"
                   >
-                    View event
+                    View
                   </Link>
                 </div>,
               ],

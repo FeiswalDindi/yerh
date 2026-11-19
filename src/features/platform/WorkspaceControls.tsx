@@ -28,6 +28,7 @@ export function WorkspaceDialog({
   const [open, setOpen] = useState(initialOpen);
   const [failed, setFailed] = useState(false);
   const { error } = useDemo();
+  const actionLabel = action.replace(/^(View|Review|Edit) .+$/, '$1');
 
   useLayoutEffect(() => {
     if (open && ref.current && !ref.current.open) ref.current.showModal();
@@ -50,15 +51,21 @@ export function WorkspaceDialog({
               : `button workspace-action${create ? '' : ' button-outline'}`
         }
         aria-haspopup="dialog"
-        aria-label={icon ? action : title === action ? undefined : `${action}: ${title}`}
-        title={icon ? action : undefined}
+        aria-label={
+          title !== action && !icon
+            ? `${action}: ${title}`
+            : icon || action !== actionLabel
+              ? action
+              : undefined
+        }
+        title={icon || action !== actionLabel ? action : undefined}
         onClick={() => {
           setFailed(false);
           setOpen(true);
         }}
       >
         {create && <Plus size={16} aria-hidden="true" />}
-        {icon ?? trigger ?? action}
+        {icon ?? trigger ?? actionLabel}
       </button>
       {open && (
         <dialog

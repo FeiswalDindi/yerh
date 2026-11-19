@@ -127,7 +127,12 @@ export function MentorWorkspace({
                       .filter(Boolean)
                       .join(' · ') || '—',
                     <div className="workspace-row-actions">
-                      <Link to={base + '&path=' + encodeURIComponent(path.id)}>Review stages</Link>
+                      <Link
+                        to={base + '&path=' + encodeURIComponent(path.id)}
+                        aria-label="Review stages"
+                      >
+                        Review
+                      </Link>
                     </div>,
                   ],
                 };

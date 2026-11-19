@@ -549,7 +549,7 @@ export async function checkPlatformRendering() {
     undefined,
     submittedVenture,
   );
-  assert.ok(ventureApprovals.includes('Review submission: School garden project'));
+  assert.ok(!ventureApprovals.includes('School garden project'));
   const founderProducts = render(
     '/dashboard/workspace?tab=products&product=' +
       submittedListing.platform.products.find(

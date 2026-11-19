@@ -31,11 +31,15 @@ export function ApprovalWorkspace({
     p.ventures.some((venture) => venture.id === product.ventureId && !venture.groupId),
   );
   const products = marketplaceProducts.filter((product) => product.status === 'pending');
-  const applications = p.incubations.filter((path) => path.status === 'pending');
+  const isSchoolPath = (ventureId: string) =>
+    p.ventures.some((venture) => venture.id === ventureId && venture.groupId);
+  const applications = p.incubations.filter(
+    (path) => path.status === 'pending' && !isSchoolPath(path.ventureId),
+  );
   const roles = p.applications.filter((application) => application.status === 'pending');
   const entities = [
     ...p.ventures
-      .filter((v) => v.status === 'pending')
+      .filter((v) => v.status === 'pending' && !v.groupId)
       .map((v) => ({
         id: v.id,
         name: v.name,
@@ -53,22 +57,14 @@ export function ApprovalWorkspace({
         details: [o.type, o.sectors, o.contact, o.website],
       })),
   ];
-  const active = p.incubations.filter((path) => path.status === 'active');
-  const schoolForPath = (id: string) =>
-    schoolForVenture(
-      p,
-      p.ventures.find(
-        (venture) => venture.id === p.incubations.find((path) => path.id === id)?.ventureId,
-      ),
-    );
-  const schoolReviews = p.training.stages.filter(
-    (work) => work.reviewRequestedAt && !work.examOpenedAt && schoolForPath(work.incubationId),
+  const active = p.incubations.filter(
+    (path) => path.status === 'active' && !isSchoolPath(path.ventureId),
   );
   const ventureName = (id: string) =>
     p.ventures.find((venture) => venture.id === id)?.name ?? 'Venture';
   const [params] = useSearchParams();
   const activePathways = '/dashboard/workspace?tab=approvals&view=active';
-  const selectedPath = p.incubations.find((row) => row.id === params.get('path'));
+  const selectedPath = active.find((row) => row.id === params.get('path'));
   if (selectedPath && params.get('view') === 'active') {
     const ready = selectedPath.status === 'active' && canGraduate(p, selectedPath);
     return (
@@ -187,7 +183,6 @@ export function ApprovalWorkspace({
                   path.productIds?.includes(product.id),
                 );
                 const title = ventureName(path.ventureId);
-                const school = schoolForPath(path.id);
                 return {
                   id: path.id,
                   search: [
@@ -219,96 +214,29 @@ export function ApprovalWorkspace({
                           {included.map((product) => (
                             <li key={product.id}>
                               {product.name}
-                              {!school && ' · Listing ' + product.status}
+                              {' · Listing ' + product.status}
                             </li>
                           ))}
                         </ul>
                       )}
-                      {school ? (
-                        <p>{school.name} school staff guide and assess this team.</p>
-                      ) : (
-                        <label>
-                          Mentor
-                          <select name="mentor">
-                            {accounts
-                              .filter((a) => a.role === 'mentor' && !a.suspended)
-                              .map((a) => (
-                                <option value={a.id} key={a.id}>
-                                  {a.name}
-                                </option>
-                              ))}
-                          </select>
-                        </label>
-                      )}
+                      <label>
+                        Mentor
+                        <select name="mentor">
+                          {accounts
+                            .filter((a) => a.role === 'mentor' && !a.suspended)
+                            .map((a) => (
+                              <option value={a.id} key={a.id}>
+                                {a.name}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
                       <label>
                         Decision
                         <select name="decision">
-                          <option value="active">
-                            {school ? 'Activate school pathway' : 'Accept & assign'}
-                          </option>
+                          <option value="active">Accept &amp; assign</option>
                           <option value="rejected">Reject</option>
                         </select>
-                      </label>
-                    </WorkspaceFormDialog>,
-                  ],
-                };
-              })}
-            />
-          ),
-        },
-        {
-          id: 'school-reviews',
-          label: 'School assessments',
-          count: schoolReviews.length,
-          content: (
-            <WorkspaceTable
-              label="school assessments awaiting approval"
-              columns={['Venture', 'Institution', 'Stage', 'Action']}
-              rows={schoolReviews.map((work) => {
-                const path = p.incubations.find((entry) => entry.id === work.incubationId);
-                const venture = ventureName(path?.ventureId ?? '');
-                const institution = schoolForPath(work.incubationId)?.name ?? 'School';
-                const stage = p.training.curriculum.find((entry) => entry.id === work.stage);
-                return {
-                  id: work.id,
-                  search: [venture, institution, stage?.title].join(' '),
-                  cells: [
-                    venture,
-                    institution,
-                    stage?.title,
-                    <WorkspaceFormDialog
-                      action="Review school assessment"
-                      title={venture}
-                      submit="Save assessment decision"
-                      onSave={(data) =>
-                        save({
-                          type: 'school-stage-review',
-                          incubationId: work.incubationId,
-                          stage: work.stage,
-                          approved: field(data, 'decision') === 'approved',
-                          note: field(data, 'note'),
-                          now: now(),
-                        })
-                      }
-                    >
-                      {work.steps.map((step) => (
-                        <div key={step.id}>
-                          <strong>
-                            {stage?.steps.find((entry) => entry.id === step.id)?.title}
-                          </strong>
-                          <p className="workspace-detail-copy">{step.evidence}</p>
-                        </div>
-                      ))}
-                      <label>
-                        Decision
-                        <select name="decision">
-                          <option value="approved">Approve and allow offline marks</option>
-                          <option value="revise">Return for revision</option>
-                        </select>
-                      </label>
-                      <label>
-                        Feedback
-                        <textarea name="note" minLength={5} maxLength={3000} required />
                       </label>
                     </WorkspaceFormDialog>,
                   ],
@@ -470,8 +398,11 @@ export function ApprovalWorkspace({
                     <WorkspaceStatus>
                       {ready ? 'Ready to graduate' : 'In progress'}
                     </WorkspaceStatus>,
-                    <Link to={activePathways + '&path=' + encodeURIComponent(path.id)}>
-                      View incubation
+                    <Link
+                      to={activePathways + '&path=' + encodeURIComponent(path.id)}
+                      aria-label="View incubation"
+                    >
+                      View
                     </Link>,
                   ],
                 };

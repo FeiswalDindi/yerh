@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ArrowUpRight, LogOut } from 'lucide-react';
+import { ArrowUpRight, LogOut, Moon, Sun } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
 import { roleLabels } from '../../domain/roles';
@@ -27,6 +27,9 @@ import {
 } from './dashboard-navigation';
 import { institutionAccess } from '../../domain/incubation';
 import './dashboard.css';
+import './dashboard-theme.css';
+
+const themeKey = 'yerh.dashboard.theme';
 
 function DashboardNavigation({
   account,
@@ -57,12 +60,6 @@ function DashboardNavigation({
     if (selectedSchool && schoolModule && pathname === '/dashboard/workspace')
       return to === institutionHref(schoolModule.id, selectedSchool.id);
     if (studioOpen && to === '/dashboard/cms') return studioModule === 'overview';
-    if (
-      pathname === '/dashboard/workspace' &&
-      activeTab === 'approvals' &&
-      params.get('view') === 'school-reviews'
-    )
-      return to === workspaceHref('approvals') + '&view=school-reviews';
     if (pathname === '/dashboard/workspace' && activeTab && to === workspaceHref(activeTab))
       return true;
     if (
@@ -170,6 +167,13 @@ function DashboardShell({ account }: { account: DemoAccount }) {
   const dashboardDrawer = useRef<HTMLDialogElement>(null);
   const main = useRef<HTMLElement>(null);
   const [dashboardOpen, setDashboardOpen] = useState(false);
+  const [dark, setDark] = useState(() => {
+    try {
+      return window.localStorage.getItem(themeKey) === 'dark';
+    } catch {
+      return false;
+    }
+  });
   const pagePath = location.pathname.replace(/\/+$/, '');
   const workspaceParams = new URLSearchParams(location.search);
   workspaceParams.delete('filter');
@@ -215,6 +219,16 @@ function DashboardShell({ account }: { account: DemoAccount }) {
   }, []);
 
   const role = roleLabels[account.role];
+  const themeLabel = dark ? 'Switch to light mode' : 'Switch to dark mode';
+
+  function toggleTheme() {
+    setDark(!dark);
+    try {
+      window.localStorage.setItem(themeKey, dark ? 'light' : 'dark');
+    } catch {
+      // Keep the current session usable when storage is restricted.
+    }
+  }
 
   function openDashboard() {
     dashboardDrawer.current?.showModal();
@@ -222,12 +236,29 @@ function DashboardShell({ account }: { account: DemoAccount }) {
   }
 
   return (
-    <div className="dashboard-shell" ref={shell}>
+    <div className="dashboard-shell" data-dashboard-theme={dark ? 'dark' : 'light'} ref={shell}>
       <Header
         dashboardMenu={{
           expanded: dashboardOpen,
           onOpen: openDashboard,
-          notifications: <DashboardNotifications notifications={notifications} />,
+          notifications: (
+            <>
+              <button
+                className="icon-button dashboard-theme-toggle"
+                type="button"
+                aria-label={themeLabel}
+                title={themeLabel}
+                onClick={toggleTheme}
+              >
+                {dark ? (
+                  <Sun size={19} aria-hidden="true" />
+                ) : (
+                  <Moon size={19} aria-hidden="true" />
+                )}
+              </button>
+              <DashboardNotifications notifications={notifications} />
+            </>
+          ),
         }}
       />
 

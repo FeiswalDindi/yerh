@@ -29,7 +29,7 @@ const schoolCommands = new Set([
   'incubation-apply',
   'milestone',
   'stage-evidence',
-  'stage-request',
+  'school-stage-open',
   'stage-offline-result',
   'product-evidence',
   'training-payment-request',
@@ -163,7 +163,7 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
   const schoolId =
     school?.id ??
     p.training.institutions.find((row) => row.adminId === operator.id)?.id ??
-    (action.type === 'school-stage-review' || action.type === 'training-credential-issue'
+    (action.type === 'training-credential-issue' || action.type === 'school-credentials-issue'
       ? schoolForVenture(
           p,
           p.ventures.find(
@@ -366,7 +366,7 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
         sector: text(action.venture.sector),
         stage: text(action.venture.stage),
         location: text(action.venture.location),
-        status: 'pending',
+        status: groupId ? 'approved' : 'pending',
       });
       audit(action.venture.id);
       break;
@@ -425,6 +425,7 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       if (action.entity === 'venture') {
         const v = p.ventures.find((v) => v.id === action.id);
         if (!v) throw new Error('Venture not found.');
+        if (v.groupId) throw new Error('School ventures are managed by their institution.');
         v.status = action.decision;
       }
       if (action.entity === 'product') {
@@ -589,7 +590,7 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
     case 'incubation-apply': {
       if (!can(actor, 'school')) require('apply');
       const venture = p.ventures.find((v) => v.id === action.ventureId);
-      if (!managesVenture(p, actor, venture) || venture.status !== 'approved')
+      if (!managesVenture(p, actor, venture) || (!venture.groupId && venture.status !== 'approved'))
         throw new Error('Choose your approved venture.');
       if (p.incubations.some((i) => i.ventureId === action.ventureId && i.status !== 'rejected'))
         throw new Error('An incubation application already exists.');
@@ -608,7 +609,7 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
         productIds,
         goal: text(action.goal, 30),
         mentorId: '',
-        status: 'pending',
+        status: venture.groupId ? 'active' : 'pending',
         milestones: [],
       });
       audit(action.id);
@@ -617,7 +618,7 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
     case 'incubation-complete': {
       require('admin');
       const i = p.incubations.find((i) => i.id === action.id && i.status === 'active');
-      if (!i || !canGraduate(p, i))
+      if (!i || p.ventures.some((v) => v.id === i.ventureId && v.groupId) || !canGraduate(p, i))
         throw new Error('Pass all three stage exams before graduating this incubation.');
       i.status = 'completed';
       audit(i.id);
@@ -627,23 +628,17 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       require('admin');
       const i = p.incubations.find((i) => i.id === action.id && i.status === 'pending');
       if (!i) throw new Error('Pending incubation not found.');
+      if (p.ventures.some((v) => v.id === i.ventureId && v.groupId))
+        throw new Error('School pathways are managed by their institution.');
       if (
         action.decision === 'active' &&
-        !schoolForVenture(
-          p,
-          p.ventures.find((venture) => venture.id === i.ventureId),
-        ) &&
         !accounts.some((a) => a.id === action.mentorId && a.role === 'mentor' && !a.suspended)
       )
         throw new Error('Choose an active mentor.');
       if (!['active', 'rejected'].includes(action.decision))
         throw new Error('Invalid incubation decision.');
       i.status = action.decision;
-      const institution = schoolForVenture(
-        p,
-        p.ventures.find((venture) => venture.id === i.ventureId),
-      );
-      i.mentorId = action.decision === 'active' && !institution ? action.mentorId : '';
+      i.mentorId = action.decision === 'active' ? action.mentorId : '';
       audit(i.id);
       break;
     }

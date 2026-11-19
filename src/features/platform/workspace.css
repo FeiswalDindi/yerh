@@ -89,7 +89,7 @@
 .workspace-tab-count {
   min-width: 1.35rem;
   padding-inline: 5px;
-  background: #e6eaf2;
+  background: var(--workspace-neutral, #e6eaf2);
   text-align: center;
   font-size: 0.74rem;
   font-variant-numeric: tabular-nums;
@@ -100,7 +100,7 @@
 }
 
 .workspace-data {
-  background: #fff;
+  background: var(--yerh-white);
   border: 1px solid var(--yerh-border);
   margin-block: 12px;
   min-width: 0;
@@ -175,7 +175,7 @@
 
 .workspace-data-table thead th {
   color: var(--yerh-muted);
-  background: #f4f6fa;
+  background: var(--workspace-subtle, #f4f6fa);
   white-space: nowrap;
   font-size: 0.8rem;
 }
@@ -186,7 +186,7 @@
 }
 
 .workspace-data-table tbody tr:hover {
-  background: #fafbfd;
+  background: var(--workspace-hover, #fafbfd);
 }
 
 .workspace-data-table .workspace-empty {
@@ -206,7 +206,7 @@
 .workspace-status {
   display: inline-flex;
   padding: 3px 8px;
-  background: #edf0f6;
+  background: var(--workspace-neutral, #edf0f6);
   color: var(--yerh-navy);
   text-transform: capitalize;
   white-space: nowrap;
@@ -260,7 +260,7 @@
   border-radius: 0;
   width: min(680px, calc(100% - 24px));
   max-height: min(88dvh, 880px);
-  background: white;
+  background: var(--yerh-white);
   color: var(--yerh-ink);
   box-shadow: 0 24px 80px #0e1b4254;
   overflow: auto;
@@ -283,7 +283,7 @@
   top: 0;
   padding: 14px 20px;
   border-bottom: 1px solid var(--yerh-border);
-  background: white;
+  background: var(--yerh-white);
   z-index: 1;
 }
 
@@ -336,7 +336,7 @@
 .workspace-profile {
   margin: 0 0 16px;
   border: 1px solid var(--yerh-border);
-  background: white;
+  background: var(--yerh-white);
 }
 
 .workspace-profile div {
@@ -363,7 +363,7 @@
 .workspace-quick-links {
   border: 1px solid var(--yerh-border);
   overflow: hidden;
-  background: white;
+  background: var(--yerh-white);
 }
 
 .workspace-quick-link {
@@ -381,7 +381,7 @@
 }
 
 .workspace-quick-link:hover {
-  background: #f4f6fa;
+  background: var(--workspace-subtle, #f4f6fa);
 }
 
 .workspace-quick-link h3 {

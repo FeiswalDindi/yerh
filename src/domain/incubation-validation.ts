@@ -279,14 +279,12 @@ export function validTrainingReferences(p: PlatformState, accounts: DemoAccount[
       const path = paths.get(work.incubationId);
       if (!path || work.id !== `${path.id}:${work.stage}`) return false;
       const learners = incubationLearners(p, path);
+      const school = p.ventures.some((venture) => venture.id === path.ventureId && venture.groupId);
       return (
         [work.reviewRequestedAt, work.meetingAt, work.examOpenedAt].every(
           (value) => !value || date(value),
         ) &&
-        (!work.examOpenedAt ||
-          (!!work.reviewRequestedAt &&
-            (!!work.meetingAt ||
-              p.ventures.some((venture) => venture.id === path.ventureId && !!venture.groupId)))) &&
+        (!work.examOpenedAt || school || (!!work.reviewRequestedAt && !!work.meetingAt)) &&
         (!!work.examOpenedAt || work.attempts.length === 0) &&
         unique(work.steps.map((step) => step.id)) &&
         unique(work.attempts.map((attempt) => attempt.id)) &&

@@ -12,7 +12,7 @@
 }
 .cms-page-create input {
   padding: 10px;
-  background: white;
+  background: var(--yerh-white);
   border: 1px solid var(--yerh-border);
   width: 100%;
 }
@@ -178,7 +178,7 @@
 }
 .platform-table th {
   color: var(--yerh-navy);
-  background: #e9ecf1;
+  background: var(--workspace-subtle, #e9ecf1);
 }
 .platform-table small {
   display: block;
@@ -189,7 +189,7 @@
   max-width: 230px;
   padding: 8px;
   border: 1px solid var(--yerh-border);
-  background: white;
+  background: var(--yerh-white);
 }
 .inline-checkbox {
   display: flex !important;
@@ -607,7 +607,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: white;
+  background: var(--yerh-white);
   border: 1px solid var(--yerh-border);
   padding: 10px;
 }
@@ -646,7 +646,7 @@
   min-width: 0;
   padding: 11px 13px;
   border: 1px solid #cdd1dc;
-  background: white;
+  background: var(--yerh-white);
   border-radius: 3px;
   font-size: 13px;
   color: var(--yerh-ink);
@@ -658,7 +658,7 @@
 .cms-field input:disabled,
 .cms-field textarea:disabled {
   opacity: 0.75;
-  background: #e9ebef;
+  background: var(--workspace-neutral, #e9ebef);
 }
 .cms-object,
 .cms-array {

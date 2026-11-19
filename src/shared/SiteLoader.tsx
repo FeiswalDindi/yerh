@@ -1,3 +1,5 @@
+import { mediaAssets } from '../config/media';
+
 export function SiteLoader({ screen = false }: { screen?: boolean }) {
   return (
     <div
@@ -6,7 +8,7 @@ export function SiteLoader({ screen = false }: { screen?: boolean }) {
       aria-label="Loading YERH"
     >
       <span className="yerh-loader__emblem" aria-hidden="true">
-        <img src="/favicon.svg" width="80" height="80" alt="" />
+        <img src={mediaAssets.logo} width="80" height="80" alt="" />
       </span>
     </div>
   );

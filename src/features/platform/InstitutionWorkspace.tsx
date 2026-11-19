@@ -426,7 +426,9 @@ function InstitutionAccessEditor({
               All eligible guest and platform administrator accounts already have access to this
               institution.
             </p>
-            <Link to={workspaceHref('users')}>View users and roles</Link>
+            <Link to={workspaceHref('users')} aria-label="View users and roles">
+              View
+            </Link>
           </>
         )}
       </WorkspaceDialog>

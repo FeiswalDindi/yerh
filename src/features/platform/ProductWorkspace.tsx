@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import type { DemoAccount } from '../../domain/demo';
-import { canPublishProduct, managesVenture, paymentFor } from '../../domain/incubation';
+import { managesVenture, paymentFor } from '../../domain/incubation';
 import type { Product, Venture } from '../../domain/platform';
 import { can } from '../../domain/roles';
 import { workspaceHref } from '../dashboard/dashboard-navigation';
@@ -82,12 +82,12 @@ export default function ProductRegistry({
             venture?.name,
             amount(product.price),
             <div className="workspace-row-actions">
-              <Link to={portalHref('products') + '&product=' + encodeURIComponent(product.id)}>
-                View product
+              <Link
+                to={portalHref('products') + '&product=' + encodeURIComponent(product.id)}
+                aria-label="View product"
+              >
+                View
               </Link>
-              {!school && !venture?.groupId && canPublishProduct(p, product) && (
-                <Link to={'/marketplace/product-' + product.id}>View public listing</Link>
-              )}
             </div>,
           ],
         };

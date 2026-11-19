@@ -73,7 +73,9 @@ export function DashboardCertificates() {
                 dateStyle: 'medium',
                 timeZone: 'Africa/Nairobi',
               }),
-              <Link to={'/certificates/' + record.id}>View certificate</Link>,
+              <Link to={'/certificates/' + record.id} aria-label="View certificate">
+                View
+              </Link>,
             ],
           }))}
         />

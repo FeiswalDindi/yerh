@@ -1,0 +1,89 @@
+.dashboard-shell[data-dashboard-theme='dark'] {
+  color-scheme: dark;
+  --yerh-surface: #111827;
+  --yerh-nav-surface: #172132;
+  --yerh-card-surface: #1d293c;
+  --yerh-white: #1a2536;
+  --yerh-ink: #e7edf8;
+  --yerh-muted: #b1bfd4;
+  --yerh-border: #37455d;
+  --yerh-navy: #d1e2ff;
+  --yerh-gold-light: #3a311c;
+  --workspace-subtle: #202d41;
+  --workspace-hover: #25344b;
+  --workspace-neutral: #2a3950;
+  color: var(--yerh-ink);
+}
+
+[data-dashboard-theme='dark'] :is(.demo-session-strip, .event-date-tile) {
+  background: #223453;
+  color: var(--yerh-ink);
+}
+
+[data-dashboard-theme='dark'] .reference-brand img {
+  filter: brightness(0) saturate(100%) invert(93%) sepia(15%) saturate(738%) hue-rotate(181deg);
+}
+
+[data-dashboard-theme='dark'] :is(.header-actions, .header-login) {
+  border-color: var(--yerh-border);
+}
+
+[data-dashboard-theme='dark']
+  :is(.mobile-nav, .desktop-tree .nav-dropdown, .section-tabs a, .section-tabs button) {
+  background: var(--yerh-white);
+}
+
+[data-dashboard-theme='dark'] :is(.nav-entry > a:hover, .nav-entry > a.active) {
+  color: #f2d77e;
+}
+
+[data-dashboard-theme='dark']
+  :is(
+    .button:not(.button-gold, .button-outline),
+    .section-tabs [aria-current='page'],
+    .section-tabs [aria-pressed='true']
+  ) {
+  background: #b9d1ff;
+  border-color: #b9d1ff;
+  color: #142747;
+}
+
+[data-dashboard-theme='dark'] .button:not(.button-gold, .button-outline):hover {
+  background: #d8e6ff;
+}
+
+[data-dashboard-theme='dark'] .button-outline {
+  background: var(--yerh-white);
+  border-color: #667b9e;
+  color: var(--yerh-navy);
+}
+
+[data-dashboard-theme='dark'] :is(.button-outline, .header-login):hover {
+  background: var(--yerh-card-surface);
+  color: var(--yerh-navy);
+}
+
+[data-dashboard-theme='dark'] .menu-toggle {
+  background: #263854;
+  border-color: #425679;
+  color: var(--yerh-ink);
+}
+
+[data-dashboard-theme='dark'] :is(input, select, textarea):not([type='checkbox'], [type='radio']) {
+  border-color: var(--yerh-border);
+  color: var(--yerh-ink);
+}
+
+[data-dashboard-theme='dark']
+  :is(.workspace-form, .profile-form)
+  :is(input, select, textarea):not([type='checkbox'], [type='radio']) {
+  background: var(--yerh-white);
+}
+
+[data-dashboard-theme='dark'] .venture-approved {
+  color: #8ee0b0;
+}
+
+[data-dashboard-theme='dark'] :focus-visible {
+  outline-color: #e7c85b;
+}

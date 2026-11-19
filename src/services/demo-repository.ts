@@ -1,4 +1,5 @@
 import { isDemoState, migrateDemoState } from '../domain/demo-validation';
+import { migrateSchoolPathways } from '../domain/incubation';
 import accounts from '../mocks/data/accounts.json';
 import community from '../mocks/data/community.json';
 import sessions from '../mocks/data/community-events.json';
@@ -29,7 +30,10 @@ export const browserDemoRepository: DemoRepository = {
       const raw = localStorage.getItem(DEMO_STORAGE_KEY);
       if (raw) {
         const value: unknown = migrateDemoState(JSON.parse(raw), createDemoSeed());
-        if (isDemoState(value, accounts as DemoState['accounts'])) return value;
+        if (isDemoState(value, accounts as DemoState['accounts'])) {
+          migrateSchoolPathways(value.platform);
+          return value;
+        }
       }
     } catch {
       /* Fall back to a valid fixture, never break the UI on damaged storage. */

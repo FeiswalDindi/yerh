@@ -12,12 +12,12 @@ import {
   incubationLearners,
   institutionForPath,
   managesVenture,
+  migrateSchoolPathways,
   passedStage,
   paymentFor,
   productClearedByIncubation,
   schoolForVenture,
   sameCertificate,
-  stageIds,
   stageUnlocked,
   type TrainingAction,
 } from './incubation.ts';
@@ -26,14 +26,15 @@ const trainingActionTypes = {
   'stage-evidence': true,
   'stage-feedback': true,
   'stage-request': true,
+  'school-stage-open': true,
   'stage-meeting': true,
   'stage-open-exam': true,
-  'school-stage-review': true,
   'stage-revise': true,
   'stage-take-exam': true,
   'stage-grade': true,
   'stage-offline-result': true,
   'training-credential-issue': true,
+  'school-credentials-issue': true,
   'training-fees-save': true,
   'training-payment-request': true,
   'training-payment-review': true,
@@ -104,10 +105,7 @@ export function applyTrainingAction(
     const institution = schoolForVenture(p, venture);
     const mentor = !institution && can(actor, 'mentor') && actor.id === path.mentorId;
     const owner = managesVenture(p, actor, venture);
-    check(
-      owner || mentor || (admin && institution && action.type === 'school-stage-review'),
-      'You do not have access to this incubation.',
-    );
+    check(owner || mentor, 'You do not have access to this incubation.');
     const definition = t.curriculum.find((stage) => stage.id === action.stage);
     check(definition && stageUnlocked(p, path, action.stage), 'Pass the previous stage first.');
     let work = getStage(t, path.id, action.stage);
@@ -128,7 +126,7 @@ export function applyTrainingAction(
     switch (action.type) {
       case 'stage-evidence': {
         check(
-          owner && !work.reviewRequestedAt && !work.examOpenedAt,
+          owner && (institution || !work.reviewRequestedAt) && !work.examOpenedAt,
           'This stage is under review.',
         );
         check(
@@ -155,16 +153,27 @@ export function applyTrainingAction(
         break;
       }
       case 'stage-request':
+      case 'school-stage-open': {
+        const offline = action.type === 'school-stage-open';
         check(
           owner &&
-            !work.reviewRequestedAt &&
+            offline === !!institution &&
+            (offline || !work.reviewRequestedAt) &&
             !work.examOpenedAt &&
             definition.steps.every((step) => work.steps.some((saved) => saved.id === step.id)),
-          'Save every required step before requesting a review.',
+          offline
+            ? 'Save every required step before opening the assessment.'
+            : 'Save every required step before requesting a review.',
         );
-        work.reviewRequestedAt = now;
-        work.meetingNote = '';
+        if (offline) {
+          work.reviewRequestedAt = '';
+          work.examOpenedAt = now;
+        } else {
+          work.reviewRequestedAt = now;
+          work.meetingNote = '';
+        }
         break;
+      }
       case 'stage-meeting':
         check(
           mentor &&
@@ -189,15 +198,6 @@ export function applyTrainingAction(
           work.meetingAt = '';
           work.meetingLocation = '';
         }
-        break;
-      case 'school-stage-review':
-        check(
-          admin && institution && work.reviewRequestedAt && !work.examOpenedAt,
-          'Select a school stage awaiting review.',
-        );
-        work.schoolReviewNote = text(action.note, 5);
-        if (action.approved) work.examOpenedAt = now;
-        else work.reviewRequestedAt = '';
         break;
       case 'stage-take-exam':
       case 'stage-offline-result': {
@@ -231,6 +231,12 @@ export function applyTrainingAction(
           score: offline ? action.score : null,
           note: offline ? text(action.note, 5) : '',
         });
+        if (
+          offline &&
+          action.stage === 'funding' &&
+          incubationLearners(p, path).every((id) => passedStage(t, path.id, action.stage, id))
+        )
+          path.status = 'completed';
         break;
       }
       case 'stage-grade': {
@@ -349,32 +355,42 @@ export function applyTrainingAction(
       }
       return ownSchool.id;
     }
-    case 'training-credential-issue': {
+    case 'training-credential-issue':
+    case 'school-credentials-issue': {
       check(admin, 'Only a platform administrator can issue certificates.');
       const path = p.incubations.find((i) => i.id === action.incubationId);
+      check(credentialKinds.includes(action.kind), 'Unknown certificate.');
+      check(path, 'Choose a valid pathway.');
+      const school = p.ventures.some((venture) => venture.id === path.ventureId && venture.groupId);
+      const recipients = action.type === 'school-credentials-issue' ? action.recipients : [action];
       check(
-        stageIds.some((stage) => stage === action.kind) || action.kind === 'venture',
-        'Unknown certificate.',
+        action.type !== 'school-credentials-issue' ||
+          (school &&
+            recipients.length > 0 &&
+            new Set(recipients.map((row) => row.learnerId)).size === recipients.length &&
+            new Set(recipients.map((row) => row.id)).size === recipients.length),
+        'Choose distinct students in one school pathway.',
       );
-      check(
-        path && credentialReady(p, path, action.learnerId, action.kind),
-        'The learner must pass all required stages.',
-      );
-      check(
-        !p.ventures.some((venture) => venture.id === path.ventureId && venture.groupId) ||
-          t.certificateRequests?.some((entry) => sameCertificate(entry, action)),
-        'The institution must request this certificate first.',
-      );
-      check(
-        !t.credentials.some(
-          (c) =>
-            c.id === action.id ||
-            (c.incubationId === path.id &&
-              c.learnerId === action.learnerId &&
-              c.kind === action.kind),
-        ),
-        'This certificate has already been issued.',
-      );
+      const entries = recipients.map(({ id, learnerId }) => ({
+        id,
+        incubationId: path.id,
+        learnerId,
+        kind: action.kind,
+      }));
+      for (const entry of entries) {
+        check(
+          credentialReady(p, path, entry.learnerId, entry.kind),
+          'The learner must pass all required stages.',
+        );
+        check(
+          !school || t.certificateRequests?.some((row) => sameCertificate(row, entry)),
+          'The institution must request this certificate first.',
+        );
+        check(
+          !t.credentials.some((row) => row.id === entry.id || sameCertificate(row, entry)),
+          'This certificate has already been issued.',
+        );
+      }
       const payment =
         action.kind === 'funding' || action.kind === 'venture'
           ? undefined
@@ -383,16 +399,12 @@ export function applyTrainingAction(
         certificateFee(p, path, action.kind) === 0 || payment?.status === 'confirmed',
         'Confirm the stage certificate payment first.',
       );
-      t.credentials.push({
-        id: action.id,
-        incubationId: path.id,
-        learnerId: action.learnerId,
-        kind: action.kind,
-        issuedBy: actor.id,
-        issuedAt: now,
-      });
-      if (action.kind === 'venture' && path.status === 'active') path.status = 'completed';
-      return action.id;
+      t.credentials.push(
+        ...entries.map((entry) => ({ ...entry, issuedBy: actor.id, issuedAt: now })),
+      );
+      if (!school && action.kind === 'venture' && path.status === 'active')
+        path.status = 'completed';
+      return action.type === 'training-credential-issue' ? action.id : path.id;
     }
     case 'training-fees-save':
       check(
@@ -651,6 +663,7 @@ export function applyTrainingAction(
           'Review the signed agreement and proof before activating.',
         );
         institution.status = 'active';
+        migrateSchoolPathways(p);
       } else {
         check(
           admin && institution.status === 'active',

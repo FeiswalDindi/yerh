@@ -10,6 +10,7 @@ import { mediaAssets } from '../src/config/media.ts';
 import {
   canPublishProduct,
   cohortForVenture,
+  migrateSchoolPathways,
   stageUnlocked,
   type StageId,
 } from '../src/domain/incubation.ts';
@@ -616,13 +617,18 @@ function trainingScenario() {
       now,
       goal: 'Test the offer and build a viable enterprise with customer evidence.',
     });
-    act(admin, {
-      type: 'incubation-assign',
-      id: 'pathway',
-      mentorId: mentor,
-      decision: 'active',
-      now,
-    });
+    if (accountId === 'demo-school') {
+      assert.equal(state.platform.incubations.at(-1)?.status, 'active');
+      assert.equal(state.platform.incubations.at(-1)?.mentorId, '');
+    } else {
+      act(admin, {
+        type: 'incubation-assign',
+        id: 'pathway',
+        mentorId: mentor,
+        decision: 'active',
+        now,
+      });
+    }
   }
   function openStage(accountId: string, stage: StageId) {
     const key = { incubationId: 'pathway', stage, now };
@@ -636,14 +642,13 @@ function trainingScenario() {
       });
     }
     if (accountId === 'demo-school') {
-      act(accountId, { ...key, type: 'stage-request' });
+      reject(admin, { ...key, type: 'school-stage-open' }, /access/);
+      act(accountId, { ...key, type: 'school-stage-open' });
       reject(mentor, { ...key, type: 'stage-meeting', meetingAt: now }, /access/);
-      act(admin, {
-        ...key,
-        type: 'school-stage-review',
-        approved: true,
-        note: 'Reviewed the school stage evidence and authorized the offline assessment.',
-      });
+      assert.equal(
+        state.platform.training.stages.find((row) => row.stage === stage)?.examOpenedAt,
+        now,
+      );
       return key;
     }
     act(mentor, {
@@ -981,13 +986,17 @@ test('school agreements gate activation and group venture certification respects
       status: 'pending',
     },
   });
-  act(admin, {
-    type: 'venture-review',
-    entity: 'venture',
-    id: 'group-venture',
-    decision: 'approved',
-    now,
-  });
+  reject(
+    admin,
+    {
+      type: 'venture-review',
+      entity: 'venture',
+      id: 'group-venture',
+      decision: 'rejected',
+      now,
+    },
+    /managed by their institution/,
+  );
   const created = state().platform.ventures.find((row) => row.id === 'group-venture')!;
   assert.equal(cohortForVenture(state().platform, created)?.id, 'term-at-creation');
   reject(
@@ -1152,9 +1161,88 @@ test('school agreements gate activation and group venture certification respects
   act(school, { ...schoolRequest, entries: [...schoolRequest.entries] });
   assert.equal(state().platform.training.certificateRequests?.length, 2);
   act(admin, final);
-  act(admin, { ...final, id: 'school-stage-one', kind: 'getting-started' });
+  const issueStage = {
+    type: 'school-credentials-issue',
+    incubationId: 'pathway',
+    kind: 'getting-started',
+    recipients: [
+      { id: 'school-stage-one', learnerId: pupil },
+      { id: 'teammate-stage-one', learnerId: teammate },
+    ],
+    now,
+  } as const;
+  const issue = { ...issueStage, recipients: [...issueStage.recipients] };
+  reject(school, issue, /only a platform administrator/i);
+  reject(admin, issue, /required stages/);
+  assert.equal(state().platform.training.credentials.length, 1);
+  act(school, { ...record(teammate, 75, first), attemptId: 'teammate-resit' });
+  reject(admin, issue, /request this certificate/);
+  act(school, {
+    ...schoolRequest,
+    entries: [{ ...schoolRequest.entries[1], learnerId: teammate }],
+  });
+  act(admin, issue);
+  assert.deepEqual(
+    state()
+      .platform.training.credentials.filter((row) => row.kind === 'getting-started')
+      .map((row) => row.learnerId),
+    [pupil, teammate],
+  );
+  reject(admin, issue, /already been issued/);
   reject(admin, { ...final, id: 'teammate-final', learnerId: teammate }, /required stages/);
   assert.equal(state().platform.training.payments.length, 0);
+});
+
+test('legacy school approvals release on load while retaining recorded pathway data', () => {
+  const { act, state } = trainingScenario();
+  const school = 'demo-school';
+  const platform = state().platform;
+  const venture = {
+    ...platform.ventures[0]!,
+    id: 'legacy-school-venture',
+    ownerId: school,
+    groupId: 'demo-school-group',
+    status: 'pending' as const,
+  };
+  platform.ventures.push(venture);
+  platform.incubations.push({
+    id: 'legacy-school-pathway',
+    ventureId: venture.id,
+    ownerId: school,
+    mentorId: 'demo-mentor',
+    status: 'pending',
+    goal: 'Compare different offers and record student evidence.',
+    milestones: [],
+  });
+  const definition = platform.training.curriculum[0]!;
+  platform.training.stages.push({
+    id: 'legacy-school-pathway:getting-started',
+    incubationId: 'legacy-school-pathway',
+    stage: definition.id,
+    steps: definition.steps.map(({ id }) => ({
+      id,
+      evidence: 'Existing evidence from a prior classroom activity.',
+      requested: false,
+      feedback: '',
+    })),
+    reviewRequestedAt: now,
+    meetingAt: '',
+    meetingNote: '',
+    examOpenedAt: '',
+    attempts: [],
+  });
+  migrateSchoolPathways(platform);
+  assert.equal(venture.status, 'approved');
+  assert.equal(platform.incubations.at(-1)?.status, 'active');
+  assert.equal(platform.incubations.at(-1)?.mentorId, '');
+  act(school, {
+    type: 'school-stage-open',
+    stage: definition.id,
+    incubationId: 'legacy-school-pathway',
+    now,
+  });
+  assert.equal(state().platform.training.stages.at(-1)?.examOpenedAt, now);
+  assert.equal(state().platform.training.stages.at(-1)?.steps.length, definition.steps.length);
 });
 
 test('administrators manage events and categories without dropping registrations or applying stale edits', () => {

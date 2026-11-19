@@ -167,6 +167,7 @@ export type TrainingCommand =
       feedback: string;
     }
   | { type: 'stage-request'; incubationId: string; stage: StageId }
+  | { type: 'school-stage-open'; incubationId: string; stage: StageId }
   | {
       type: 'stage-meeting';
       incubationId: string;
@@ -175,13 +176,6 @@ export type TrainingCommand =
       location?: string;
     }
   | { type: 'stage-open-exam'; incubationId: string; stage: StageId; note: string }
-  | {
-      type: 'school-stage-review';
-      incubationId: string;
-      stage: StageId;
-      approved: boolean;
-      note: string;
-    }
   | { type: 'stage-revise'; incubationId: string; stage: StageId; note: string }
   | {
       type: 'stage-take-exam';
@@ -271,6 +265,12 @@ export type TrainingCommand =
       incubationIds: string[];
     }
   | { type: 'institution-certificates-request'; entries: CertificateSelection[] }
+  | {
+      type: 'school-credentials-issue';
+      incubationId: string;
+      kind: CredentialKind;
+      recipients: { learnerId: string; id: string }[];
+    }
   | { type: 'institution-profile'; id: string; headline: string; about: string; skills: string }
   | { type: 'institution-group'; id: string; name: string; studentIds: string[] }
   | {
@@ -319,6 +319,27 @@ export function institutionForPath(p: PlatformState, path: Incubation) {
   if (venture.groupId) return schoolForVenture(p, venture);
   const affiliation = p.training.affiliations[path.ownerId];
   return p.training.institutions.find((row) => row.kind === 'university' && row.id === affiliation);
+}
+
+/** Release legacy approval holds for teams in already onboarded schools. */
+export function migrateSchoolPathways(p: PlatformState) {
+  const schoolVentureIds = new Set<string>();
+  for (const venture of p.ventures) {
+    const school = schoolForVenture(p, venture);
+    if (
+      school?.kind !== 'high-school' ||
+      school.status !== 'active' ||
+      school.adminId !== venture.ownerId
+    )
+      continue;
+    schoolVentureIds.add(venture.id);
+    if (venture.status === 'pending') venture.status = 'approved';
+  }
+  for (const path of p.incubations) {
+    if (!schoolVentureIds.has(path.ventureId)) continue;
+    if (path.status === 'pending') path.status = 'active';
+    path.mentorId = '';
+  }
 }
 
 export function sameCertificate(a: CertificateSelection, b: CertificateSelection) {

@@ -125,7 +125,7 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
     );
     addApproval('ventures', 'Ventures and organisations to review', [
       ...platform.ventures
-        .filter((row) => row.status === 'pending')
+        .filter((row) => row.status === 'pending' && !row.groupId)
         .map((row) => `venture:${revision(row.id, ['venture-save', 'venture-review'])}`),
       ...platform.organisations
         .filter((row) => row.status === 'pending')
@@ -137,7 +137,10 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
     addApproval(
       'incubation',
       'Incubation applications to review',
-      pendingIds(platform.incubations, 'incubation'),
+      pendingIds(
+        platform.incubations.filter((path) => !schoolPaths.has(path.id)),
+        'incubation',
+      ),
     );
     addApproval(
       'evidence',
@@ -151,16 +154,6 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
         .map((row) => `evidence:${revision(row.productId, ['product-evidence'])}`),
     );
     updates.push(
-      {
-        label: 'School assessments to review',
-        itemIds: platform.training.stages
-          .filter(
-            (work) =>
-              schoolPaths.has(work.incubationId) && work.reviewRequestedAt && !work.examOpenedAt,
-          )
-          .map((work) => work.id + ':' + work.reviewRequestedAt),
-        to: workspaceHref('approvals') + '&view=school-reviews',
-      },
       {
         label: 'Course proposals to review',
         itemIds: pendingIds(platform.courseCommerce?.proposals ?? [], 'proposal'),

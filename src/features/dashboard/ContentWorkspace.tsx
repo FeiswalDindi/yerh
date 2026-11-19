@@ -150,7 +150,7 @@ export function ContentWorkspace() {
                       composer.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
                     }}
                   >
-                    Edit draft
+                    Edit
                   </button>
                 )}
                 {entry.status === 'draft' && (
@@ -188,8 +188,9 @@ export function ContentWorkspace() {
                     <Link
                       className="text-link"
                       to={contentPath({ kind: entry.kind, slug: entry.id })}
+                      aria-label="View published demo"
                     >
-                      View published demo →
+                      View
                     </Link>
                     {canReview && (
                       <button

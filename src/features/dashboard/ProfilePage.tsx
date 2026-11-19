@@ -201,8 +201,12 @@ export function ProfilePage() {
                   timeZone: 'Africa/Nairobi',
                 })}
               </p>
-              <Link className="text-link" to={memberPath(account.id)}>
-                View community profile <ArrowUpRight size={16} aria-hidden="true" />
+              <Link
+                className="text-link"
+                to={memberPath(account.id)}
+                aria-label="View community profile"
+              >
+                View <ArrowUpRight size={16} aria-hidden="true" />
               </Link>
             </section>
           </aside>
@@ -245,8 +249,12 @@ export function ProfilePage() {
               <section className="profile-panel dashboard-profile-card">
                 <h2>Mentor settings</h2>
                 <p>Update the expertise, availability, and bio shown to entrepreneurs.</p>
-                <Link to={workspaceHref('mentor')} className="text-link">
-                  Edit mentor profile <ArrowUpRight size={16} aria-hidden="true" />
+                <Link
+                  to={workspaceHref('mentor')}
+                  className="text-link"
+                  aria-label="Edit mentor profile"
+                >
+                  Edit <ArrowUpRight size={16} aria-hidden="true" />
                 </Link>
               </section>
             )}

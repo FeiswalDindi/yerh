@@ -6,7 +6,11 @@ import { PageIntro } from '../../shared/PageIntro';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { accountRoleRequests, roleAccessPath } from '../accounts/role-requests';
 import { dashboardCataloguePaths } from '../dashboard/catalogue-paths';
-import { dashboardGroups, guestResourceLinks } from '../dashboard/dashboard-navigation';
+import {
+  dashboardGroups,
+  guestResourceLinks,
+  workspaceHref,
+} from '../dashboard/dashboard-navigation';
 import { dashboardMetrics, dashboardTitles } from '../dashboard/dashboard-overview';
 import { DemoNotice } from '../demo/DemoNotice';
 import './workspace.css';
@@ -28,12 +32,30 @@ export function RoleDashboard() {
   const applications = accountRoleRequests(state.platform.applications, account.id);
   const recent = applications[0];
   const metrics = dashboardMetrics(state, account);
+  const links = dashboardGroups(account)
+    .slice(1, -1)
+    .flatMap((group) => group.links);
+  const priority =
+    account.role === 'school_admin'
+      ? {
+          label: 'Incubation Pathway',
+          to: workspaceHref('incubation'),
+          description: 'Run team pathways and open assessments.',
+        }
+      : account.role === 'admin'
+        ? {
+            label: 'Institutions',
+            to: workspaceHref('institutions'),
+            description: 'Manage institutional onboarding and access.',
+          }
+        : undefined;
   const shortcuts = isGuest
     ? guestResourceLinks
-    : dashboardGroups(account)
-        .slice(1, -1)
-        .flatMap((group) => group.links)
-        .slice(0, 4);
+    : [
+        ...links.slice(0, 1),
+        ...(priority ? [priority] : []),
+        ...links.slice(1).filter((link) => link.to !== priority?.to),
+      ].slice(0, 4);
 
   return (
     <>
@@ -54,8 +76,8 @@ export function RoleDashboard() {
                 <p>Reviewer feedback: {recent.reason}</p>
               )}
             </div>
-            <Link className="button" to={roleAccessPath}>
-              View in Profile <ArrowRight size={16} aria-hidden="true" />
+            <Link className="button" to={roleAccessPath} aria-label="View in Profile">
+              View <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </section>
         )}
@@ -108,8 +130,8 @@ export function RoleDashboard() {
               {account.role === 'admin' && ' · ' + recent.status}
             </p>
             {recent.reason && <p>Reviewer feedback: {recent.reason}</p>}
-            <Link className="text-link" to={roleAccessPath}>
-              View role request history <ArrowRight size={16} aria-hidden="true" />
+            <Link className="text-link" to={roleAccessPath} aria-label="View role request history">
+              View <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </section>
         )}
