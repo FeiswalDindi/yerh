@@ -235,6 +235,14 @@
   "cmsReleases": [],
   "cmsRevision": 0,
   "certificates": [],
+  "courseCommerce": {
+    "prices": {
+      "business-foundations": { "price": 750, "discount": 0 },
+      "growing-your-business": { "price": 1200, "discount": 200 }
+    },
+    "purchases": [],
+    "proposals": []
+  },
   "courseLessons": {
     "business-foundations": [
       "business-opportunities-mapping-and-idea-generation",

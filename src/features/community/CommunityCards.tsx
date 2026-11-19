@@ -12,6 +12,8 @@ import {
   type FeedEntry,
 } from '../../domain/community';
 import type { DemoAccount, Group } from '../../domain/demo';
+import { sessionPresenters } from '../../domain/events';
+import { EventPresenters } from '../resources/EventPresenters';
 import { can, roleLabels } from '../../domain/roles';
 
 export function MemberAvatar({ member, large = false }: { member: DemoAccount; large?: boolean }) {
@@ -216,6 +218,8 @@ export function Leaderboard({
   );
 }
 export function SessionCard({ session }: { session: CommunitySession }) {
+  const { state } = useDemo();
+  const presenters = sessionPresenters(session, state.accounts);
   return (
     <article className="collection-card session-card">
       <span className="eyebrow">
@@ -240,17 +244,7 @@ export function SessionCard({ session }: { session: CommunitySession }) {
         <MapPin size={17} aria-hidden="true" />
         {session.venue}
       </p>
-      {session.hostIds.length > 0 && (
-        <p>
-          Hosted by{' '}
-          {session.hostIds.map((id, i) => (
-            <span key={id}>
-              {i > 0 && ', '}
-              <MemberLink id={id} />
-            </span>
-          ))}
-        </p>
-      )}
+      {presenters.length > 0 && <EventPresenters presenters={presenters} />}
       <Link className="text-link" to={sessionPath(session.id)}>
         View {session.type} <ArrowUpRight size={16} />
       </Link>

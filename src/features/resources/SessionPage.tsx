@@ -8,9 +8,10 @@ import { contentPath } from '../../domain/content';
 import { memberPath, registrationProblem, sessionPath } from '../../domain/community';
 import { PageIntro } from '../../shared/PageIntro';
 import { usePageTitle } from '../../shared/usePageTitle';
+import { isPublishedSession, sessionCategory, sessionPresenters } from '../../domain/events';
 import { DemoNotice } from '../demo/DemoNotice';
 import { NotFoundPage } from '../info/NotFoundPage';
-import { MemberCard } from '../community/CommunityCards';
+import { EventPresenters } from './EventPresenters';
 import { can } from '../../domain/roles';
 
 export function SessionPage({ dashboard = false }: { dashboard?: boolean }) {
@@ -19,13 +20,22 @@ export function SessionPage({ dashboard = false }: { dashboard?: boolean }) {
   const { state, account, enabled, execute } = useDemo();
   const { items } = useCatalog();
   const session = state.sessions.find((s) => s.id === sessionId);
-  usePageTitle(session?.title ?? 'Session not found');
-  if (!session) return <NotFoundPage />;
+  const adminView = dashboard && account?.role === 'admin';
+  const preview = adminView && new URLSearchParams(search).get('eventView') === 'preview';
+  const existing = state.registrations.find(
+    (row) =>
+      row.sessionId === sessionId && row.memberId === account?.id && row.status !== 'cancelled',
+  );
+  const visible =
+    session && (isPublishedSession(session) || (!preview && (adminView || !!existing)));
+  usePageTitle(visible ? session.title : 'Session not found');
+  if (!session || !visible) return <NotFoundPage />;
+  const presenters = sessionPresenters(session, state.accounts);
   const resource = items.find((i) => i.id === session.contentId);
   const group = state.groups.find((g) => g.id === session.groupId);
   const forum = state.forums.find((f) => f.id === session.forumId);
   const registration = state.registrations.find(
-    (r) => r.sessionId === session.id && r.memberId === account?.id,
+    (r) => !preview && r.sessionId === session.id && r.memberId === account?.id,
   );
   const canAttend = can(account, 'attend');
   const count = state.registrations.filter(
@@ -42,12 +52,20 @@ export function SessionPage({ dashboard = false }: { dashboard?: boolean }) {
   }
   return (
     <>
-      <PageIntro
-        eyebrow={`${session.type} · ${session.status}`}
-        title={session.title}
-        description={session.summary}
-      />
+      {!adminView && (
+        <PageIntro
+          eyebrow={sessionCategory(session, state.platform.eventCategories).label}
+          title={session.title}
+          description={session.summary}
+        />
+      )}
       <section className="container section">
+        {adminView && (
+          <>
+            <h1 className="workspace-heading">{session.title}</h1>
+            <p>{session.summary}</p>
+          </>
+        )}
         <DemoNotice />
         <Link
           className="text-link"
@@ -100,17 +118,11 @@ export function SessionPage({ dashboard = false }: { dashboard?: boolean }) {
               )}
             </article>
             <h2 className="community-section-title">Hosts & facilitators</h2>
-            {session.hostIds.length ? (
-              <div className="profile-card-grid">
-                {state.accounts
-                  .filter((a) => session.hostIds.includes(a.id))
-                  .map((a) => (
-                    <MemberCard key={a.id} member={a} />
-                  ))}
-              </div>
+            {presenters.length ? (
+              <EventPresenters presenters={presenters} />
             ) : (
               <p className="empty-state">
-                Member identities for the original facilitators have not been verified.
+                Host and facilitator details will appear here when added.
               </p>
             )}
           </div>
@@ -157,6 +169,8 @@ export function SessionPage({ dashboard = false }: { dashboard?: boolean }) {
               ) : account && enabled && canAttend ? (
                 <button
                   className="button"
+                  type="button"
+                  disabled={preview}
                   onClick={() =>
                     execute({
                       type: 'registration',
@@ -177,7 +191,7 @@ export function SessionPage({ dashboard = false }: { dashboard?: boolean }) {
                   {account ? 'Request event access' : 'Sign in to reserve a place'}
                 </AccountLink>
               )}
-              {account && (
+              {account && !adminView && (
                 <Link
                   className="profile-sidebar-link"
                   to={

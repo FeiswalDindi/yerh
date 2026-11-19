@@ -1,5 +1,6 @@
 import type { CmsSnapshot, Opportunity } from './platform';
 import type { DemoState } from './demo';
+import { eventCategories, isPublishedSession, validEventPresenters } from './events.ts';
 const object = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === 'object' && !Array.isArray(v);
 function demand(ok: unknown, message: string): asserts ok {
@@ -322,7 +323,15 @@ export function assertCmsSnapshot(value: CmsSnapshot, state?: DemoState) {
           s.type,
         ) &&
         ['upcoming', 'completed', 'postponed'].includes(s.status) &&
+        (s.publication === undefined || ['draft', 'published'].includes(s.publication)) &&
         strings(s.hostIds) &&
+        validEventPresenters(s.presenters, s.hostIds) &&
+        (s.categoryId === undefined ||
+          (typeof s.categoryId === 'string' &&
+            (!state ||
+              eventCategories(state.platform.eventCategories).some(
+                (category) => category.id === s.categoryId && category.type === s.type,
+              )))) &&
         [s.startsAt, s.endsAt, s.registrationDeadline].every(date),
       'Session fields are invalid.',
     );
@@ -333,6 +342,7 @@ export function assertCmsSnapshot(value: CmsSnapshot, state?: DemoState) {
     }
     demand(
       s.status !== 'upcoming' ||
+        !isPublishedSession(s) ||
         (!!s.startsAt && !!s.endsAt && Date.parse(s.endsAt) > Date.parse(s.startsAt)),
       'Upcoming sessions require a valid start/end range.',
     );

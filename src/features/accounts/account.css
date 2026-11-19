@@ -36,6 +36,58 @@ html:has(.account-dialog[open]) {
   display: none;
 }
 
+.account-dialog.account-institution-dialog {
+  width: min(820px, calc(100% - 32px));
+}
+
+.account-institution-dialog::before {
+  display: none;
+}
+
+.account-institution-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 375px;
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  background: var(--yerh-white);
+  border: 1px solid var(--yerh-border);
+  box-shadow: 0 16px 48px #11203e38;
+}
+
+.account-institution-image {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: cover;
+}
+
+.account-institution-form {
+  display: grid;
+  gap: 20px;
+  align-content: center;
+  padding: clamp(20px, 4vw, 44px);
+}
+
+.account-field select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--yerh-border);
+  border-radius: 0;
+  background: var(--yerh-white);
+  color: var(--yerh-navy);
+  font: inherit;
+}
+
+@media (max-width: 540px) {
+  .account-institution-card {
+    grid-template-columns: 1fr;
+  }
+  .account-institution-image {
+    max-height: 170px;
+  }
+}
+
 @property --account-border-angle {
   syntax: '<angle>';
   inherits: true;

@@ -25,13 +25,20 @@ function Editor({
   onChange,
   path = '',
   readOnly = false,
+  showStatus = false,
 }: {
   value: Json;
   onChange: (v: Json) => void;
   path?: string;
   readOnly?: boolean;
+  showStatus?: boolean;
 }) {
   const key = path.split('.').at(-1) ?? '';
+  if (
+    (key === 'status' && !showStatus) ||
+    (['publication', 'hostIds', 'presenters'].includes(key) && path.startsWith('sessions.'))
+  )
+    return null;
   const immutable =
     readOnly || ['source', 'sha256', 'id', 'ownerId', 'authorId', 'memberIds'].includes(key);
   if (Array.isArray(value)) {
@@ -67,6 +74,7 @@ function Editor({
             <Editor
               value={entry}
               path={`${path}.${index}`}
+              showStatus={showStatus}
               readOnly={immutable}
               onChange={(v) => onChange(value.map((x, i) => (i === index ? v : x)))}
             />
@@ -99,6 +107,7 @@ function Editor({
             key={k}
             value={v}
             path={path ? `${path}.${k}` : k}
+            showStatus={showStatus}
             readOnly={immutable}
             onChange={(next) => onChange({ ...value, [k]: next })}
           />
@@ -333,7 +342,13 @@ export function CmsPage() {
             <Link to="/dashboard/content">Open contribution review →</Link>
           </p>
         )}
-        <Editor value={value as Json} path={module} readOnly={workflowOwned} onChange={edit} />
+        <Editor
+          value={value as Json}
+          path={module}
+          readOnly={workflowOwned}
+          showStatus={account?.role === 'admin'}
+          onChange={edit}
+        />
       </>
     );
   return (
@@ -612,9 +627,13 @@ export function CmsPage() {
                           )}
                         </strong>
                         <small>
-                          {module === 'opportunities'
-                            ? `${record.featured ? 'Featured · ' : ''}${label(String(record.status ?? 'draft'))}`
-                            : String(record.kind ?? record.category ?? record.status ?? '')}
+                          {String(
+                            record.kind ??
+                              record.category ??
+                              (account?.role === 'admin' && record.status
+                                ? label(String(record.status))
+                                : ''),
+                          )}
                         </small>
                       </button>
                     ))}

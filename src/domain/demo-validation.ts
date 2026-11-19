@@ -1,8 +1,10 @@
 import type { DemoState, DemoAccount } from './demo';
 import { canonicalRole, roleLabels } from './roles.ts';
 import { isPlatformState } from './platform-validation.ts';
+import { courseLessonIds } from './courses.ts';
 import { assertCmsSnapshot, assertOpportunity } from './cms.ts';
 import { validTrainingReferences } from './incubation-validation.ts';
+import { eventCategories, isPublishedSession, validEventPresenters } from './events.ts';
 type RecordValue = Record<string, unknown>;
 const record = (v: unknown): v is RecordValue => !!v && typeof v === 'object' && !Array.isArray(v);
 const strings = (v: unknown): v is string[] =>
@@ -30,7 +32,10 @@ export function migrateDemoState(value: unknown, seed: DemoState): unknown {
     record(value) &&
     value.version === 2 &&
     record(value.platform) &&
-    (!value.platform.courseLessons || !value.platform.certificates || !value.platform.training)
+    (!value.platform.courseLessons ||
+      !value.platform.certificates ||
+      !value.platform.training ||
+      !value.platform.courseCommerce)
   )
     return {
       ...value,
@@ -204,7 +209,10 @@ export function isDemoState(
           'exhibition',
         ]) &&
         member(v.status, ['upcoming', 'completed', 'postponed']) &&
+        (v.categoryId === undefined || typeof v.categoryId === 'string') &&
+        (v.publication === undefined || member(v.publication, ['draft', 'published'])) &&
         strings(v.hostIds) &&
+        validEventPresenters(v.presenters, v.hostIds) &&
         ['startsAt', 'endsAt', 'registrationDeadline', 'groupId', 'forumId', 'contentId'].every(
           (k) => nullableText(v[k]),
         ) &&
@@ -316,7 +324,9 @@ export function isDemoState(
         ventures.has(i.ventureId) &&
         p.ventures.some((v) => v.id === i.ventureId && v.ownerId === i.ownerId) &&
         (!i.mentorId || accounts.has(i.mentorId)) &&
-        (!['active', 'completed'].includes(i.status) || !!i.mentorId) &&
+        (!['active', 'completed'].includes(i.status) ||
+          !!i.mentorId ||
+          p.ventures.some((venture) => venture.id === i.ventureId && !!venture.groupId)) &&
         unique(i.milestones.map((m) => m.id)),
     )
   )
@@ -331,9 +341,7 @@ export function isDemoState(
   if (
     !Object.entries(p.enrollments).every(
       ([id, courses]) =>
-        accounts.has(id) &&
-        unique(courses) &&
-        courses.every((c) => Object.hasOwn(p.courseLessons, c)),
+        accounts.has(id) && unique(courses) && courses.every((c) => !!courseLessonIds(p, c)),
     )
   )
     return false;
@@ -342,11 +350,31 @@ export function isDemoState(
       (c) =>
         accounts.has(c.accountId) &&
         accounts.has(c.issuedBy) &&
-        Object.hasOwn(p.courseLessons, c.courseId) &&
+        !!courseLessonIds(p, c.courseId) &&
         date(c.issuedAt),
     ) ||
-    !p.audit.every((e) => accounts.has(e.actorId) && date(e.createdAt)) ||
+    !p.audit.every(
+      (e) =>
+        accounts.has(e.actorId) &&
+        date(e.createdAt) &&
+        (e.institutionId === undefined ||
+          p.training.institutions.some((school) => school.id === e.institutionId)),
+    ) ||
     !validTrainingReferences(p, state.accounts)
+  )
+    return false;
+  const commerce = p.courseCommerce;
+  if (
+    commerce &&
+    (!unique(commerce.proposals.map((row) => row.id)) ||
+      !commerce.proposals.every(
+        (row) =>
+          accounts.has(row.mentorId) &&
+          unique(row.modules.map((module) => module.id)) &&
+          (row.status !== 'published' || row.modules.length > 0),
+      ) ||
+      !unique(commerce.purchases.map((row) => JSON.stringify([row.courseId, row.accountId]))) ||
+      !commerce.purchases.every((row) => accounts.has(row.accountId) && date(row.paidAt)))
   )
     return false;
   return (
@@ -395,12 +423,16 @@ export function isDemoState(
     state.sessions.every(
       (e) =>
         timezone(e.timezone) &&
+        (!e.categoryId ||
+          eventCategories(p.eventCategories).some(
+            (category) => category.id === e.categoryId && category.type === e.type,
+          )) &&
         unique(e.hostIds) &&
         e.hostIds.every((id) => accounts.has(id)) &&
         (e.groupId === null || groups.has(e.groupId)) &&
         (e.forumId === null || forums.has(e.forumId)) &&
         [e.startsAt, e.endsAt, e.registrationDeadline].every((v) => v === null || date(v)) &&
-        (e.status !== 'upcoming' || (!!e.startsAt && !!e.endsAt)) &&
+        (e.status !== 'upcoming' || !isPublishedSession(e) || (!!e.startsAt && !!e.endsAt)) &&
         (!e.startsAt || !e.endsAt || Date.parse(e.endsAt) > Date.parse(e.startsAt)) &&
         (e.capacity === null ||
           state.registrations.filter((r) => r.sessionId === e.id && r.status !== 'cancelled')

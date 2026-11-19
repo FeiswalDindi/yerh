@@ -3,22 +3,29 @@ import { Plus, Search } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CloseButton } from '../../shared/CloseButton';
 import { useDemo } from '../../app/useDemo';
+import { downloadCsv } from '../../shared/downloadCsv';
 import './workspace.css';
 
 export function WorkspaceDialog({
   action,
   title = action,
   create = false,
+  initialOpen = false,
+  trigger,
+  icon,
   children,
 }: {
   action: string;
   title?: string;
   create?: boolean;
+  initialOpen?: boolean;
+  trigger?: ReactNode;
+  icon?: ReactNode;
   children: (finish: (saved: boolean) => void) => ReactNode;
 }) {
   const label = useId();
   const ref = useRef<HTMLDialogElement>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [failed, setFailed] = useState(false);
   const { error } = useDemo();
 
@@ -35,16 +42,23 @@ export function WorkspaceDialog({
     <>
       <button
         type="button"
-        className={`button workspace-action${create ? '' : ' button-outline'}`}
+        className={
+          icon
+            ? 'button button-outline workspace-action workspace-icon-action'
+            : trigger
+              ? 'dashboard-pathway-card'
+              : `button workspace-action${create ? '' : ' button-outline'}`
+        }
         aria-haspopup="dialog"
-        aria-label={title === action ? undefined : `${action}: ${title}`}
+        aria-label={icon ? action : title === action ? undefined : `${action}: ${title}`}
+        title={icon ? action : undefined}
         onClick={() => {
           setFailed(false);
           setOpen(true);
         }}
       >
         {create && <Plus size={16} aria-hidden="true" />}
-        {action}
+        {icon ?? trigger ?? action}
       </button>
       {open && (
         <dialog
@@ -79,19 +93,21 @@ export function WorkspaceDialog({
 export function WorkspaceTabs({
   label,
   views,
+  param = 'view',
 }: {
   label: string;
+  param?: string;
   views: { id: string; label: string; count?: number; content: ReactNode }[];
 }) {
   const [params] = useSearchParams();
-  const active = views.find((view) => view.id === params.get('view')) ?? views[0];
+  const active = views.find((view) => view.id === params.get(param)) ?? views[0];
   if (!active) return null;
   return (
     <>
       <nav className="workspace-tabs" aria-label={label}>
         {views.map((view) => {
           const next = new URLSearchParams(params);
-          next.set('view', view.id);
+          next.set(param, view.id);
           return (
             <Link
               key={view.id}
@@ -123,6 +139,8 @@ export function WorkspaceFormDialog({
   action: string;
   title?: string;
   create?: boolean;
+  initialOpen?: boolean;
+  icon?: ReactNode;
   submit: string;
   onSave: (data: FormData) => boolean;
   children: ReactNode;
@@ -153,18 +171,39 @@ export function WorkspaceTable({
   rows,
   actions,
   empty = 'There are no records yet.',
+  exportName,
+  exportLabel = 'Export CSV',
 }: {
   label: string;
   columns: string[];
-  rows: { id: string; search: string; cells: ReactNode[] }[];
+  rows: { id: string; search: string; cells: ReactNode[]; csv?: (string | number)[] }[];
   actions?: ReactNode;
   empty?: ReactNode;
+  exportName?: string;
+  exportLabel?: string;
 }) {
   const [search, setSearch] = useState('');
   const filters = search.trim().toLocaleLowerCase().split(/\s+/);
   const matches = rows.filter((row) =>
     filters.every((word) => row.search.toLocaleLowerCase().includes(word)),
   );
+  function exportRows() {
+    if (!exportName) return;
+    const dataColumns = columns
+      .map((label, index) => ({ label, index }))
+      .filter(({ label }) => label !== 'Action' && label !== 'Actions');
+    downloadCsv(exportName, [
+      dataColumns.map(({ label }) => label),
+      ...matches.map(
+        (row) =>
+          row.csv ??
+          dataColumns.map(({ index }) => {
+            const cell = row.cells[index];
+            return typeof cell === 'string' || typeof cell === 'number' ? cell : '';
+          }),
+      ),
+    ]);
+  }
   return (
     <div className="workspace-data">
       <div className="workspace-data-toolbar">
@@ -178,7 +217,21 @@ export function WorkspaceTable({
             onChange={(event) => setSearch(event.target.value)}
           />
         </label>
-        {actions && <div className="workspace-toolbar-actions">{actions}</div>}
+        {(actions || exportName) && (
+          <div className="workspace-toolbar-actions">
+            {actions}
+            {exportName && (
+              <button
+                type="button"
+                className="button button-outline workspace-action"
+                disabled={!matches.length}
+                onClick={exportRows}
+              >
+                {exportLabel}
+              </button>
+            )}
+          </div>
+        )}
       </div>
       <div
         className="workspace-data-scroll"
@@ -228,6 +281,8 @@ export function WorkspaceTable({
 }
 
 export function WorkspaceStatus({ children }: { children: string }) {
+  const { account } = useDemo();
+  if (account?.role !== 'admin') return null;
   return (
     <span className="workspace-status" data-status={children.toLowerCase()}>
       {children.replaceAll('-', ' ')}

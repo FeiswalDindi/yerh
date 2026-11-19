@@ -1,6 +1,7 @@
 import { ArrowRight, type LucideIcon } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { dashboardCatalogueItemPath, type DashboardCatalogueKind } from './catalogue-paths';
+import { amount } from '../platform/TrainingForms';
 
 export type CatalogueEntry = {
   id: string;
@@ -9,7 +10,7 @@ export type CatalogueEntry = {
   category: string;
   image?: string | null;
   details?: string;
-  status?: string;
+  price?: { price: number; discount: number };
   progress?: { done: number; total: number };
 };
 
@@ -42,6 +43,16 @@ export function DashboardCatalogueCards({
             <Heading>{item.title}</Heading>
             <p className="dashboard-entry-summary">{item.summary}</p>
             {item.details && <small>{item.details}</small>}
+            {item.price && (
+              <p className="dashboard-course-price">
+                {item.price.discount > 0 && (
+                  <del aria-label="Original price">{amount(item.price.price)}</del>
+                )}{' '}
+                {item.price.price === item.price.discount
+                  ? 'Free'
+                  : amount(item.price.price - item.price.discount)}
+              </p>
+            )}
             {item.progress && (
               <progress
                 aria-label={`Progress in ${item.title}`}
@@ -49,7 +60,6 @@ export function DashboardCatalogueCards({
                 max={item.progress.total}
               />
             )}
-            {item.status && <span className="status-pill">{item.status}</span>}
           </div>
           <ArrowRight size={16} className="dashboard-entry-arrow" aria-hidden="true" />
         </Link>

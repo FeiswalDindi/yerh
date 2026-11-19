@@ -101,7 +101,6 @@ export function RoleRequestHistory({ requests }: { requests: RoleApplication[] }
           <li key={request.id}>
             <div className="role-request-history-heading">
               <strong>{roleLabels[request.role]}</strong>
-              <span className={`status-pill ${request.status}`}>{request.status}</span>
             </div>
             <p>{request.motivation}</p>
             {request.reason && <p>Reviewer feedback: {request.reason}</p>}

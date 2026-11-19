@@ -5,6 +5,7 @@ import { useDemo } from '../../app/useDemo';
 import { PageIntro } from '../../shared/PageIntro';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { DemoNotice } from '../demo/DemoNotice';
+import { isPublishedSession, sessionCategory } from '../../domain/events';
 import { sessionPath } from '../../domain/community';
 import { isCalendarDay } from '../../domain/sidebar';
 import { EventCalendar } from './EventCalendar';
@@ -19,7 +20,8 @@ export function EventsPage() {
   const date = params.get('date') ?? '';
   const type = params.get('type') ?? 'all';
   const selectedDate = isCalendarDay(date) ? date : '';
-  const filtered = state.sessions.filter(
+  const sessions = state.sessions.filter(isPublishedSession);
+  const filtered = sessions.filter(
     (s) =>
       (type === 'all' || s.type === type) && (!selectedDate || sessionOccursOnDay(s, selectedDate)),
   );
@@ -67,7 +69,8 @@ export function EventsPage() {
                 </div>
                 <div>
                   <p className="eyebrow">
-                    {s.type} · {s.status}
+                    {sessionCategory(s, state.platform.eventCategories).label}
+                    {s.status === 'postponed' && ' · Postponed'}
                   </p>
                   <h2>
                     <Link to={sessionPath(s.id)}>{s.title}</Link>
@@ -137,7 +140,7 @@ export function EventsPage() {
           <aside className="profile-panel event-filters">
             <h2>Find an event</h2>
             <EventCalendar
-              sessions={state.sessions.filter((s) => type === 'all' || s.type === type)}
+              sessions={sessions.filter((s) => type === 'all' || s.type === type)}
               selectedDay={date}
               onSelect={(day) => {
                 const next = new URLSearchParams(params);

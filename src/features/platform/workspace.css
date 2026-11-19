@@ -25,6 +25,28 @@
   font-size: 0.84rem;
 }
 
+.workspace-heading {
+  margin: 0 0 14px;
+  font-size: clamp(1.3rem, 2.6vw, 1.75rem);
+}
+
+.workspace-content a:not(.button, .workspace-tabs a, .cohort-card, .dashboard-entry-card) {
+  text-decoration: underline;
+  text-underline-offset: 0.17em;
+}
+
+.workspace-icon-action {
+  padding-inline: 0.65rem;
+}
+
+.venture-approved {
+  display: inline-flex;
+  align-items: center;
+  color: #216749;
+  margin-inline-start: 0.45rem;
+  vertical-align: middle;
+}
+
 .workspace-panel > .workspace-panel-title {
   position: absolute;
   width: 1px;
@@ -386,4 +408,53 @@
   .workspace-dialog-heading {
     padding-inline: 14px;
   }
+}
+.cohort-grid,
+.cohort-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.cohort-card,
+.cohort-metrics > div {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid var(--color-border, #d8deeb);
+  padding: 1rem;
+}
+
+.cohort-card {
+  position: relative;
+  padding-inline-end: 2.75rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.cohort-card:hover,
+.cohort-card:focus-visible {
+  border-color: currentColor;
+}
+
+.cohort-card svg {
+  position: absolute;
+  inset-inline-end: 1rem;
+  inset-block-start: 1rem;
+}
+
+.cohort-metrics strong {
+  font-size: 1.65rem;
+  line-height: 1.15;
+}
+
+.workspace-toolbar-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.workspace-record > h3 {
+  margin-block: 0.75rem;
 }

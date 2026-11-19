@@ -9,7 +9,7 @@ const workspaceGroups = {
   venture: [
     {
       id: 'ventures',
-      label: 'My ventures',
+      label: 'Ventures',
       description: 'Create a venture profile and track approvals.',
     },
     { id: 'products', label: 'Products', description: 'Manage products linked to your ventures.' },
@@ -27,6 +27,11 @@ const workspaceGroups = {
   mentor: [
     { id: 'mentor', label: 'Mentor profile', description: 'Set your expertise and availability.' },
     {
+      id: 'course-proposals',
+      label: 'Course proposals',
+      description: 'Propose courses, build approved modules, and track royalties.',
+    },
+    {
       id: 'mentees',
       label: 'Mentees & milestones',
       description: 'Follow the founders you support.',
@@ -40,7 +45,7 @@ const workspaceGroups = {
     },
     {
       id: 'opportunities',
-      label: 'My opportunities',
+      label: 'Opportunities',
       description: 'Create and manage listings for entrepreneurs.',
     },
     {
@@ -61,6 +66,21 @@ const workspaceGroups = {
       description:
         'Moderate product listings, assign incubation mentors, and review other requests.',
     },
+    {
+      id: 'manage-ventures',
+      label: 'Manage ventures',
+      description: 'Find and manage ventures across the platform.',
+    },
+    {
+      id: 'manage-products',
+      label: 'Marketplace products',
+      description: 'Review and manage marketplace listings across all ventures.',
+    },
+    {
+      id: 'admin-courses',
+      label: 'Courses',
+      description: 'Review proposals and manage course pricing and paid enrollments.',
+    },
     { id: 'users', label: 'Users & roles', description: 'Assign roles and manage account access.' },
     {
       id: 'reports',
@@ -79,7 +99,7 @@ const workspaceGroups = {
     },
     {
       id: 'institutions',
-      label: 'Institutions',
+      label: 'Institution directory',
       description: 'Onboard institutions and feature their success stories.',
     },
   ],
@@ -91,8 +111,8 @@ const workspaceGroups = {
     },
     {
       id: 'member-results',
-      label: 'Member results and certificates',
-      description: 'Review stage results, record offline resits, and download issued certificates.',
+      label: 'Results & Certificates',
+      description: 'Manage cohort marks and request or download certificates.',
     },
   ],
 } satisfies Record<WorkspaceGroup, WorkspaceModule[]>;
@@ -104,7 +124,7 @@ const workspaceOrder: Record<Role, WorkspaceGroup[]> = {
   content_manager: [],
   investor: ['organisation'],
   partner: ['organisation'],
-  admin: ['admin', 'venture', 'mentor', 'organisation'],
+  admin: ['admin'],
   school_admin: ['school', 'venture'],
 };
 
@@ -132,6 +152,19 @@ export function cmsModule(value: string | null) {
 }
 
 export const workspaceHref = (id: string) => `/dashboard/workspace?tab=${id}`;
+export const institutionHref = (tab: string, id: string) =>
+  workspaceHref(tab) + '&institution=' + encodeURIComponent(id);
+export const ventureResultsHref = (base: string, venture: string, cohort = 'all') =>
+  base + '&' + new URLSearchParams({ cohort, venture }).toString();
+export function institutionModule(requested: string | null, manage: boolean) {
+  const group = manage
+    ? [
+        ...workspaceGroups.school,
+        ...workspaceGroups.venture.filter((module) => module.id !== 'applications'),
+      ]
+    : workspaceGroups.school.filter((module) => module.id === 'member-results');
+  return requested ? group.find((module) => module.id === requested) : group[0];
+}
 export const cmsHref = (id: string) =>
   id === 'overview' ? '/dashboard/cms' : `/dashboard/cms?module=${id}`;
 
@@ -173,17 +206,17 @@ const groupLabels: Record<WorkspaceGroup, string> = {
 };
 
 const learningLink = {
-  label: 'My learning',
+  label: 'Courses',
   to: dashboardCataloguePaths.learning,
   description: 'Enroll in a course or pick up where you left off.',
 };
 const eventsLink = {
-  label: 'My events',
+  label: 'Events',
   to: dashboardCataloguePaths.events,
   description: 'Find workshops and webinars, and manage your reservations.',
 };
 const certificatesLink = {
-  label: 'My certificates',
+  label: 'Certificates',
   to: '/dashboard/certificates',
   description: 'View your earned course completion records.',
 };
@@ -200,7 +233,7 @@ export const guestResourceLinks = [
 const mentorshipLink = {
   label: 'Mentorship requests',
   to: '/dashboard/mentorship',
-  description: 'View requests and their status.',
+  description: 'Review and respond to mentorship requests.',
 };
 const studio = {
   label: 'Content Studio',
@@ -229,13 +262,16 @@ export function dashboardGroups(
   ];
   for (const group of workspaceOrder[account.role]) {
     if (!can(account, group)) continue;
-    const links: DashboardLink[] = modulesFor(account, group).map(({ id, label, description }) => ({
-      label,
-      description,
-      to: workspaceHref(id),
-    }));
+    const links: DashboardLink[] = modulesFor(account, group)
+      .filter((module) => module.id !== 'institutions')
+      .map(({ id, label, description }) => ({
+        label,
+        description,
+        to: workspaceHref(id),
+      }));
     if (group === 'venture' && can(account, 'learn')) links.push(learningLink);
     if (group === 'mentor') links.unshift(mentorshipLink);
+    if (group === 'admin') links.push(eventsLink);
     if (group === 'venture' && !can(account, 'mentor') && can(account, 'apply'))
       links.push(mentorshipLink);
     groups.push({
@@ -245,22 +281,30 @@ export function dashboardGroups(
           : groupLabels[group],
       links,
     });
+    if (group === 'admin')
+      groups.push({
+        label: 'Institutions',
+        links: [
+          { label: 'Institution directory', to: workspaceHref('institutions') },
+          { label: 'School assessments', to: workspaceHref('approvals') + '&view=school-reviews' },
+        ],
+      });
     if (group === 'admin' && can(account, 'cms'))
       groups.push({ label: 'Editorial', links: contentLinks });
   }
   if (can(account, 'cms') && !can(account, 'admin'))
     groups.push({ label: 'Editorial', links: contentLinks });
 
-  const accountLinks: DashboardLink[] = [{ label: 'My profile', to: '/dashboard/profile' }];
+  const accountLinks: DashboardLink[] = [{ label: 'Profile', to: '/dashboard/profile' }];
   if (account.role === 'guest') {
     groups.push({ label: 'Explore', links: guestResourceLinks });
   } else {
-    if (can(account, 'attend')) accountLinks.push(eventsLink);
+    if (can(account, 'attend') && account.role !== 'admin') accountLinks.push(eventsLink);
     if (can(account, 'learn') && !can(account, 'venture')) accountLinks.push(learningLink);
-    if (!can(account, 'school')) accountLinks.push(certificatesLink);
+    if (!can(account, 'school') && !can(account, 'admin')) accountLinks.push(certificatesLink);
   }
   if (can(account, 'community') && !can(account, 'cms'))
-    accountLinks.push({ label: 'My contributions', to: '/dashboard/content' });
+    accountLinks.push({ label: 'Contributions', to: '/dashboard/content' });
   groups.push({ label: 'Account', links: accountLinks });
   return groups;
 }
@@ -271,5 +315,5 @@ export const dashboardAccess = {
   cms: ['cms'],
   moderation: ['cms'],
   learning: ['learn'],
-  events: ['attend'],
+  events: ['attend', 'admin'],
 } satisfies Record<string, Capability[]>;

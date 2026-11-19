@@ -4,6 +4,7 @@ import { useCatalog } from '../../app/useCatalog';
 import { NotFoundPage } from '../info/NotFoundPage';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { can } from '../../domain/roles';
+import { institutionAccess } from '../../domain/incubation';
 import { credentialTitle } from './TrainingForms';
 export function CertificatePage() {
   const { id } = useParams();
@@ -18,9 +19,10 @@ export function CertificatePage() {
   const venture = path && state.platform.ventures.find((row) => row.id === path.ventureId);
   usePageTitle('Completion verification');
   if (credential && path && venture) {
+    const school = student && training.institutions.find((row) => row.id === student.institutionId);
     if (
       student &&
-      !(account?.id === path.ownerId && can(account, 'school')) &&
+      !(account && school && institutionAccess(school, account)) &&
       !can(account, 'admin')
     )
       return <NotFoundPage />;

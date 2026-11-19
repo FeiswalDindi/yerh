@@ -3,6 +3,7 @@ import type { Catalog } from '../domain/content';
 import { localContentRepository, type ContentRepository } from '../services/content-repository';
 
 import { ContentContext } from './useCatalog';
+import { SiteLoader } from '../shared/SiteLoader';
 export function ContentProvider({
   children,
   repository = localContentRepository,
@@ -36,12 +37,6 @@ export function ContentProvider({
         </button>
       </main>
     );
-  if (!catalog)
-    return (
-      <main className="status-page" role="status">
-        <span className="loading-mark">Y</span>
-        <p>Opening your resource hub…</p>
-      </main>
-    );
+  if (!catalog) return <SiteLoader screen />;
   return <ContentContext.Provider value={catalog}>{children}</ContentContext.Provider>;
 }

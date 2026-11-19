@@ -23,11 +23,22 @@ export function dashboardMetrics(state: DemoState, account: DemoAccount): Metric
     case 'school_admin': {
       const school = p.training.institutions.find((entry) => entry.adminId === id);
       return [
-        { label: 'Portal status', value: school?.status ?? 'Setup', to: workspaceHref('school') },
+        {
+          label: 'Students',
+          value: p.training.students.filter((student) => student.institutionId === school?.id)
+            .length,
+          to: workspaceHref('school') + '&view=students',
+        },
+        {
+          label: 'Cohorts',
+          value: (p.training.cohorts ?? []).filter((cohort) => cohort.institutionId === school?.id)
+            .length,
+          to: workspaceHref('member-results'),
+        },
         {
           label: 'Venture teams',
           value: p.training.groups.filter((g) => g.institutionId === school?.id).length,
-          to: workspaceHref('school'),
+          to: workspaceHref('school') + '&view=teams',
         },
       ];
     }
@@ -42,7 +53,7 @@ export function dashboardMetrics(state: DemoState, account: DemoAccount): Metric
     case 'entrepreneur':
       return [
         {
-          label: 'My ventures',
+          label: 'Ventures',
           value: p.ventures.filter((v) => v.ownerId === id).length,
           to: workspaceHref('ventures'),
         },
@@ -52,8 +63,8 @@ export function dashboardMetrics(state: DemoState, account: DemoAccount): Metric
           to: '/dashboard/learning',
         },
         {
-          label: 'Active incubations',
-          value: p.incubations.filter((i) => i.ownerId === id && i.status === 'active').length,
+          label: 'Incubation pathways',
+          value: p.incubations.filter((i) => i.ownerId === id).length,
           to: workspaceHref('incubation'),
         },
         {
@@ -70,8 +81,8 @@ export function dashboardMetrics(state: DemoState, account: DemoAccount): Metric
           to: '/dashboard/mentorship',
         },
         {
-          label: 'Accepted requests',
-          value: state.requests.filter((r) => r.mentorId === id && r.status === 'accepted').length,
+          label: 'Mentorship requests',
+          value: state.requests.filter((r) => r.mentorId === id).length,
           to: '/dashboard/mentorship',
         },
         {
@@ -83,7 +94,7 @@ export function dashboardMetrics(state: DemoState, account: DemoAccount): Metric
     case 'content_manager':
       return [
         {
-          label: 'My editorial drafts',
+          label: 'Editorial drafts',
           value: p.cmsDrafts.filter((d) => d.ownerId === id).length,
           to: '/dashboard/cms',
         },
@@ -105,13 +116,13 @@ export function dashboardMetrics(state: DemoState, account: DemoAccount): Metric
       const ownIds = new Set(ownOpportunities.map((o) => o.id));
       return [
         {
-          label: 'Organisation status',
-          value: organisation?.status ?? 'Set up',
+          label: 'Organisation',
+          value: organisation?.name ?? 'Set up',
           to: workspaceHref('organisation'),
         },
         {
-          label: 'Published opportunities',
-          value: ownOpportunities.filter((o) => o.status === 'published').length,
+          label: 'Opportunities',
+          value: ownOpportunities.length,
           to: workspaceHref('opportunities'),
         },
         {
@@ -127,7 +138,11 @@ export function dashboardMetrics(state: DemoState, account: DemoAccount): Metric
       return [
         {
           label: 'Product listings awaiting approval',
-          value: p.products.filter((product) => product.status === 'pending').length,
+          value: p.products.filter(
+            (product) =>
+              product.status === 'pending' &&
+              p.ventures.some((venture) => venture.id === product.ventureId && !venture.groupId),
+          ).length,
           to: workspaceHref('approvals'),
         },
         {

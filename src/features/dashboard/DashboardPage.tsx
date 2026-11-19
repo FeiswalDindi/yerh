@@ -53,13 +53,13 @@ export function DashboardPage() {
         <div className="workspace-links">
           {[
             {
-              label: 'My profile',
+              label: 'Profile',
               text: 'Edit your fictional profile and headline.',
               href: '/profile',
               icon: UserRound,
             },
             {
-              label: 'My learning',
+              label: 'Courses',
               text: 'Continue lessons and update your progress.',
               href: '/learn',
               icon: BookOpen,
@@ -79,7 +79,7 @@ export function DashboardPage() {
                   ? 'My business & stories'
                   : account.role === 'content_manager'
                     ? 'Editorial workspace'
-                    : 'My contributions',
+                    : 'Contributions',
               text: 'Create drafts and try the local review workflow.',
               href: '/dashboard/content',
               icon: FileText,

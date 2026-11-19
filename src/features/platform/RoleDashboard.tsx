@@ -26,7 +26,6 @@ export function RoleDashboard() {
 
   const isGuest = account.role === 'guest';
   const applications = accountRoleRequests(state.platform.applications, account.id);
-  const pending = applications.find((a) => a.status === 'pending');
   const recent = applications[0];
   const metrics = dashboardMetrics(state, account);
   const shortcuts = isGuest
@@ -49,18 +48,14 @@ export function RoleDashboard() {
         {isGuest && recent && (
           <section className="profile-panel guest-role-panel">
             <div>
-              <h2>{pending ? 'Application under review' : 'Role application update'}</h2>
-              <p>
-                {pending
-                  ? `Your ${roleLabels[pending.role]} application is pending review.`
-                  : `Your ${roleLabels[recent.role]} application was ${recent.status}.`}
-              </p>
+              <h2>Role application</h2>
+              <p>Requested role · {roleLabels[recent.role]}</p>
               {recent?.status === 'rejected' && recent.reason && (
                 <p>Reviewer feedback: {recent.reason}</p>
               )}
             </div>
             <Link className="button" to={roleAccessPath}>
-              View in My profile <ArrowRight size={16} aria-hidden="true" />
+              View in Profile <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </section>
         )}
@@ -105,11 +100,12 @@ export function RoleDashboard() {
             );
           })}
         </div>
-        {!isGuest && recent && (
+        {!isGuest && account.role !== 'school_admin' && recent && (
           <section className="profile-panel">
             <h2>Latest role request</h2>
             <p>
-              {roleLabels[recent.role]} · {recent.status}
+              {roleLabels[recent.role]}
+              {account.role === 'admin' && ' · ' + recent.status}
             </p>
             {recent.reason && <p>Reviewer feedback: {recent.reason}</p>}
             <Link className="text-link" to={roleAccessPath}>

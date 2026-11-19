@@ -8,11 +8,20 @@ import { CloseButton } from '../../shared/CloseButton';
 import { TermsDialog } from '../legal/TermsDialog';
 import { GoogleAccountButton } from './GoogleAccountButton';
 import { accountDestination, type AccountRequest } from './account-navigation';
+import { institutionAccess } from '../../domain/incubation';
+import { institutionHref } from '../dashboard/dashboard-navigation';
 import './account.css';
 
 export function AccountDialog({ mode, search, onClose }: AccountRequest & { onClose: () => void }) {
   const { media } = useCatalog();
+  const { state } = useDemo();
   const [register, setRegister] = useState(mode === 'register');
+  const [selecting, setSelecting] = useState(mode !== 'register');
+  const [institution, setInstitution] = useState('');
+  const institutions = state.platform.training.institutions.filter(
+    (school) => school.status === 'active',
+  );
+  const yerh = state.platform.training.yerhSignIn !== false;
   const dialog = useRef<HTMLDialogElement>(null);
   const card = useRef<HTMLDivElement>(null);
   const shake = useRef<Animation>(null);
@@ -45,9 +54,9 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
   return (
     <dialog
       ref={dialog}
-      className="account-dialog"
+      className={selecting ? 'account-dialog account-institution-dialog' : 'account-dialog'}
       aria-labelledby="account-title"
-      aria-describedby="account-description"
+      aria-describedby={selecting ? undefined : 'account-description'}
       onCancel={(event) => {
         if (event.target !== event.currentTarget) return;
         event.preventDefault();
@@ -66,22 +75,63 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
         aria-label="Close account dialog"
         onClick={close}
       />
-      <div className="account-card" ref={card}>
-        <Link className="account-brand" to="/" aria-label="YERH home" onClick={close}>
-          <img src={media.logo} width={104} height={104} alt="" fetchPriority="high" />
-        </Link>
-        <AccountForm
-          key={String(register)}
-          title={title}
-          register={register}
-          search={search}
-          onGoogleUnavailable={signalUnavailable}
-          onSwitch={() => {
-            closeButton.current?.focus();
-            setRegister(!register);
-          }}
-        />
-      </div>
+      {selecting ? (
+        <div className="account-institution-card">
+          <img className="account-institution-image" src="/media/institution-sign-in.webp" alt="" />
+          <form
+            className="account-institution-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSelecting(false);
+              closeButton.current?.focus();
+            }}
+          >
+            <img src={media.logo} width={90} height={90} alt="YERH" />
+            <h2 id="account-title">Select your institution</h2>
+            <label className="account-field">
+              <span className="sr-only">Institution</span>
+              <select
+                required
+                value={institution}
+                onChange={(event) => setInstitution(event.target.value)}
+              >
+                <option value="" disabled>
+                  Choose an institution
+                </option>
+                {yerh && <option value="yerh">YERH</option>}
+                {institutions.map((school) => (
+                  <option key={school.id} value={school.id}>
+                    {school.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="button account-submit">
+              Continue <ArrowRight size={18} aria-hidden="true" />
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div className="account-card" ref={card}>
+          <Link className="account-brand" to="/" aria-label="YERH home" onClick={close}>
+            <img src={media.logo} width={104} height={104} alt="" fetchPriority="high" />
+          </Link>
+          <AccountForm
+            key={String(register)}
+            title={title}
+            register={register}
+            institution={institution}
+            onChangeInstitution={register ? undefined : () => setSelecting(true)}
+            search={search}
+            onGoogleUnavailable={signalUnavailable}
+            onSwitch={() => {
+              closeButton.current?.focus();
+              setRegister(!register);
+              setSelecting(register);
+            }}
+          />
+        </div>
+      )}
     </dialog>
   );
 }
@@ -89,15 +139,19 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
 function AccountForm({
   title,
   register,
+  institution,
   search,
   onSwitch,
   onGoogleUnavailable,
+  onChangeInstitution,
 }: {
   title: string;
   register: boolean;
+  institution: string;
   search: string;
   onSwitch: () => void;
   onGoogleUnavailable: () => void;
+  onChangeInstitution?: () => void;
 }) {
   const { account, state, enabled, execute, error } = useDemo();
   const navigate = useNavigate();
@@ -106,6 +160,9 @@ function AccountForm({
   const [actionFailed, setActionFailed] = useState(false);
   const host = platformHref(register ? '/register' : '/login');
   const destination = accountDestination(search, '/dashboard');
+  const institutions = state.platform.training.institutions.filter(
+    (school) => school.status === 'active',
+  );
   const message = notice || (actionFailed ? error : '');
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -127,6 +184,7 @@ function AccountForm({
         phone: '',
         ageRange: '',
         consent: form.get('terms') === 'on',
+        institutionId: String(form.get('institution') ?? '') || undefined,
         now: new Date().toISOString(),
       });
       setActionFailed(!created);
@@ -142,7 +200,16 @@ function AccountForm({
     }
     const signedIn = execute({ type: 'login', accountId: member.id });
     setActionFailed(!signedIn);
-    if (signedIn) navigate(destination, { replace: true });
+    if (signedIn) {
+      const school = institutions.find((entry) => entry.id === institution);
+      const access = school && institutionAccess(school, member);
+      navigate(
+        school && access && destination === '/dashboard'
+          ? institutionHref(access === 'manage' ? 'school' : 'member-results', school.id)
+          : destination,
+        { replace: true },
+      );
+    }
   }
 
   function signOut() {
@@ -157,6 +224,12 @@ function AccountForm({
         <p id="account-description">
           {register ? 'Youth Entrepreneurship Resource Hub.' : 'Access your workspace.'}
         </p>
+        {onChangeInstitution && (
+          <button type="button" className="account-link" onClick={onChangeInstitution}>
+            {institutions.find((school) => school.id === institution)?.name ?? 'YERH'} · Change
+            institution
+          </button>
+        )}
         {enabled && (
           <aside className="account-preview" aria-label="Development preview">
             <FlaskConical size={16} aria-hidden="true" />
@@ -230,6 +303,20 @@ function AccountForm({
                   minLength={2}
                   maxLength={80}
                 />
+              </label>
+              <label className="account-field">
+                Institution (optional)
+                <select name="institution" defaultValue={institution}>
+                  <option value="">No institution selected</option>
+                  {state.platform.training.yerhSignIn !== false && (
+                    <option value="yerh">YERH</option>
+                  )}
+                  {institutions.map((school) => (
+                    <option key={school.id} value={school.id}>
+                      {school.name}
+                    </option>
+                  ))}
+                </select>
               </label>
               <div className="account-agreement">
                 <label className="account-checkbox">

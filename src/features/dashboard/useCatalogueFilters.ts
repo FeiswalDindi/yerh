@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 
-export function useCatalogueFilters() {
+export function useCatalogueFilters(keep?: string) {
   const [params, setParams] = useSearchParams();
   const category = params.get('category') ?? '';
   const query = params.get('q') ?? '';
@@ -25,7 +25,10 @@ export function useCatalogueFilters() {
     category,
     matches,
     update,
-    clear: () => setParams({}, { replace: true }),
+    clear: () => {
+      const persistent = keep && params.get(keep);
+      setParams(keep && persistent ? { [keep]: persistent } : {}, { replace: true });
+    },
     searchProps: { query, onChange: (q: string) => update({ q }) },
   };
 }

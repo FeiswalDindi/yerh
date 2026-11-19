@@ -128,7 +128,8 @@ export function ContentWorkspace() {
             <article key={entry.id} className="review-card">
               <div>
                 <span className="eyebrow">
-                  {entry.kind} · {entry.status}
+                  {entry.kind}
+                  {account.role === 'admin' && ` · ${entry.status}`}
                 </span>
                 <h2>{entry.title}</h2>
                 <p>{entry.body}</p>

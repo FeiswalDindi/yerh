@@ -1,3 +1,4 @@
+import { isPublishedSession } from '../../domain/events';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AccountLink } from '../accounts/AccountLink';
@@ -118,11 +119,11 @@ export function ThreadPage() {
                 </AccountLink>
               )
             )}
-            {state.sessions.some((s) => s.forumId === thread.forumId) && (
+            {state.sessions.some((s) => isPublishedSession(s) && s.forumId === thread.forumId) && (
               <section className="profile-panel">
                 <h2>Related sessions</h2>
                 {state.sessions
-                  .filter((s) => s.forumId === thread.forumId)
+                  .filter((s) => isPublishedSession(s) && s.forumId === thread.forumId)
                   .map((s) => (
                     <Link key={s.id} className="profile-sidebar-link" to={sessionPath(s.id)}>
                       {s.title}

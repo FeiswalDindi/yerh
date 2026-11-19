@@ -69,9 +69,9 @@ test('learning and group membership persist independently per account', () => {
   assert.equal(s.groups[0]!.memberIds.includes('demo-founder'), !original);
   const course = fixture('learning')[0];
   s = applyDemoAction(s, {
-    type: 'enroll',
-    courseId: course.id,
-    operation: 'enroll',
+    type: 'course-purchase',
+    id: course.id,
+    expectedPrice: 750,
     now: '2026-11-10T09:00:00Z',
   });
   s = applyDemoAction(s, { type: 'progress', lessonId: course.lessonIds[0] });

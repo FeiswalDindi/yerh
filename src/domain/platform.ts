@@ -1,7 +1,9 @@
 import type { Catalog } from './content';
 import type { CommunitySession } from './community';
+import type { EventCategory, EventCommand } from './events';
 import type { AppliedRole, Role } from './roles';
 import type { TrainingAction, TrainingState } from './incubation';
+import type { CourseCommand, CourseCommerce } from './courses';
 export type ReviewStatus = 'pending' | 'approved' | 'rejected';
 export interface RoleApplication {
   id: string;
@@ -56,6 +58,7 @@ export interface Venture {
   id: string;
   ownerId: string;
   groupId?: string;
+  cohortId?: string;
   name: string;
   sector: string;
   stage: string;
@@ -103,6 +106,7 @@ export interface AuditEntry {
   action: string;
   targetId: string;
   createdAt: string;
+  institutionId?: string;
 }
 export interface CmsSnapshot {
   community?: {
@@ -131,6 +135,8 @@ export interface CmsRelease {
 }
 export interface PlatformState {
   training: TrainingState;
+  eventCategories?: EventCategory[];
+  courseCommerce?: CourseCommerce;
   certificates: {
     id: string;
     accountId: string;
@@ -153,8 +159,10 @@ export interface PlatformState {
   cmsReleases: CmsRelease[];
   cmsRevision: number;
 }
-export type PlatformAction =
+type PlatformCommand =
   | TrainingAction
+  | CourseCommand
+  | EventCommand
   | { type: 'certificate-issue'; id: string; accountId: string; courseId: string; now: string }
   | {
       type: 'signup';
@@ -165,6 +173,7 @@ export type PlatformAction =
       phone: string;
       ageRange: string;
       consent: boolean;
+      institutionId?: string;
       now: string;
     }
   | {
@@ -186,6 +195,7 @@ export type PlatformAction =
   | { type: 'account-admin'; accountId: string; role?: Role; suspended?: boolean; now: string }
   | { type: 'enroll'; courseId: string; operation: 'enroll' | 'withdraw'; now: string }
   | { type: 'venture-save'; venture: Venture; now: string }
+  | { type: 'venture-cohort'; id: string; cohortId: string; now: string }
   | { type: 'product-save'; product: Product; now: string }
   | {
       type: 'venture-review';
@@ -240,3 +250,5 @@ export type PlatformAction =
   | { type: 'cms-save'; draft: CmsDraft; baseline?: CmsSnapshot; now: string }
   | { type: 'cms-publish'; id: string; now: string }
   | { type: 'cms-rollback'; revision: number; now: string };
+
+export type PlatformAction = PlatformCommand & { institutionContextId?: string };

@@ -1,3 +1,4 @@
+import { isPublishedSession } from '../../domain/events';
 import { useState } from 'react';
 import { ArrowLeft, ArrowUpRight, Bookmark, Check, ExternalLink, Play, Share2 } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
@@ -198,7 +199,7 @@ export function ContentDetail({ dashboard = false }: { dashboard?: boolean }) {
               </div>
             )}
             {state.sessions
-              .filter((s) => s.contentId === item.id)
+              .filter((s) => isPublishedSession(s) && s.contentId === item.id)
               .map((s) => (
                 <Link className="profile-sidebar-link" key={s.id} to={sessionPath(s.id)}>
                   View {s.type} details →

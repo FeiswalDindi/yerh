@@ -12,7 +12,7 @@ import { WorkspaceTable } from '../platform/WorkspaceControls';
 export function DashboardCertificates() {
   const { state, account } = useDemo();
   const { courses } = useCatalog();
-  usePageTitle('My certificates');
+  usePageTitle('Certificates');
   if (!account) return null;
   const certificates = state.platform.certificates.filter(
     (record) => record.accountId === account.id,
@@ -43,8 +43,8 @@ export function DashboardCertificates() {
   return (
     <>
       <PageIntro
-        eyebrow="My certificates"
-        title="My certificates"
+        eyebrow="Certificates"
+        title="Certificates"
         description="View your issued incubation and course certificates."
         className="workspace-page-intro"
       />

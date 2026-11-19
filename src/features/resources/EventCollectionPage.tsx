@@ -1,3 +1,4 @@
+import { isPastSession, isPublishedSession } from '../../domain/events';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
@@ -10,10 +11,15 @@ export function EventCollectionPage({ type }: { type: 'workshops' | 'webinars' }
   const [status, setStatus] = useState('all');
   const title = type === 'workshops' ? 'Workshops' : 'Webinars';
   usePageTitle(title);
+  const now = Date.now();
   const sessions = state.sessions.filter(
     (s) =>
+      isPublishedSession(s) &&
       s.type === (type === 'workshops' ? 'workshop' : 'webinar') &&
-      (status === 'all' || s.status === status),
+      (status === 'all' ||
+        (status === 'completed'
+          ? isPastSession(s, now)
+          : !isPastSession(s, now) && s.status === status)),
   );
   return (
     <>

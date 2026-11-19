@@ -3,10 +3,50 @@ import { can, applicationRoles, roleLabels } from './roles.ts';
 import { assertCmsSnapshot, assertOpportunity, safeUrl } from './cms.ts';
 import type { PlatformAction, CmsSnapshot, Opportunity } from './platform';
 import { applyTrainingAction, canGraduate, isTrainingAction } from './incubation-actions.ts';
-import { managesVenture } from './incubation.ts';
+import { institutionAccess, managesVenture, schoolForVenture } from './incubation.ts';
+import {
+  assertSession,
+  eventCategories,
+  isPublishedSession,
+  isSessionType,
+  sessionCategory,
+  updateSessionSchedule,
+  type EventCategory,
+} from './events.ts';
+import {
+  applyCourseAction,
+  courseActions,
+  courseCharge,
+  courseLessonIds,
+  coursePurchased,
+  type CourseCommand,
+} from './courses.ts';
+
+const schoolCommands = new Set([
+  'venture-save',
+  'venture-cohort',
+  'product-save',
+  'incubation-apply',
+  'milestone',
+  'stage-evidence',
+  'stage-request',
+  'stage-offline-result',
+  'product-evidence',
+  'training-payment-request',
+  'institution-proof',
+  'institution-student',
+  'institution-cohort',
+  'institution-certificates-request',
+  'institution-profile',
+  'institution-group',
+  'institution-class',
+  'institution-contribution',
+  'institution-contributions',
+]);
 export function isPlatformAction(action: { type: string }): action is PlatformAction {
   return (
     isTrainingAction(action) ||
+    courseActions.some((type) => type === action.type) ||
     [
       'certificate-issue',
       'signup',
@@ -16,6 +56,9 @@ export function isPlatformAction(action: { type: string }): action is PlatformAc
       'account-admin',
       'enroll',
       'venture-save',
+      'venture-cohort',
+      'event-save',
+      'event-category-save',
       'product-save',
       'venture-review',
       'mentor-profile',
@@ -54,7 +97,8 @@ function text(value: string, min = 2, max = 2000) {
 export function applyPlatformAction(state: DemoState, action: PlatformAction): DemoState {
   const now = action.now;
   if (!Number.isFinite(Date.parse(now))) throw new Error('Invalid action time.');
-  const actor = state.accounts.find((a) => a.id === state.activeAccountId) ?? null;
+  const operator = state.accounts.find((a) => a.id === state.activeAccountId) ?? null;
+  let actor = operator;
   if (action.type === 'signup') {
     if (actor) throw new Error('Sign out before creating another account.');
     const email = action.email.trim().toLowerCase();
@@ -62,8 +106,27 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
     if (!action.consent) throw new Error('Consent is required to create the preview account.');
     if (!action.id || state.accounts.some((a) => a.id === action.id || a.email === email))
       throw new Error('An account already exists with this email.');
+    const institution = action.institutionId;
+    if (
+      institution &&
+      (institution === 'yerh'
+        ? state.platform.training.yerhSignIn === false
+        : !state.platform.training.institutions.some(
+            (school) => school.id === institution && school.status === 'active',
+          ))
+    )
+      throw new Error('Select an available institution.');
     return {
       ...state,
+      platform: institution
+        ? {
+            ...state.platform,
+            training: {
+              ...state.platform.training,
+              affiliations: { ...state.platform.training.affiliations, [action.id]: institution },
+            },
+          }
+        : state.platform,
       activeAccountId: action.id,
       accounts: [
         ...state.accounts,
@@ -84,8 +147,32 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       ],
     };
   }
-  if (!actor || actor.suspended) throw new Error('Sign in with an active account to continue.');
+  if (!operator || operator.suspended)
+    throw new Error('Sign in with an active account to continue.');
   let p = structuredClone(state.platform);
+  const school = p.training.institutions.find((entry) => entry.id === action.institutionContextId);
+  if (action.institutionContextId) {
+    if (
+      !school ||
+      institutionAccess(school, operator) !== 'manage' ||
+      !schoolCommands.has(action.type)
+    )
+      throw new Error('This action is unavailable in the selected institution.');
+    actor = { ...operator, id: school.adminId, role: 'school_admin' };
+  } else actor = operator;
+  const schoolId =
+    school?.id ??
+    p.training.institutions.find((row) => row.adminId === operator.id)?.id ??
+    (action.type === 'school-stage-review' || action.type === 'training-credential-issue'
+      ? schoolForVenture(
+          p,
+          p.ventures.find(
+            (venture) =>
+              venture.id ===
+              p.incubations.find((path) => path.id === action.incubationId)?.ventureId,
+          ),
+        )?.id
+      : undefined);
   let accounts = state.accounts;
   let sessions = state.sessions;
   let forums = state.forums;
@@ -94,26 +181,41 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
     if (!can(actor, capability))
       throw new Error('Your approved role does not have permission for this action.');
   };
-  const audit = (targetId: string) =>
+  const audit = (targetId: string) => {
+    const ventureId =
+      p.incubations.find((path) => path.id === targetId)?.ventureId ??
+      p.products.find((product) => product.id === targetId)?.ventureId ??
+      targetId;
+    const venture = p.ventures.find((row) => row.id === ventureId);
+    const institutionId =
+      schoolId ??
+      p.training.institutions.find((row) => row.id === targetId)?.id ??
+      schoolForVenture(p, venture)?.id;
     p.audit.unshift({
       id: `audit-${p.audit.length}-${now}`,
-      actorId: actor.id,
+      actorId: operator.id,
       action: action.type,
       targetId,
       createdAt: now,
+      ...(institutionId ? { institutionId } : {}),
     });
+  };
   const update = <T extends { id: string }>(rows: T[], value: T) => [
     ...rows.filter((r) => r.id !== value.id),
     value,
   ];
   if (isTrainingAction(action)) {
-    audit(applyTrainingAction(p, accounts, actor, action));
+    audit(applyTrainingAction(p, accounts, actor, action, operator.id));
+    return { ...state, platform: p };
+  }
+  if (courseActions.some((type) => type === action.type)) {
+    audit(applyCourseAction(p, actor, action as CourseCommand));
     return { ...state, platform: p };
   }
   switch (action.type) {
     case 'certificate-issue': {
       require('admin');
-      const lessons = p.courseLessons[action.courseId];
+      const lessons = courseLessonIds(p, action.courseId);
       if (
         !lessons?.length ||
         !accounts.some((a) => a.id === action.accountId) ||
@@ -211,8 +313,15 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
     }
     case 'enroll': {
       require('learn');
-      if (!p.courseLessons[action.courseId]) throw new Error('Course not found.');
+      if (!courseLessonIds(p, action.courseId)) throw new Error('Course not found.');
       const ids = p.enrollments[actor.id] ?? [];
+      if (
+        action.operation === 'enroll' &&
+        !ids.includes(action.courseId) &&
+        courseCharge(p, action.courseId) > 0 &&
+        !coursePurchased(p, action.courseId, actor.id)
+      )
+        throw new Error('Pay for this course before enrolling.');
       p.enrollments[actor.id] =
         action.operation === 'enroll'
           ? [...new Set([...ids, action.courseId])]
@@ -226,6 +335,7 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       if (old && old.ownerId !== actor.id && !can(actor, 'admin'))
         throw new Error('This venture belongs to another account.');
       const groupId = old ? old.groupId : action.venture.groupId;
+      const cohortId = old ? old.cohortId : action.venture.cohortId;
       if (can(actor, 'school') || groupId) {
         const group = p.training.groups.find((g) => g.id === groupId);
         const school = p.training.institutions.find((i) => i.id === group?.institutionId);
@@ -237,10 +347,20 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
         )
           throw new Error('Choose a group from your active high school.');
       }
+      if (
+        cohortId &&
+        !p.training.cohorts?.some(
+          (cohort) =>
+            cohort.id === cohortId &&
+            cohort.institutionId === schoolForVenture(p, { ...action.venture, groupId })?.id,
+        )
+      )
+        throw new Error('Choose a cohort from this institution.');
       p.ventures = update(p.ventures, {
         ...action.venture,
         ownerId: old?.ownerId ?? actor.id,
         groupId,
+        cohortId,
         name: text(action.venture.name, 3, 120),
         description: text(action.venture.description, 30),
         sector: text(action.venture.sector),
@@ -249,6 +369,24 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
         status: 'pending',
       });
       audit(action.venture.id);
+      break;
+    }
+    case 'venture-cohort': {
+      const venture = p.ventures.find((row) => row.id === action.id);
+      if (!managesVenture(p, actor, venture) || !venture.groupId)
+        throw new Error('Choose a venture from your institution.');
+      const cohort = p.training.cohorts?.find(
+        (row) =>
+          row.id === action.cohortId && row.institutionId === schoolForVenture(p, venture)?.id,
+      );
+      if (action.cohortId && !cohort) throw new Error('Choose a cohort from this institution.');
+      for (const item of p.training.cohorts ?? []) {
+        item.incubationIds = item.incubationIds.filter(
+          (id) => !p.incubations.some((path) => path.id === id && path.ventureId === venture.id),
+        );
+      }
+      venture.cohortId = cohort?.id;
+      audit(venture.id);
       break;
     }
     case 'product-save': {
@@ -291,7 +429,8 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       }
       if (action.entity === 'product') {
         const v = p.products.find((v) => v.id === action.id);
-        if (!v) throw new Error('Product not found.');
+        if (!v || p.ventures.some((venture) => venture.id === v.ventureId && venture.groupId))
+          throw new Error('Marketplace product not found.');
         v.status = action.decision;
       }
       if (action.entity === 'organisation') {
@@ -490,20 +629,30 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       if (!i) throw new Error('Pending incubation not found.');
       if (
         action.decision === 'active' &&
+        !schoolForVenture(
+          p,
+          p.ventures.find((venture) => venture.id === i.ventureId),
+        ) &&
         !accounts.some((a) => a.id === action.mentorId && a.role === 'mentor' && !a.suspended)
       )
         throw new Error('Choose an active mentor.');
       if (!['active', 'rejected'].includes(action.decision))
         throw new Error('Invalid incubation decision.');
       i.status = action.decision;
-      i.mentorId = action.decision === 'active' ? action.mentorId : '';
+      const institution = schoolForVenture(
+        p,
+        p.ventures.find((venture) => venture.id === i.ventureId),
+      );
+      i.mentorId = action.decision === 'active' && !institution ? action.mentorId : '';
       audit(i.id);
       break;
     }
     case 'milestone': {
-      require('mentor');
       const i = p.incubations.find((i) => i.id === action.id && i.status === 'active');
-      if (!i || (i.mentorId !== actor.id && !can(actor, 'admin')))
+      const venture = p.ventures.find((venture) => venture.id === i?.ventureId);
+      const assigned = can(actor, 'mentor') && i?.mentorId === actor.id && !venture?.groupId;
+      const schoolStaff = !!venture?.groupId && managesVenture(p, actor, venture);
+      if (!i || (!assigned && !schoolStaff))
         throw new Error('This incubation is not assigned to you.');
       i.milestones = update(i.milestones, {
         id: action.milestoneId,
@@ -512,6 +661,60 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
         validated: action.validated,
       });
       audit(i.id);
+      break;
+    }
+    case 'event-category-save': {
+      require('admin');
+      const categories = eventCategories(p.eventCategories);
+      const old = categories.find((row) => row.id === action.category.id);
+      const label = text(action.category.label, 2, 60);
+      if (
+        !action.category.id ||
+        categories.some(
+          (row) => row.id !== action.category.id && row.label.toLowerCase() === label.toLowerCase(),
+        )
+      )
+        throw new Error('Enter a unique event category name.');
+      const category: EventCategory = {
+        ...action.category,
+        label,
+        type: old?.type ?? action.category.type,
+      };
+      if (!isSessionType(category.type)) throw new Error('Choose a valid event type.');
+      p.eventCategories = update(p.eventCategories ?? [], category);
+      audit(category.id);
+      break;
+    }
+    case 'event-save': {
+      require('admin');
+      const event = action.session;
+      const previous = sessions.find((row) => row.id === event.id);
+      if (action.previous !== JSON.stringify(previous ?? null))
+        throw new Error('The event changed. Reopen its form to edit the latest version.');
+      const category = sessionCategory(event, p.eventCategories);
+      const presenters = event.presenters?.map((row) => ({
+        ...row,
+        name: row.name.trim(),
+        profession: row.profession.trim(),
+      }));
+      const next = updateSessionSchedule(
+        {
+          ...event,
+          ...(presenters && { presenters }),
+          type: category.type,
+          title: text(event.title, 3, 120),
+          summary: text(event.summary, isPublishedSession(event) ? 10 : 0, 3000),
+          venue: text(event.venue, isPublishedSession(event) ? 2 : 0, 160),
+        },
+        previous,
+        Date.parse(now),
+      );
+      assertSession(next, state);
+      sessions = previous
+        ? sessions.map((row) => (row.id === next.id ? next : row))
+        : [...sessions, next];
+      p.cmsRevision++;
+      audit(next.id);
       break;
     }
     case 'cms-save':
@@ -568,6 +771,14 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
     }
   }
   function publish(snapshot: CmsSnapshot, title: string) {
+    if (
+      !can(actor, 'admin') &&
+      snapshot.sessions.some((event) => {
+        const previous = state.sessions.find((row) => row.id === event.id);
+        return isPublishedSession(event) !== (previous ? isPublishedSession(previous) : true);
+      })
+    )
+      throw new Error('Event publication is managed by the platform administrator.');
     if (snapshot.community) {
       groups = snapshot.community.groups.map((g) => ({
         ...g,

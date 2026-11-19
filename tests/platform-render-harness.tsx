@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { ContentContext } from '../src/app/useCatalog';
 import { DemoContext } from '../src/app/useDemo';
@@ -32,11 +32,15 @@ import { MarketplacePage } from '../src/features/content/MarketplacePage';
 import { DashboardCertificates } from '../src/features/dashboard/DashboardCertificates';
 import { CertificatePage } from '../src/features/platform/CertificatePage';
 import { StoriesSection } from '../src/features/home/StoriesSection';
+import { UpcomingEventsSection } from '../src/features/home/UpcomingEventsSection';
+import { SessionPage } from '../src/features/resources/SessionPage';
 import { ProfilePage } from '../src/features/dashboard/ProfilePage';
 import { dashboardAccess } from '../src/features/dashboard/dashboard-navigation';
 import {
+  dashboardBadges,
   dashboardUpdateKeys,
   dashboardUpdates,
+  updatesForDestination,
 } from '../src/features/dashboard/dashboard-notifications';
 import { dashboardTitles } from '../src/features/dashboard/dashboard-overview';
 import type { ReactNode } from 'react';
@@ -45,7 +49,7 @@ export async function checkPlatformRendering() {
   const state = createDemoSeed();
   const catalog = await mockContentRepository.loadCatalog();
   const snapshot = createCmsSnapshot(catalog, state);
-  function render(
+  function page(
     path: string,
     id: string | null = null,
     child?: ReactNode,
@@ -53,7 +57,7 @@ export async function checkPlatformRendering() {
     enabled = true,
   ) {
     const account = custom.accounts.find((a) => a.id === id) ?? null;
-    return renderToStaticMarkup(
+    return (
       <ContentContext.Provider value={catalog}>
         <DemoContext.Provider
           value={{
@@ -76,6 +80,7 @@ export async function checkPlatformRendering() {
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/apply" element={<ApplicationsPage />} />
                   <Route path="/events" element={<EventsPage />} />
+                  <Route path="/sessions/:sessionId" element={<SessionPage />} />
                   <Route path="/marketplace" element={<MarketplacePage />} />
                   <Route path="/marketplace/:slug" element={<ContentDetail />} />
                   <Route path="/certificates/:id" element={<CertificatePage />} />
@@ -112,9 +117,10 @@ export async function checkPlatformRendering() {
             )}
           </MemoryRouter>
         </DemoContext.Provider>
-      </ContentContext.Provider>,
+      </ContentContext.Provider>
     );
   }
+  const render = (...args: Parameters<typeof page>) => renderToStaticMarkup(page(...args));
   let count = 0;
   for (const path of [
     '/join',
@@ -175,17 +181,16 @@ export async function checkPlatformRendering() {
   const login = renderAccount('login');
   const register = renderAccount('register');
   const demo = render('/demo');
-  assert.ok(login.includes('id="account-title">Sign in</h2>'));
-  assert.ok(login.includes('Access your workspace.'));
-  assert.ok(login.includes('<dialog class="account-dialog"'));
+  assert.ok(login.includes('id="account-title">Select your institution</h2>'));
+  assert.ok(login.includes('institution-sign-in.webp'));
+  assert.ok(login.includes('<dialog class="account-dialog account-institution-dialog"'));
   assert.ok(login.includes('Close account dialog'));
-  assert.ok(login.includes('name="email"'));
-  assert.ok(login.includes('Create an account'));
-  assert.ok(login.includes('Continue with Google'));
-  assert.ok(login.includes('href="/demo"'));
+  assert.ok(login.includes('value="yerh"'));
+  assert.ok(login.includes('Lakeview Demo High School'));
+  assert.ok(!login.includes('name="email"'));
   assert.ok(!login.includes('demo-account-grid'));
   assert.ok(register.includes('Create your account'));
-  for (const field of ['name', 'email', 'location', 'terms'])
+  for (const field of ['name', 'email', 'location', 'terms', 'institution'])
     assert.ok(register.includes(`name="${field}"`), field);
   assert.ok(register.includes('Already have an account?'));
   assert.ok(register.includes('Continue with Google'));
@@ -211,7 +216,9 @@ export async function checkPlatformRendering() {
   for (const member of team.members) assert.ok(about.includes(`View profile for ${member.name}`));
   for (const mode of ['login', 'register'] as const) {
     const production = renderAccount(mode, false);
-    assert.ok(production.includes('Continue with Google'));
+    assert.ok(
+      production.includes(mode === 'login' ? 'Select your institution' : 'Continue with Google'),
+    );
     assert.ok(!production.includes('name="email"'));
     assert.ok(!production.includes('href="/demo"'));
   }
@@ -314,7 +321,7 @@ export async function checkPlatformRendering() {
   assert.ok(
     pastBookings.indexOf('Past events') < pastBookings.indexOf('Customer discovery studio'),
   );
-  assert.ok(pastBookings.includes('Attended'));
+  assert.ok(!pastBookings.includes('Attended'));
   const dashboardMarket = render('/dashboard/marketplace?category=Agribusiness', 'demo-guest');
   assert.ok(
     dashboardMarket.includes(
@@ -391,11 +398,27 @@ export async function checkPlatformRendering() {
     now,
   });
   const pendingOverview = render('/dashboard', memberId, undefined, pending);
-  assert.ok(pendingOverview.includes('Application under review'));
+  assert.ok(pendingOverview.includes('Requested role'));
   assert.ok(!pendingOverview.includes('tab=mentees'));
   const admin = applyDemoAction(pending, { type: 'login', accountId: 'demo-admin' });
+  const adminDashboard = render('/dashboard', 'demo-admin', undefined, admin);
+  assert.ok(adminDashboard.includes('Role requests to review'));
+  assert.match(adminDashboard, /Approval queue<span class="dashboard-nav-badge"/);
+  assert.ok(!adminDashboard.includes('href="/dashboard/certificates"'));
+  const operator = admin.accounts.find((account) => account.id === 'demo-admin')!;
+  const adminUpdates = dashboardUpdates(admin, operator);
+  const approvalHref = '/dashboard/workspace?tab=approvals';
+  const roles = updatesForDestination(adminUpdates, approvalHref + '&view=roles');
+  const roleKeys = dashboardUpdateKeys(roles);
+  assert.ok(roleKeys.length > 0);
   assert.ok(
-    render('/dashboard', 'demo-admin', undefined, admin).includes('Items awaiting approval'),
+    !dashboardUpdateKeys(updatesForDestination(adminUpdates, approvalHref)).some((key) =>
+      roleKeys.includes(key),
+    ),
+  );
+  assert.equal(
+    dashboardBadges(adminUpdates, new Set(roleKeys)).get(approvalHref),
+    (dashboardBadges(adminUpdates, new Set()).get(approvalHref) ?? 0) - roleKeys.length,
   );
   const approved = applyDemoAction(admin, {
     type: 'role-review',
@@ -418,12 +441,35 @@ export async function checkPlatformRendering() {
   );
 
   assert.ok(!render('/dashboard', 'demo-partner').includes('Administration'));
+  for (const [id, tab, expected] of [
+    ['demo-founder', 'ventures', 'Add venture'],
+    ['demo-founder', 'products', 'Add product'],
+    ['demo-mentor', 'course-proposals', 'Propose a course'],
+    ['demo-admin', 'admin-courses', 'Course catalogue'],
+  ] as const) {
+    const stream = await renderToReadableStream(page(`/dashboard/workspace?tab=${tab}`, id));
+    await stream.allReady;
+    assert.ok((await new Response(stream).text()).includes(expected));
+    count++;
+  }
   for (const [id, tabs] of [
     ['demo-founder', ['ventures', 'products', 'incubation', 'applications']],
     ['demo-mentor', ['mentor', 'mentees']],
     ['demo-partner', ['organisation', 'opportunities', 'applicants', 'discovery']],
     ['demo-investor', ['organisation', 'opportunities']],
-    ['demo-admin', ['approvals', 'users', 'certificates', 'reports', 'payments', 'institutions']],
+    [
+      'demo-admin',
+      [
+        'approvals',
+        'users',
+        'certificates',
+        'reports',
+        'payments',
+        'institutions',
+        'manage-ventures',
+        'manage-products',
+      ],
+    ],
     ['demo-school', ['school', 'member-results', 'ventures', 'products', 'incubation']],
   ] as const) {
     for (const tab of tabs) {
@@ -432,6 +478,10 @@ export async function checkPlatformRendering() {
     }
   }
   const trainingPreview = structuredClone(state);
+  assert.ok(render('/dashboard/learning', 'demo-founder').includes('Incubation Pathway'));
+  assert.ok(render('/dashboard/learning', 'demo-founder').includes('General Courses'));
+  assert.ok(render('/learn/business-foundations', 'demo-founder').includes('Pay upfront'));
+  assert.ok(!render('/learn/business-foundations', 'demo-mentor').includes('Watch original video'));
   const submittedListing = applyDemoAction(
     { ...state, activeAccountId: 'demo-founder' },
     {
@@ -475,8 +525,36 @@ export async function checkPlatformRendering() {
   assert.ok(incubationApprovals.includes('Review application'));
   assert.ok(incubationApprovals.includes('Demo seedling starter kit'));
   assert.ok(!incubationApprovals.includes('Review listing'));
+  const submittedVenture = applyDemoAction(
+    { ...state, activeAccountId: 'demo-school' },
+    {
+      type: 'venture-save',
+      now: '2026-11-10T09:02:00Z',
+      venture: {
+        id: 'submitted-school-venture',
+        ownerId: 'demo-school',
+        groupId: 'demo-school-group',
+        name: 'School garden project',
+        description: 'The student team grows seedlings for nearby home gardens.',
+        sector: 'Agriculture',
+        stage: 'Pilot',
+        location: 'Nairobi',
+        status: 'pending',
+      },
+    },
+  );
+  const ventureApprovals = render(
+    '/dashboard/workspace?tab=approvals&view=ventures',
+    'demo-admin',
+    undefined,
+    submittedVenture,
+  );
+  assert.ok(ventureApprovals.includes('Review submission: School garden project'));
   const founderProducts = render(
-    '/dashboard/workspace?tab=products',
+    '/dashboard/workspace?tab=products&product=' +
+      submittedListing.platform.products.find(
+        (product) => product.name === 'Demo seedling starter kit',
+      )!.id,
     'demo-founder',
     undefined,
     submittedListing,
@@ -517,7 +595,7 @@ export async function checkPlatformRendering() {
       'demo-founder',
       undefined,
       trainingPreview,
-    ).includes('Listing details'),
+    ).includes('View product'),
   );
   assert.ok(
     !render('/dashboard/workspace?tab=payments&view=settings', 'demo-founder').includes(
@@ -544,9 +622,10 @@ export async function checkPlatformRendering() {
   assert.ok(render('/', null, undefined, trainingPreview).includes(school.name));
   assert.ok(!render('/', null, undefined, trainingPreview).includes('Robin Kimani'));
   assert.ok(
-    render('/dashboard/workspace?tab=school&view=students', 'demo-school').includes(
-      'Professional profile draft',
-    ),
+    render(
+      '/dashboard/workspace?tab=school&view=students&student=demo-student-a',
+      'demo-school',
+    ).includes('Professional profile draft'),
   );
   assert.ok(
     !render('/dashboard/workspace?tab=school', 'demo-university-staff').includes('Robin Kimani'),
@@ -597,19 +676,154 @@ export async function checkPlatformRendering() {
     issuedAt: now,
     issuedBy: 'demo-admin',
   });
+  teamPreview.platform.products.push({
+    id: 'school-toolkit',
+    ventureId: 'test-school-venture',
+    ownerId: 'demo-school',
+    name: 'Classroom toolkit',
+    description: 'Toolkit produced by school team members.',
+    status: 'pending',
+    price: 500,
+  });
+  teamPreview.platform.training.cohorts = [
+    {
+      id: 'term-one',
+      institutionId: school.id,
+      name: 'Term 1',
+      startsOn: '2026-01-10',
+      endsOn: '2026-04-10',
+      incubationIds: ['test-school-path'],
+    },
+  ];
+  assert.ok(
+    render(
+      '/dashboard/workspace?tab=member-results',
+      'demo-school',
+      undefined,
+      teamPreview,
+    ).includes('Term 1'),
+  );
+  const schoolPathway = render(
+    '/dashboard/workspace?tab=incubation&path=test-school-path',
+    'demo-school',
+    undefined,
+    teamPreview,
+  );
+  assert.ok(schoolPathway.includes('Individual contributions'));
+  assert.ok(schoolPathway.includes('Record marks'));
+  assert.ok(!schoolPathway.includes('Jordan Otieno'));
+  assert.ok(!schoolPathway.includes('Mentor meeting'));
+  const schoolProduct = render(
+    '/dashboard/workspace?tab=products&product=school-toolkit',
+    'demo-school',
+    undefined,
+    teamPreview,
+  );
+  assert.ok(schoolProduct.includes('Classroom toolkit'));
+  assert.ok(!schoolProduct.includes('Record paid listing'));
+  assert.ok(
+    !render('/dashboard/workspace?tab=approvals', 'demo-admin', undefined, teamPreview).includes(
+      'Classroom toolkit',
+    ),
+  );
+  const certs = render(
+    '/dashboard/workspace?tab=member-results&cohort=term-one&view=certificates',
+    'demo-school',
+    undefined,
+    teamPreview,
+  );
+  assert.ok(certs.includes('/certificates/test-issued'));
+  assert.ok(certs.includes('Download HTML'));
+  assert.ok(!certs.includes('pass rate'));
   const teamResults = render(
-    '/dashboard/workspace?tab=member-results',
+    '/dashboard/workspace?tab=member-results&cohort=all',
     'demo-school',
     undefined,
     teamPreview,
   );
   assert.match(
     teamResults,
-    /<a(?=[^>]*href="\/dashboard\/workspace\?tab=member-results")(?=[^>]*aria-current="page")[^>]*>Member results and certificates<\/a>/,
+    /<a(?=[^>]*href="\/dashboard\/workspace\?tab=member-results(?:&amp;cohort=all)?")(?=[^>]*aria-current="page")[^>]*>Results &amp; Certificates(?:<span[^>]*>[^<]*<\/span>)*<\/a>/,
   );
   assert.ok(teamResults.includes('Class enterprise'));
-  assert.ok(teamResults.includes('View results: Robin Kimani · Class enterprise'));
-  assert.ok(teamResults.includes('Resit available'));
+  assert.ok(teamResults.includes('View results'));
+  assert.ok(teamResults.includes('Export results CSV'));
+  assert.ok(teamResults.includes('Add result'));
+  const schoolDirectory = render(
+    '/dashboard/workspace?tab=school&view=assessments',
+    'demo-school',
+    undefined,
+    teamPreview,
+  );
+  assert.ok(schoolDirectory.includes('Record marks'));
+  assert.ok(!schoolDirectory.includes('workspace-page-intro'));
+  const institutionalVentures = render(
+    '/dashboard/workspace?tab=manage-ventures&view=institutions',
+    'demo-admin',
+    undefined,
+    teamPreview,
+  );
+  assert.match(institutionalVentures, /Class enterprise[\s\S]*?Lakeview Demo High School/);
+  const adminEvents = render('/dashboard/events', 'demo-admin');
+  assert.ok(adminEvents.includes('Add event'));
+  assert.ok(adminEvents.includes('Categories'));
+  assert.ok(
+    render('/dashboard/events?eventView=preview', 'demo-admin').includes('Event catalogue'),
+  );
+  const eventPreview = structuredClone(state);
+  const year = new Date().getUTCFullYear() + 1;
+  const privateEvent = {
+    ...eventPreview.sessions[0]!,
+    id: 'offline-draft-test',
+    title: 'Private entrepreneurship drafting session',
+    publication: 'draft' as const,
+    startsAt: `${year}-03-12T09:00:00+03:00`,
+    endsAt: `${year}-03-12T10:00:00+03:00`,
+  };
+  eventPreview.sessions.push(privateEvent);
+  assert.ok(
+    render('/dashboard/events', 'demo-admin', undefined, eventPreview).includes(privateEvent.title),
+  );
+  assert.ok(
+    !render('/dashboard/events?eventView=preview', 'demo-admin', undefined, eventPreview).includes(
+      privateEvent.title,
+    ),
+  );
+  const eventDateUrl = `/events?date=${year}-03-12`;
+  assert.ok(!render(eventDateUrl, null, undefined, eventPreview).includes(privateEvent.title));
+  assert.ok(
+    !render('/sessions/' + privateEvent.id, null, undefined, eventPreview).includes(
+      privateEvent.title,
+    ),
+  );
+  assert.ok(
+    !render('/', null, <UpcomingEventsSection />, eventPreview).includes(privateEvent.title),
+  );
+  eventPreview.sessions[eventPreview.sessions.length - 1] = {
+    ...privateEvent,
+    publication: 'published',
+  };
+  eventPreview.sessions[eventPreview.sessions.length - 1]!.presenters = [
+    {
+      id: 'presenter-check',
+      role: 'facilitator',
+      name: 'Ruth Demo',
+      profession: 'Enterprise Trainer',
+      photo:
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWZkAAAAASUVORK5CYII=',
+    },
+  ];
+  eventPreview.sessions[eventPreview.sessions.length - 1]!.hostIds = [];
+  const publicEvent = render('/sessions/' + privateEvent.id, null, undefined, eventPreview);
+  assert.ok(publicEvent.includes('Ruth Demo'));
+  assert.ok(publicEvent.includes('Enterprise Trainer'));
+  assert.ok(publicEvent.includes('event-presenter-avatar'));
+  assert.ok(publicEvent.includes('data:image/png;base64,'));
+  assert.ok(render(eventDateUrl, null, undefined, eventPreview).includes(privateEvent.title));
+  assert.ok(
+    render('/', null, <UpcomingEventsSection />, eventPreview).includes(privateEvent.title),
+  );
+  assert.ok(teamResults.includes('>45<'));
   assert.ok(teamResults.includes('Certificates'));
   assert.ok(
     !render(
@@ -619,11 +833,7 @@ export async function checkPlatformRendering() {
       teamPreview,
     ).includes('Class enterprise'),
   );
-  assert.ok(
-    render('/dashboard/workspace?tab=school', 'demo-school').includes(
-      'View member results and certificates',
-    ),
-  );
+  assert.ok(render('/dashboard/workspace?tab=school', 'demo-school').includes('Agreements'));
   assert.ok(
     render('/dashboard/workspace?tab=member-results', 'demo-founder').includes(
       'This workspace is unavailable for your role',

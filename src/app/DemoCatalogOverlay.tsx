@@ -3,6 +3,7 @@ import { useCatalog, ContentContext } from './useCatalog';
 import { useDemo } from './useDemo';
 import { publishedSubmissions } from '../services/submission-mapper';
 import { canPublishProduct } from '../domain/incubation';
+import { authoredCourseId, authoredLessonId } from '../domain/courses';
 /** Optional demo enrichment. Public components only depend on ContentProvider. */
 export function DemoCatalogOverlay({ children }: { children: ReactNode }) {
   const catalog = useCatalog();
@@ -13,7 +14,9 @@ export function DemoCatalogOverlay({ children }: { children: ReactNode }) {
     const submissions = publishedSubmissions(state.submissions);
     const base = published.items.filter((i) => !i.source.path.startsWith('local-demo'));
     const entries = [...base, ...submissions.filter((s) => !base.some((i) => i.id === s.id))];
-    for (const venture of state.platform.ventures.filter((v) => v.status === 'approved'))
+    for (const venture of state.platform.ventures.filter(
+      (v) => v.status === 'approved' && !v.groupId,
+    ))
       entries.push({
         id: venture.id,
         slug: `venture-${venture.id}`,
@@ -76,6 +79,18 @@ export function DemoCatalogOverlay({ children }: { children: ReactNode }) {
       });
     return {
       ...published,
+      courses: [
+        ...published.courses,
+        ...(state.platform.courseCommerce?.proposals ?? [])
+          .filter((course) => course.status === 'published')
+          .map((course) => ({
+            id: authoredCourseId(course),
+            title: course.title,
+            description: course.description,
+            level: 'Mentor course',
+            lessonIds: course.modules.map((module) => authoredLessonId(course, module)),
+          })),
+      ],
       homepage: {
         ...published.homepage,
         featuredStories: [

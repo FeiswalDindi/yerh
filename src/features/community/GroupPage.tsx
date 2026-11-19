@@ -1,3 +1,4 @@
+import { isPublishedSession } from '../../domain/events';
 import { Link, useParams } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
 import { useCatalog } from '../../app/useCatalog';
@@ -17,7 +18,7 @@ export function GroupPage() {
   usePageTitle(group?.name ?? 'Group not found');
   if (!group) return <NotFoundPage />;
   const forums = state.forums.filter((f) => f.groupId === group.id);
-  const sessions = state.sessions.filter((s) => s.groupId === group.id);
+  const sessions = state.sessions.filter((s) => isPublishedSession(s) && s.groupId === group.id);
   const joined = !!account && group.memberIds.includes(account.id);
   return (
     <>

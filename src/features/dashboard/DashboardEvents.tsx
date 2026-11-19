@@ -2,6 +2,7 @@ import { CalendarDays, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
 import type { CommunitySession, EventRegistration } from '../../domain/community';
+import { isPublishedSession, sessionCategory } from '../../domain/events';
 import { isCalendarDay } from '../../domain/sidebar';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { EventCalendar } from '../benefits/EventCalendar';
@@ -11,21 +12,7 @@ import { DashboardCatalogueSearch } from './DashboardCatalogueSearch';
 import { DashboardCategoryRail } from './DashboardCategoryRail';
 import { dashboardCataloguePaths } from './catalogue-paths';
 import { useCatalogueFilters } from './useCatalogueFilters';
-
-const eventTypes: Record<CommunitySession['type'], string> = {
-  workshop: 'Workshops',
-  webinar: 'Webinars',
-  bootcamp: 'Bootcamps',
-  masterclass: 'Masterclasses',
-  summit: 'Summits',
-  exhibition: 'Exhibitions',
-};
-
-const bookingLabels: Record<EventRegistration['status'], string> = {
-  registered: 'Booked',
-  attended: 'Attended',
-  cancelled: 'Booking cancelled',
-};
+import { AdminEvents } from './AdminEvents';
 
 type EventEntry = CatalogueEntry & {
   session: CommunitySession;
@@ -57,48 +44,61 @@ function EventSection({
 }
 
 export function DashboardEvents() {
-  const { account, state } = useDemo();
-  const { params, category, matches, update, clear, searchProps } = useCatalogueFilters();
+  const { account } = useDemo();
   usePageTitle('Events');
+  return account?.role === 'admin' ? (
+    <AdminEvents preview={<EventCatalogue preview />} />
+  ) : (
+    <EventCatalogue />
+  );
+}
+
+function EventCatalogue({ preview = false }: { preview?: boolean }) {
+  const { account, state } = useDemo();
+  const { params, category, matches, update, clear, searchProps } = useCatalogueFilters(
+    preview ? 'eventView' : undefined,
+  );
   if (!account) return null;
 
   const now = Date.now();
   const bookings = new Map(
     state.registrations
-      .filter((record) => record.memberId === account.id)
+      .filter((record) => !preview && record.memberId === account.id)
       .map((record) => [record.sessionId, record.status]),
   );
-  const entries: EventEntry[] = state.sessions.map((session) => {
-    const booking = bookings.get(session.id);
-    const past = isPastSession(session, now);
-    const date =
-      session.startsAt &&
-      new Date(session.startsAt).toLocaleString('en-KE', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-        timeZone: session.timezone,
-      });
-    return {
-      id: session.id,
-      title: session.title,
-      summary: session.summary,
-      category: eventTypes[session.type],
-      details: date ? `${date} · ${session.venue}` : session.venue,
-      status: booking
-        ? bookingLabels[booking]
-        : session.status === 'postponed'
-          ? 'Postponed'
-          : undefined,
-      session,
-      past,
-      booking,
-    };
-  });
+  const entries: EventEntry[] = state.sessions
+    .filter(
+      (session) =>
+        isPublishedSession(session) ||
+        (!!bookings.get(session.id) && bookings.get(session.id) !== 'cancelled'),
+    )
+    .map((session) => {
+      const booking = bookings.get(session.id);
+      const past = isPastSession(session, now);
+      const date =
+        session.startsAt &&
+        new Date(session.startsAt).toLocaleString('en-KE', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+          timeZone: session.timezone,
+        });
+      return {
+        id: session.id,
+        title: session.title,
+        summary: session.summary,
+        category: sessionCategory(session, state.platform.eventCategories).label,
+        details: date ? `${date} · ${session.venue}` : session.venue,
+        session,
+        past,
+        booking,
+      };
+    });
   const view = params.get('view');
   const mine = view === 'mine';
   const date = params.get('date') ?? '';
   const selectedDay = isCalendarDay(date) ? date : '';
-  const matchesSearch = entries.filter(matches);
+  const published = entries.filter((entry) => isPublishedSession(entry.session));
+  const matchesSearch = published.filter(matches);
   const filtered = matchesSearch.filter(
     ({ session }) => !selectedDay || sessionOccursOnDay(session, selectedDay),
   );
@@ -112,14 +112,25 @@ export function DashboardEvents() {
   );
   const cancelled = entries.filter((entry) => entry.booking === 'cancelled');
   const cataloguePath = dashboardCataloguePaths.events;
+  const catalogueParams = preview ? '?eventView=preview' : '';
 
   return (
-    <section className="container section dashboard-catalogue dashboard-events" aria-label="Events">
+    <section
+      className={
+        preview
+          ? 'dashboard-catalogue dashboard-events'
+          : 'container section dashboard-catalogue dashboard-events'
+      }
+      aria-label="Events"
+    >
       <nav className="dashboard-event-tabs" aria-label="Events views">
-        <Link to={cataloguePath} aria-current={!mine ? 'page' : undefined}>
+        <Link to={cataloguePath + catalogueParams} aria-current={!mine ? 'page' : undefined}>
           Event catalogue
         </Link>
-        <Link to={`${cataloguePath}?view=mine`} aria-current={mine ? 'page' : undefined}>
+        <Link
+          to={cataloguePath + (preview ? '?eventView=preview&view=mine' : '?view=mine')}
+          aria-current={mine ? 'page' : undefined}
+        >
           My Events
         </Link>
       </nav>
@@ -150,7 +161,7 @@ export function DashboardEvents() {
             )}
           </div>
           <DashboardCategoryRail
-            entries={entries}
+            entries={published}
             category={category}
             icon={CalendarDays}
             onChange={(value) => update({ category: value })}

@@ -3,16 +3,20 @@ import type { PlatformState } from './platform';
 import { can } from './roles.ts';
 import {
   certificateFee,
+  certificateKey,
+  credentialKinds,
   credentialReady,
   feePurposes,
   finishedIncubation,
   getStage,
   incubationLearners,
+  institutionForPath,
   managesVenture,
   passedStage,
   paymentFor,
   productClearedByIncubation,
   schoolForVenture,
+  sameCertificate,
   stageIds,
   stageUnlocked,
   type TrainingAction,
@@ -24,6 +28,7 @@ const trainingActionTypes = {
   'stage-request': true,
   'stage-meeting': true,
   'stage-open-exam': true,
+  'school-stage-review': true,
   'stage-revise': true,
   'stage-take-exam': true,
   'stage-grade': true,
@@ -36,9 +41,16 @@ const trainingActionTypes = {
   'product-evidence-review': true,
   'institution-create': true,
   'institution-proof': true,
+  'institution-settings': true,
+  'yerh-sign-in': true,
   'institution-activate': true,
+  'institution-deactivate': true,
+  'institution-access': true,
+  'institution-intake': true,
   'institution-story': true,
   'institution-student': true,
+  'institution-cohort': true,
+  'institution-certificates-request': true,
   'institution-profile': true,
   'institution-group': true,
   'institution-affiliation': true,
@@ -63,12 +75,17 @@ function text(value: string, min: number, max = 3000) {
 
 const money = (amount: number) => Number.isSafeInteger(amount) && amount >= 0;
 const validScore = (score: number) => Number.isInteger(score) && score >= 0 && score <= 100;
+const validDay = (value: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+  Number.isFinite(Date.parse(value)) &&
+  new Date(value).toISOString().slice(0, 10) === value;
 
 export function applyTrainingAction(
   p: PlatformState,
   accounts: DemoAccount[],
   actor: DemoAccount,
   action: TrainingAction,
+  operatorId = actor.id,
 ): string {
   const t = p.training;
   const admin = can(actor, 'admin');
@@ -85,9 +102,12 @@ export function applyTrainingAction(
     );
     const venture = p.ventures.find((v) => v.id === path.ventureId);
     const institution = schoolForVenture(p, venture);
-    const mentor = can(actor, 'mentor') && actor.id === path.mentorId;
+    const mentor = !institution && can(actor, 'mentor') && actor.id === path.mentorId;
     const owner = managesVenture(p, actor, venture);
-    check(owner || mentor, 'You do not have access to this incubation.');
+    check(
+      owner || mentor || (admin && institution && action.type === 'school-stage-review'),
+      'You do not have access to this incubation.',
+    );
     const definition = t.curriculum.find((stage) => stage.id === action.stage);
     check(definition && stageUnlocked(p, path, action.stage), 'Pass the previous stage first.');
     let work = getStage(t, path.id, action.stage);
@@ -121,7 +141,7 @@ export function applyTrainingAction(
           {
             id: action.stepId,
             evidence: text(action.evidence, 10),
-            requested: action.requestFeedback,
+            requested: !institution && action.requestFeedback,
             feedback: prior?.feedback ?? '',
           },
         ];
@@ -170,6 +190,15 @@ export function applyTrainingAction(
           work.meetingLocation = '';
         }
         break;
+      case 'school-stage-review':
+        check(
+          admin && institution && work.reviewRequestedAt && !work.examOpenedAt,
+          'Select a school stage awaiting review.',
+        );
+        work.schoolReviewNote = text(action.note, 5);
+        if (action.approved) work.examOpenedAt = now;
+        else work.reviewRequestedAt = '';
+        break;
       case 'stage-take-exam':
       case 'stage-offline-result': {
         const offline = action.type === 'stage-offline-result';
@@ -196,7 +225,7 @@ export function applyTrainingAction(
         work.attempts.push({
           id: action.attemptId,
           learnerId,
-          recordedBy: actor.id,
+          recordedBy: operatorId,
           submittedAt: now,
           answer: offline ? '' : text(action.answer, 10),
           score: offline ? action.score : null,
@@ -216,6 +245,110 @@ export function applyTrainingAction(
     return work.id;
   }
   switch (action.type) {
+    case 'institution-cohort': {
+      check(
+        can(actor, 'school') && ownSchool?.status === 'active',
+        'Choose an institution you manage.',
+      );
+      check(action.id !== 'all', 'Choose a unique cohort identifier.');
+      const cohorts = (t.cohorts ??= []);
+      const existing = cohorts.find((row) => row.id === action.id);
+      check(
+        !existing || existing.institutionId === ownSchool.id,
+        'This cohort belongs to another institution.',
+      );
+      check(
+        (!action.startsOn || validDay(action.startsOn)) &&
+          (!action.endsOn || validDay(action.endsOn)) &&
+          (!action.startsOn || !action.endsOn || action.startsOn <= action.endsOn),
+        'Enter a valid cohort date range.',
+      );
+      const name = text(action.name, 2, 120);
+      check(
+        !cohorts.some(
+          (row) =>
+            row.id !== action.id &&
+            row.institutionId === ownSchool.id &&
+            row.name.toLowerCase() === name.toLowerCase(),
+        ),
+        'A cohort already uses this name.',
+      );
+      const incubationIds = [...new Set(action.incubationIds)];
+      check(
+        incubationIds.every((id) =>
+          p.incubations.some(
+            (path) =>
+              path.id === id &&
+              institutionForPath(p, path)?.id === ownSchool.id &&
+              ['active', 'completed'].includes(path.status),
+          ),
+        ),
+        'Choose pathways from this institution.',
+      );
+      const cohort = {
+        id: action.id,
+        institutionId: ownSchool.id,
+        name,
+        startsOn: action.startsOn,
+        endsOn: action.endsOn,
+        incubationIds,
+      };
+      t.cohorts = existing
+        ? cohorts.map((row) => (row.id === action.id ? cohort : row))
+        : [...cohorts, cohort];
+      if (ownSchool.kind === 'high-school') {
+        const ventureIds = new Set(
+          p.incubations
+            .filter((path) => incubationIds.includes(path.id))
+            .map((path) => path.ventureId),
+        );
+        check(
+          !p.ventures.some(
+            (venture) =>
+              ventureIds.has(venture.id) && venture.cohortId && venture.cohortId !== cohort.id,
+          ),
+          'Change a venture’s assigned cohort from the Ventures directory.',
+        );
+        for (const other of t.cohorts) {
+          if (other.id === cohort.id || other.institutionId !== ownSchool.id) continue;
+          other.incubationIds = other.incubationIds.filter(
+            (id) => !p.incubations.some((path) => path.id === id && ventureIds.has(path.ventureId)),
+          );
+        }
+      }
+      return action.id;
+    }
+    case 'institution-certificates-request': {
+      check(
+        can(actor, 'school') && ownSchool?.status === 'active',
+        'Choose an institution you manage.',
+      );
+      check(
+        action.entries.length &&
+          new Set(action.entries.map(certificateKey)).size === action.entries.length,
+        'Choose distinct certificates to request.',
+      );
+      const requests = (t.certificateRequests ??= []);
+      for (const entry of action.entries) {
+        const path = p.incubations.find((row) => row.id === entry.incubationId);
+        check(
+          path &&
+            institutionForPath(p, path)?.id === ownSchool.id &&
+            credentialKinds.includes(entry.kind) &&
+            credentialReady(p, path, entry.learnerId, entry.kind),
+          'Every selected learner must qualify for the requested certificate.',
+        );
+      }
+      for (const entry of action.entries) {
+        if (
+          requests.some((row) => sameCertificate(row, entry)) ||
+          t.credentials.some((row) => sameCertificate(row, entry))
+        )
+          continue;
+        requests.push({ ...entry, requestedBy: operatorId, requestedAt: now });
+      }
+      return ownSchool.id;
+    }
     case 'training-credential-issue': {
       check(admin, 'Only a platform administrator can issue certificates.');
       const path = p.incubations.find((i) => i.id === action.incubationId);
@@ -226,6 +359,11 @@ export function applyTrainingAction(
       check(
         path && credentialReady(p, path, action.learnerId, action.kind),
         'The learner must pass all required stages.',
+      );
+      check(
+        !p.ventures.some((venture) => venture.id === path.ventureId && venture.groupId) ||
+          t.certificateRequests?.some((entry) => sameCertificate(entry, action)),
+        'The institution must request this certificate first.',
       );
       check(
         !t.credentials.some(
@@ -290,6 +428,7 @@ export function applyTrainingAction(
             product &&
             product.status !== 'rejected' &&
             venture?.status === 'approved' &&
+            !venture.groupId &&
             managesVenture(p, actor, venture),
           'This product is ineligible for paid listing.',
         );
@@ -347,7 +486,7 @@ export function applyTrainingAction(
             (row.status === 'active' && row.productIds?.includes(action.productId))),
       );
       check(
-        product && path && managesVenture(p, actor, venture),
+        product && path && managesVenture(p, actor, venture) && !venture.groupId,
         'Select this product at launch or submit it after venture graduation.',
       );
       check(
@@ -369,10 +508,14 @@ export function applyTrainingAction(
     case 'product-evidence-review': {
       const review = t.productReviews.find((row) => row.productId === action.productId);
       const path = p.incubations.find((row) => row.id === review?.incubationId);
+      const school = schoolForVenture(
+        p,
+        p.ventures.find((venture) => venture.id === path?.ventureId),
+      );
       check(
         review?.status === 'pending' &&
           path &&
-          (admin || (can(actor, 'mentor') && path.mentorId === actor.id)),
+          (admin || (!school && can(actor, 'mentor') && path.mentorId === actor.id)),
         'This product review is not assigned to you.',
       );
       check(
@@ -395,6 +538,7 @@ export function applyTrainingAction(
       check(
         !t.institutions.some(
           (i) =>
+            action.id === 'yerh' ||
             i.id === action.id ||
             i.adminId === action.adminId ||
             i.name.toLowerCase() === action.name.trim().toLowerCase(),
@@ -413,15 +557,59 @@ export function applyTrainingAction(
         featured: false,
       });
       return action.id;
+    case 'yerh-sign-in':
+      check(
+        admin && typeof action.enabled === 'boolean',
+        'Platform administrator access is required.',
+      );
+      t.yerhSignIn = action.enabled;
+      return 'yerh';
+    case 'institution-settings':
+    case 'institution-intake': {
+      const institution = t.institutions.find((row) => row.id === action.id);
+      check(
+        admin && institution && money(action.amount),
+        'Choose an institution and enter a valid amount.',
+      );
+      if (action.type === 'institution-settings') {
+        const contacts = [...new Set(action.contactIds)];
+        const staff = [...new Set(action.staffIds)];
+        check(
+          [...contacts, ...staff].every((id) =>
+            accounts.some(
+              (account) =>
+                account.id === id &&
+                !account.suspended &&
+                ['guest', 'admin'].includes(account.role),
+            ),
+          ),
+          'Choose active guest accounts or platform administrators.',
+        );
+        institution.contactIds = contacts;
+        institution.staffIds = staff;
+      }
+      check(
+        !action.visit ||
+          (/^\d{4}-\d{2}-\d{2}$/.test(action.visit) && Number.isFinite(Date.parse(action.visit))),
+        'Enter a valid visit date.',
+      );
+      institution.amount = action.amount;
+      institution.intake = {
+        notes: action.notes.trim().slice(0, 3000),
+        visit: action.visit,
+        terms: action.terms.trim().slice(0, 3000),
+      };
+      return institution.id;
+    }
     case 'institution-proof':
     case 'institution-activate':
+    case 'institution-deactivate':
     case 'institution-story': {
       const institution = t.institutions.find((row) => row.id === action.id);
       check(institution, 'Institution unavailable.');
       if (action.type === 'institution-proof') {
         check(
-          institution.status === 'pending' &&
-            (admin || (can(actor, 'school') && institution.adminId === actor.id)),
+          admin || (can(actor, 'school') && institution.adminId === actor.id),
           'Only an authorized administrator can upload an agreement.',
         );
         check(
@@ -429,10 +617,37 @@ export function applyTrainingAction(
             /^data:application\/pdf;base64,JVBERi0[A-Za-z0-9+/=]*$/.test(action.data),
           'Upload a demonstration PDF no larger than 250 KB.',
         );
-        institution.proof = { name: text(action.name, 5, 140), data: action.data };
+        const document = { name: text(action.name, 5, 140), data: action.data };
+        const history = (institution.agreements ??= []);
+        if (!history.length && institution.proof)
+          history.push({
+            id: institution.id + ':original',
+            ...institution.proof,
+            addedAt: '',
+            addedBy: '',
+            amount: institution.amount,
+            terms: institution.intake?.terms ?? '',
+          });
+        history.push({
+          id: institution.id + ':' + history.length,
+          ...document,
+          addedAt: now,
+          addedBy: operatorId,
+          amount: institution.amount,
+          terms: institution.intake?.terms ?? '',
+        });
+        institution.proof = document;
+      } else if (action.type === 'institution-deactivate') {
+        check(
+          admin && institution.status === 'active',
+          'Choose an active institution to deactivate.',
+        );
+        institution.status = 'inactive';
       } else if (action.type === 'institution-activate') {
         check(
-          admin && institution.status === 'pending' && institution.proof,
+          admin &&
+            (institution.status === 'inactive' ||
+              (institution.status === 'pending' && institution.proof)),
           'Review the signed agreement and proof before activating.',
         );
         institution.status = 'active';
@@ -448,17 +663,65 @@ export function applyTrainingAction(
       }
       return institution.id;
     }
-    case 'institution-student':
+    case 'institution-access': {
+      const institution = t.institutions.find((row) => row.id === action.id);
+      const person = accounts.find((row) => row.id === action.accountId);
       check(
-        isSchoolAdmin && ownSchool && !t.students.some((s) => s.id === action.id),
+        admin && institution && person && institution.adminId !== person.id,
+        'Choose a staff member or contact for this institution.',
+      );
+      check(
+        action.access === 'none' ||
+          (['view', 'manage'].includes(action.access) &&
+            !person.suspended &&
+            ['guest', 'admin'].includes(person.role)),
+        'Choose an active guest or platform administrator and a level of access.',
+      );
+      const staff = (institution.staffIds ?? []).filter((id) => id !== person.id);
+      const contacts = (institution.contactIds ?? []).filter((id) => id !== person.id);
+      if (action.access === 'manage') staff.push(person.id);
+      if (action.access === 'view') contacts.push(person.id);
+      institution.staffIds = staff;
+      institution.contactIds = contacts;
+      return institution.id;
+    }
+    case 'institution-student': {
+      const existing = t.students.find((row) => row.id === action.id);
+      check(
+        isSchoolAdmin && ownSchool && (!existing || existing.institutionId === ownSchool.id),
         'An active high school portal is required.',
       );
-      t.students.push({
+      check(
+        action.age === undefined ||
+          (Number.isInteger(action.age) && action.age >= 1 && action.age <= 120),
+        'Enter a whole-number age from 1 to 120.',
+      );
+      const admissionNumber =
+        action.admissionNumber?.trim().slice(0, 50) ?? existing?.admissionNumber;
+      check(
+        !admissionNumber ||
+          !t.students.some(
+            (row) =>
+              row.institutionId === ownSchool.id &&
+              row.id !== action.id &&
+              row.admissionNumber?.toLowerCase() === admissionNumber.toLowerCase(),
+          ),
+        'A student already uses that admission number.',
+      );
+      const student = {
+        ...existing,
         id: action.id,
         institutionId: ownSchool.id,
         name: text(action.name, 2, 120),
-      });
+        age: action.age ?? existing?.age,
+        gender: action.gender?.trim().slice(0, 50) ?? existing?.gender,
+        form: action.form?.trim().slice(0, 50) ?? existing?.form,
+        stream: action.stream?.trim().slice(0, 50) ?? existing?.stream,
+        admissionNumber,
+      };
+      t.students = [...t.students.filter((row) => row.id !== action.id), student];
       return action.id;
+    }
     case 'institution-profile': {
       const student = t.students.find(
         (row) => row.id === action.id && row.institutionId === ownSchool?.id,
@@ -493,12 +756,16 @@ export function applyTrainingAction(
       return action.id;
     }
     case 'institution-class': {
-      const group = t.groups.find(
-        (row) => row.id === action.groupId && row.institutionId === ownSchool?.id,
+      const groupIds = [...new Set(action.groupIds ?? (action.groupId ? [action.groupId] : []))];
+      const groups = t.groups.filter(
+        (row) => row.institutionId === ownSchool?.id && groupIds.includes(row.id),
       );
       check(
-        isSchoolAdmin && group && !t.classes.some((row) => row.id === action.id),
-        'Choose a group from your active high school.',
+        isSchoolAdmin &&
+          groupIds.length > 0 &&
+          groups.length === groupIds.length &&
+          !t.classes.some((row) => row.id === action.id),
+        'Choose one or more teams from your high school.',
       );
       check(
         /^\d{4}-\d{2}-\d{2}$/.test(action.date) && Number.isFinite(Date.parse(action.date)),
@@ -506,12 +773,13 @@ export function applyTrainingAction(
       );
       const attendance = [...new Set(action.attendance)];
       check(
-        attendance.every((id) => group.studentIds.includes(id)),
-        'Attendance must refer to students in this group.',
+        attendance.every((id) => groups.some((group) => group.studentIds.includes(id))),
+        'Attendance must refer to students in the selected teams.',
       );
       t.classes.push({
         id: action.id,
-        groupId: group.id,
+        groupId: groupIds[0]!,
+        groupIds,
         date: action.date,
         challenge: text(action.challenge, 10),
         attendance,

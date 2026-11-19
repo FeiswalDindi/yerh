@@ -6,9 +6,14 @@ import { roleLabels } from '../../domain/roles';
 import type { DemoAccount } from '../../domain/demo';
 import { Header } from '../../layout/Header';
 import { BreadcrumbBar } from '../../shared/Breadcrumb';
+import { SiteLoader } from '../../shared/SiteLoader';
 import { CloseButton } from '../../shared/CloseButton';
 import { CookieConsentModal } from '../privacy/CookieConsentModal';
 import { DashboardNotifications } from './DashboardNotifications';
+import {
+  useDashboardNotifications,
+  type DashboardNotificationState,
+} from './useDashboardNotifications';
 import { dashboardCataloguePaths } from './catalogue-paths';
 import {
   activeWorkspaceModule,
@@ -17,25 +22,47 @@ import {
   cmsModules,
   dashboardGroups,
   workspaceHref,
+  institutionHref,
+  institutionModule,
 } from './dashboard-navigation';
+import { institutionAccess } from '../../domain/incubation';
 import './dashboard.css';
 
 function DashboardNavigation({
   account,
+  notifications,
   onNavigate,
 }: {
   account: DemoAccount;
+  notifications: DashboardNotificationState;
   onNavigate?: () => void;
 }) {
   const { pathname: routePath, search } = useLocation();
   const pathname = routePath.replace(/\/$/, '');
   const params = new URLSearchParams(search);
+  const { state } = useDemo();
+  const linked = state.platform.training.institutions.filter(
+    (school) => school.adminId !== account.id && institutionAccess(school, account),
+  );
+  const selectedSchool = linked.find((school) => school.id === params.get('institution'));
+  const schoolModule =
+    selectedSchool &&
+    institutionModule(params.get('tab'), institutionAccess(selectedSchool, account) === 'manage');
   const studioOpen = pathname === '/dashboard/cms';
   const studioModule = cmsModule(params.get('module'));
   const activeTab = activeWorkspaceModule(account, params.get('tab'))?.id;
+  const unread = (href: string) => notifications.badges.get(href) ?? 0;
 
   function isCurrent(to: string) {
+    if (selectedSchool && schoolModule && pathname === '/dashboard/workspace')
+      return to === institutionHref(schoolModule.id, selectedSchool.id);
     if (studioOpen && to === '/dashboard/cms') return studioModule === 'overview';
+    if (
+      pathname === '/dashboard/workspace' &&
+      activeTab === 'approvals' &&
+      params.get('view') === 'school-reviews'
+    )
+      return to === workspaceHref('approvals') + '&view=school-reviews';
     if (pathname === '/dashboard/workspace' && activeTab && to === workspaceHref(activeTab))
       return true;
     if (
@@ -49,36 +76,67 @@ function DashboardNavigation({
 
   return (
     <nav className="role-nav" aria-label="Dashboard navigation">
-      {dashboardGroups(account).map((group) => (
+      {[
+        ...dashboardGroups(account),
+        ...linked.map((school) => ({
+          label: school.name,
+          links: (institutionAccess(school, account) === 'manage'
+            ? [
+                ['school', 'Institution portal'],
+                ['member-results', 'Results & Certificates'],
+                ...(school.kind === 'high-school'
+                  ? [
+                      ['ventures', 'Ventures'],
+                      ['products', 'Products'],
+                      ['incubation', 'Incubation'],
+                    ]
+                  : []),
+              ]
+            : [['member-results', 'Results & Certificates']]
+          ).map(([tab, label]) => ({ label: label!, to: institutionHref(tab!, school.id) })),
+        })),
+      ].map((group) => (
         <div className="role-nav-group" key={group.label}>
           <p>{group.label}</p>
           <ul>
-            {group.links.map((link) => (
-              <li key={link.to}>
-                <Link
-                  to={link.to}
-                  aria-current={isCurrent(link.to) ? 'page' : undefined}
-                  onClick={onNavigate}
-                >
-                  {link.label}
-                </Link>
-                {studioOpen && link.to === '/dashboard/cms' && (
-                  <ul className="role-nav-sublist" aria-label="Content Studio modules">
-                    {cmsModules.slice(1).map(([key, label]) => (
-                      <li key={key}>
-                        <Link
-                          to={cmsHref(key)}
-                          aria-current={studioModule === key ? 'page' : undefined}
-                          onClick={onNavigate}
-                        >
-                          {label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
+            {group.links.map((link) => {
+              const badge =
+                link.to === cmsHref('overview') && !studioOpen
+                  ? unread(cmsHref('opportunities'))
+                  : unread(link.to);
+              const destination =
+                notifications.groups.find(
+                  (update) => update.unread && update.sidebarHref === link.to,
+                )?.to ?? link.to;
+              return (
+                <li key={link.to}>
+                  <Link
+                    to={destination}
+                    aria-current={isCurrent(link.to) ? 'page' : undefined}
+                    onClick={onNavigate}
+                  >
+                    {link.label}
+                    <NavigationBadge count={badge} />
+                  </Link>
+                  {studioOpen && link.to === '/dashboard/cms' && (
+                    <ul className="role-nav-sublist" aria-label="Content Studio modules">
+                      {cmsModules.slice(1).map(([key, label]) => (
+                        <li key={key}>
+                          <Link
+                            to={cmsHref(key)}
+                            aria-current={studioModule === key ? 'page' : undefined}
+                            onClick={onNavigate}
+                          >
+                            {label}
+                            <NavigationBadge count={unread(cmsHref(key))} />
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ))}
@@ -86,17 +144,39 @@ function DashboardNavigation({
   );
 }
 
+function NavigationBadge({ count }: { count: number }) {
+  return (
+    count > 0 && (
+      <>
+        <span className="dashboard-nav-badge" aria-hidden="true">
+          {count > 9 ? '9+' : count}
+        </span>
+        <span className="sr-only">, {count} new</span>
+      </>
+    )
+  );
+}
+
 export function DashboardLayout() {
-  const { account, execute } = useDemo();
+  const { account } = useDemo();
+  return account ? <DashboardShell key={account.id} account={account} /> : null;
+}
+
+function DashboardShell({ account }: { account: DemoAccount }) {
+  const { state, execute } = useDemo();
+  const notifications = useDashboardNotifications(state, account);
   const location = useLocation();
   const shell = useRef<HTMLDivElement>(null);
   const dashboardDrawer = useRef<HTMLDialogElement>(null);
   const main = useRef<HTMLElement>(null);
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const pagePath = location.pathname.replace(/\/+$/, '');
+  const workspaceParams = new URLSearchParams(location.search);
+  workspaceParams.delete('filter');
+  workspaceParams.delete('view');
   const sectionQuery =
     pagePath === '/dashboard/workspace'
-      ? new URLSearchParams(location.search).get('tab')
+      ? workspaceParams.toString()
       : pagePath === '/dashboard/cms'
         ? location.search
         : '';
@@ -134,7 +214,6 @@ export function DashboardLayout() {
     return () => desktop.removeEventListener('change', closeOnDesktop);
   }, []);
 
-  if (!account) return null;
   const role = roleLabels[account.role];
 
   function openDashboard() {
@@ -148,26 +227,20 @@ export function DashboardLayout() {
         dashboardMenu={{
           expanded: dashboardOpen,
           onOpen: openDashboard,
-          notifications: <DashboardNotifications key={account.id} account={account} />,
+          notifications: <DashboardNotifications notifications={notifications} />,
         }}
       />
 
       <div className="dashboard-body">
         <aside className="dashboard-sidebar">
-          <DashboardNavigation account={account} />
+          <DashboardNavigation account={account} notifications={notifications} />
           <Link className="dashboard-visit" to="/">
             Visit website <ArrowUpRight size={15} aria-hidden="true" />
           </Link>
         </aside>
         <main id="main-content" className="dashboard-content" ref={main} tabIndex={-1}>
           <BreadcrumbBar />
-          <Suspense
-            fallback={
-              <p className="container section" role="status">
-                Loading workspace…
-              </p>
-            }
-          >
+          <Suspense fallback={<SiteLoader />}>
             <Outlet key={account.id} />
           </Suspense>
         </main>
@@ -197,6 +270,7 @@ export function DashboardLayout() {
           </header>
           <DashboardNavigation
             account={account}
+            notifications={notifications}
             onNavigate={() => dashboardDrawer.current?.close()}
           />
           <button

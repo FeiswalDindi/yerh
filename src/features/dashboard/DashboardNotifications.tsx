@@ -1,42 +1,19 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useRef } from 'react';
 import { Bell, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useDemo } from '../../app/useDemo';
-import type { DemoAccount } from '../../domain/demo';
-import {
-  loadReadNotifications,
-  notificationReadKey,
-  saveReadNotifications,
-} from '../../services/notification-read-state';
 import { CloseButton } from '../../shared/CloseButton';
-import { dashboardUpdateKeys, dashboardUpdates } from './dashboard-notifications';
+import { dashboardUpdateKeys } from './dashboard-notifications';
+import type { DashboardNotificationState } from './useDashboardNotifications';
 
-export function DashboardNotifications({ account }: { account: DemoAccount }) {
-  const { state } = useDemo();
+export function DashboardNotifications({
+  notifications,
+}: {
+  notifications: DashboardNotificationState;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
   const id = useId();
-  const storageKey = notificationReadKey(account.id);
-  const [readKeys, setReadKeys] = useState(() => loadReadNotifications(storageKey));
-  const updates = dashboardUpdates(state, account);
-  const updateKeys = dashboardUpdateKeys(updates);
-  const unread = updateKeys.filter((key) => !readKeys.has(key)).length;
+  const { groups, unread, markSeen, markAllSeen } = notifications;
   const close = () => dialog.current?.close();
-
-  useEffect(() => {
-    const sync = (event: StorageEvent) => {
-      if (event.key === storageKey || event.key === null)
-        setReadKeys(loadReadNotifications(storageKey));
-    };
-    window.addEventListener('storage', sync);
-    return () => window.removeEventListener('storage', sync);
-  }, [storageKey]);
-
-  function open() {
-    if (!dialog.current) return;
-    dialog.current.showModal();
-    setReadKeys(new Set(updateKeys));
-    saveReadNotifications(storageKey, updateKeys);
-  }
 
   return (
     <>
@@ -51,7 +28,7 @@ export function DashboardNotifications({ account }: { account: DemoAccount }) {
         aria-haspopup="dialog"
         aria-controls={id}
         title="Notifications"
-        onClick={open}
+        onClick={() => dialog.current?.showModal()}
       >
         <Bell size={21} aria-hidden="true" />
         {unread > 0 && <span aria-hidden="true">{unread > 99 ? '99+' : unread}</span>}
@@ -70,17 +47,39 @@ export function DashboardNotifications({ account }: { account: DemoAccount }) {
             <h2 id={`${id}-title`}>Notifications</h2>
             <CloseButton className="icon-button" aria-label="Close notifications" onClick={close} />
           </header>
-          {updates.length ? (
+          {unread > 0 && (
+            <button
+              type="button"
+              className="text-link dashboard-notifications-seen"
+              onClick={markAllSeen}
+            >
+              Mark all as seen
+            </button>
+          )}
+          {groups.length ? (
             <ul>
-              {updates.map(({ label, itemIds, to }) => (
-                <li key={to}>
-                  <Link to={to} onClick={close}>
-                    <strong>{itemIds.length}</strong>
-                    <span>{label}</span>
-                    <ChevronRight size={16} aria-hidden="true" />
-                  </Link>
-                </li>
-              ))}
+              {[...groups]
+                .sort((first, second) => Number(second.unread > 0) - Number(first.unread > 0))
+                .map((group) => (
+                  <li key={group.to}>
+                    <Link
+                      to={group.to}
+                      onClick={() => {
+                        markSeen(dashboardUpdateKeys([group]));
+                        close();
+                      }}
+                    >
+                      <strong>{group.itemIds.length}</strong>
+                      <span>
+                        {group.label}
+                        {group.unread > 0 && (
+                          <small className="dashboard-notifications-new">{group.unread} new</small>
+                        )}
+                      </span>
+                      <ChevronRight size={16} aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
             </ul>
           ) : (
             <p>No dashboard updates yet.</p>

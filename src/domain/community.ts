@@ -1,5 +1,6 @@
 import type { ContentItem } from './content';
 import type { DemoAccount, DemoState } from './demo';
+import { isPublishedSession, type EventPresenter } from './events.ts';
 
 export interface Connection {
   requesterId: string;
@@ -11,12 +12,15 @@ export interface CommunitySession {
   title: string;
   summary: string;
   type: 'workshop' | 'webinar' | 'bootcamp' | 'masterclass' | 'summit' | 'exhibition';
+  categoryId?: string;
   status: 'upcoming' | 'completed' | 'postponed';
+  publication?: 'draft' | 'published';
   startsAt: string | null;
   endsAt: string | null;
   timezone: string;
   venue: string;
   hostIds: string[];
+  presenters?: EventPresenter[];
   groupId: string | null;
   forumId: string | null;
   contentId: string | null;
@@ -73,6 +77,7 @@ export function registrationProblem(
 ): string | null {
   const time = Date.parse(now);
   if (!Number.isFinite(time)) return 'Invalid registration time.';
+  if (!isPublishedSession(session)) return 'Registration is closed while this event is a draft.';
   if (session.status !== 'upcoming' || !session.startsAt || Date.parse(session.startsAt) <= time)
     return 'Registration is closed for this session.';
   if (session.registrationDeadline && Date.parse(session.registrationDeadline) <= time)

@@ -5,6 +5,7 @@ import { StoriesSection } from './StoriesSection';
 import { BusinessesSection } from './BusinessesSection';
 import { UpdatesSection } from './UpdatesSection';
 import { useCatalog } from '../../app/useCatalog';
+import { UpcomingEventsSection } from './UpcomingEventsSection';
 /** Remove a section here without changing its siblings or their state. */
 export function HomePage() {
   const { site } = useCatalog();
@@ -16,6 +17,7 @@ export function HomePage() {
           <FeatureCarousel />
           {site.homeSections.stories !== false && <StoriesSection />}
           {site.homeSections.businesses !== false && <BusinessesSection />}
+          <UpcomingEventsSection />
           {site.homeSections.updates !== false && <UpdatesSection />}
         </div>
         <HomeSidebar />

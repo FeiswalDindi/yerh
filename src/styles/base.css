@@ -214,11 +214,6 @@ button {
   align-items: center;
   gap: 24px;
 }
-.loading-mark {
-  font-size: 56px;
-  color: var(--yerh-navy);
-  border-bottom: 6px solid var(--yerh-gold);
-}
 .status-page p:not(.eyebrow) {
   color: var(--yerh-muted);
 }

@@ -33,22 +33,12 @@ export type Capability =
 const permissions: Record<Role, Capability[]> = {
   guest: ['learn', 'attend'],
   entrepreneur: ['community', 'learn', 'attend', 'venture', 'apply'],
-  mentor: ['community', 'learn', 'attend', 'mentor'],
+  mentor: ['community', 'attend', 'mentor'],
   partner: ['community', 'attend', 'organisation'],
   investor: ['community', 'attend', 'organisation'],
   content_manager: ['community', 'cms'],
   school_admin: ['school', 'venture'],
-  admin: [
-    'community',
-    'learn',
-    'attend',
-    'venture',
-    'apply',
-    'mentor',
-    'organisation',
-    'cms',
-    'admin',
-  ],
+  admin: ['community', 'attend', 'cms', 'admin'],
 };
 export function can(
   account: { role: Role; suspended?: boolean } | null | undefined,

@@ -1,3 +1,4 @@
+import { isPublishedSession } from '../../domain/events';
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { MapPin, CalendarDays, Trophy, Users } from 'lucide-react';
@@ -48,14 +49,16 @@ export function MemberProfilePage() {
   const feed = communityFeed(state, items);
   const personal = feed.filter((e) => e.actorId === member.id);
   const forumEntries = personal.filter((e) => e.kind === 'topic' || e.kind === 'reply');
-  const sessions = state.sessions.filter(
-    (s) =>
-      s.hostIds.includes(member.id) ||
-      (own &&
-        state.registrations.some(
-          (r) => r.sessionId === s.id && r.memberId === member.id && r.status !== 'cancelled',
-        )),
-  );
+  const sessions = state.sessions
+    .filter(isPublishedSession)
+    .filter(
+      (s) =>
+        s.hostIds.includes(member.id) ||
+        (own &&
+          state.registrations.some(
+            (r) => r.sessionId === s.id && r.memberId === member.id && r.status !== 'cancelled',
+          )),
+    );
   const rank = leaderboard(state, items).find((r) => r.member.id === member.id)!;
   const tabs = [
     { id: 'activity', label: 'Activity', count: personal.length },

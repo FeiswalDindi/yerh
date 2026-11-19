@@ -125,7 +125,7 @@ function ProfileForm({ person }: { person: DemoAccount }) {
 }
 
 export function ProfilePage() {
-  usePageTitle('My profile');
+  usePageTitle('Profile');
   const { account, state, execute } = useDemo();
   const { hash, key } = useLocation();
   const roleAccess = useRef<HTMLElement>(null);
@@ -153,8 +153,8 @@ export function ProfilePage() {
   return (
     <>
       <PageIntro
-        eyebrow="My profile"
-        title="My profile"
+        eyebrow="Profile"
+        title="Profile"
         description="Manage your personal details, community profile, and role."
         className="dashboard-pane-intro"
       />
@@ -217,28 +217,30 @@ export function ProfilePage() {
                   <UniversitySelection p={state.platform} account={account} save={execute} />
                 </section>
               )}
-            <section
-              className="profile-panel dashboard-profile-card role-request-panel"
-              id={roleAccessSectionId}
-              ref={roleAccess}
-              tabIndex={-1}
-              aria-labelledby="role-access-title"
-            >
-              <h2 id="role-access-title">Role &amp; access</h2>
-              <p>
-                Current role: <strong>{roleLabels[account.role]}</strong>
-              </p>
-              <h3>{isGuest ? 'Apply for a role' : 'Request a different role'}</h3>
-              {!pending && (
+            {account.role !== 'school_admin' && (
+              <section
+                className="profile-panel dashboard-profile-card role-request-panel"
+                id={roleAccessSectionId}
+                ref={roleAccess}
+                tabIndex={-1}
+                aria-labelledby="role-access-title"
+              >
+                <h2 id="role-access-title">Role &amp; access</h2>
                 <p>
-                  {isGuest
-                    ? 'Choose a role when you’re ready to access its tools.'
-                    : 'Your current access stays active while an administrator reviews your request.'}
+                  Current role: <strong>{roleLabels[account.role]}</strong>
                 </p>
-              )}
-              <RoleRequestForm key={account.id} account={account} pending={pending} />
-              <RoleRequestHistory requests={requests} />
-            </section>
+                <h3>{isGuest ? 'Apply for a role' : 'Request a different role'}</h3>
+                {!pending && (
+                  <p>
+                    {isGuest
+                      ? 'Choose a role when you’re ready to access its tools.'
+                      : 'Your current access stays active while an administrator reviews your request.'}
+                  </p>
+                )}
+                <RoleRequestForm key={account.id} account={account} pending={pending} />
+                <RoleRequestHistory requests={requests} />
+              </section>
+            )}
             {account.role === 'mentor' && (
               <section className="profile-panel dashboard-profile-card">
                 <h2>Mentor settings</h2>

@@ -22,7 +22,7 @@ export function TrainingForm({
   label: string;
   children: ReactNode;
   reset?: boolean;
-  dialog?: { action: string; title?: string; create?: boolean };
+  dialog?: { action: string; title?: string; create?: boolean; icon?: ReactNode };
 }) {
   if (dialog)
     return (

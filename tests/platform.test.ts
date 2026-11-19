@@ -7,7 +7,13 @@ import { can } from '../src/domain/roles.ts';
 import { assertCmsSnapshot } from '../src/domain/cms.ts';
 import type { Catalog } from '../src/domain/content.ts';
 import { mediaAssets } from '../src/config/media.ts';
-import { canPublishProduct, stageUnlocked, type StageId } from '../src/domain/incubation.ts';
+import {
+  canPublishProduct,
+  cohortForVenture,
+  stageUnlocked,
+  type StageId,
+} from '../src/domain/incubation.ts';
+import { sessionCategory } from '../src/domain/events.ts';
 import type { PlatformAction } from '../src/domain/platform.ts';
 const fixture = (n: string) =>
   JSON.parse(readFileSync(new URL(`../src/mocks/data/${n}.json`, import.meta.url), 'utf8'));
@@ -37,6 +43,109 @@ const catalog = (): Catalog => ({
 });
 const now = '2026-11-10T09:00:00Z';
 const login = (s: DemoState, id: string) => applyDemoAction(s, { type: 'login', accountId: id });
+
+test('mentor proposals unlock authoring and paid enrollments record one royalty at the charged price', () => {
+  const { act, reject, owner, mentor, admin, state } = trainingScenario();
+  const id = 'record-keeping';
+  const courseId = 'mentor-course-record-keeping';
+  const edit = {
+    type: 'course-module-save',
+    id,
+    moduleId: 'first',
+    title: 'Record sales',
+    body: 'Add a sales transaction to a simple ledger.',
+    now,
+  } as const;
+  act(mentor, {
+    type: 'course-propose',
+    id,
+    title: 'Record keeping for small shops',
+    audience: 'Early-stage founders',
+    description: 'Practise the record keeping skills needed to run a shop.',
+    documents: [
+      { name: 'outline.pdf', data: 'data:application/pdf;base64,JVBERi0xLjQK' },
+      { name: 'outcomes.pdf', data: 'data:application/pdf;base64,JVBERi0xLjQK' },
+    ],
+    now,
+  });
+  reject(mentor, edit, /approved mentor/);
+  act(admin, {
+    type: 'course-proposal-review',
+    id,
+    decision: 'approved',
+    feedback: 'Approved the outline and intended audience.',
+    royaltyPercent: 25,
+    now,
+  });
+  reject(owner, edit, /approved mentor/);
+  act(mentor, edit);
+  act(mentor, { type: 'course-publish', id, price: 1000, now });
+  act(admin, { type: 'course-price', id: courseId, price: 1000, discount: 250, now });
+  const buy = { type: 'course-purchase', id: courseId, expectedPrice: 750, now } as const;
+  reject(mentor, buy, /eligible learner/);
+  reject(admin, buy, /eligible learner/);
+  for (const actor of [mentor, admin])
+    reject(
+      actor,
+      { type: 'venture-save', now, venture: state().platform.ventures[0]! },
+      /permission/,
+    );
+  reject(owner, { ...buy, expectedPrice: 1000 }, /price changed/);
+  act(owner, buy);
+  act(owner, buy);
+  assert.deepEqual(
+    state().platform.courseCommerce?.purchases.map((row) => [row.amount, row.royaltyCents]),
+    [[750, 18750]],
+  );
+  const completed = applyDemoAction(login(state(), owner), {
+    type: 'progress',
+    lessonId: courseId + '-first',
+  });
+  assert.deepEqual(completed.progress[owner], [courseId + '-first']);
+  assert.throws(
+    () =>
+      applyDemoAction(login(completed, mentor), {
+        type: 'progress',
+        lessonId: courseId + '-first',
+      }),
+    /approved role/,
+  );
+});
+
+test('school access uses a shared workspace and logs the acting staff identity', () => {
+  const { act, reject, admin, state } = trainingScenario();
+  const school = 'demo-high-school';
+  const command = {
+    type: 'institution-student',
+    id: 'shared-student',
+    name: 'Demo Learner',
+    institutionContextId: school,
+    now,
+  } as const;
+  const settings = {
+    type: 'institution-settings',
+    id: school,
+    amount: 5000,
+    contacts: [],
+    contactIds: ['demo-guest'],
+    staffIds: [admin],
+    notes: 'Recorded application.',
+    visit: '2026-11-10',
+    terms: 'Agreement on file.',
+    now,
+  } as const;
+  act(admin, {
+    ...settings,
+    contactIds: [...settings.contactIds],
+    staffIds: [...settings.staffIds],
+  });
+  reject('demo-guest', command, /selected institution/);
+  reject(admin, { ...command, institutionContextId: 'demo-university' }, /selected institution/);
+  act(admin, command);
+  assert.equal(state().platform.training.students.at(-1)?.institutionId, school);
+  assert.equal(state().platform.audit[0]?.actorId, admin);
+  assert.equal(state().platform.audit[0]?.institutionId, school);
+});
 test('signup creates only a guest, passwords are absent, and admin approval unlocks requested permissions', () => {
   let s = applyDemoAction(seed(), {
     type: 'signup',
@@ -318,7 +427,11 @@ test('enrollment is required for progress and certificates require completed cou
     () => applyDemoAction(s, { type: 'progress', lessonId: course.lessonIds[0] }),
     /Enroll/,
   );
-  s = applyDemoAction(s, { type: 'enroll', courseId: course.id, operation: 'enroll', now });
+  assert.throws(
+    () => applyDemoAction(s, { type: 'enroll', courseId: course.id, operation: 'enroll', now }),
+    /Pay for this course/,
+  );
+  s = applyDemoAction(s, { type: 'course-purchase', id: course.id, expectedPrice: 750, now });
   for (const id of course.lessonIds) s = applyDemoAction(s, { type: 'progress', lessonId: id });
   s = applyDemoAction(login(s, 'demo-admin'), {
     type: 'certificate-issue',
@@ -343,7 +456,7 @@ test('enrollment is required for progress and certificates require completed cou
 test('a guest can complete a course, earn a certificate, and reserve and cancel an eligible event', () => {
   let s = login(seed(), 'demo-guest');
   const course = fixture('learning')[0];
-  s = applyDemoAction(s, { type: 'enroll', courseId: course.id, operation: 'enroll', now });
+  s = applyDemoAction(s, { type: 'course-purchase', id: course.id, expectedPrice: 750, now });
   const certificate = {
     type: 'certificate-issue',
     id: 'guest-certificate',
@@ -463,7 +576,7 @@ test('venture approval, incubation assignment, mentor updates and graduation pre
         validated: true,
         now,
       }),
-    /permission/,
+    /not assigned/,
   );
   s = login(s, 'demo-mentor');
   act({
@@ -521,6 +634,17 @@ function trainingScenario() {
         evidence: 'Evidence from a completed classroom challenge and a real customer conversation.',
         requestFeedback: true,
       });
+    }
+    if (accountId === 'demo-school') {
+      act(accountId, { ...key, type: 'stage-request' });
+      reject(mentor, { ...key, type: 'stage-meeting', meetingAt: now }, /access/);
+      act(admin, {
+        ...key,
+        type: 'school-stage-review',
+        approved: true,
+        note: 'Reviewed the school stage evidence and authorized the offline assessment.',
+      });
+      return key;
     }
     act(mentor, {
       ...key,
@@ -736,6 +860,42 @@ test('school agreements gate activation and group venture certification respects
     now,
   });
   act(admin, { type: 'institution-activate', id: 'pending-school', now });
+  act(admin, { type: 'institution-deactivate', id: 'pending-school', now });
+  assert.equal(
+    state().platform.training.institutions.find((row) => row.id === 'pending-school')?.status,
+    'inactive',
+  );
+  act(admin, { type: 'institution-activate', id: 'pending-school', now });
+  act(admin, {
+    type: 'institution-access',
+    id: 'pending-school',
+    accountId: admin,
+    access: 'view',
+    now,
+  });
+  act(admin, {
+    type: 'institution-access',
+    id: 'pending-school',
+    accountId: admin,
+    access: 'manage',
+    now,
+  });
+  const access = state().platform.training.institutions.find((row) => row.id === 'pending-school')!;
+  assert.deepEqual(access.contactIds, []);
+  assert.deepEqual(access.staffIds, [admin]);
+  act(admin, {
+    type: 'institution-proof',
+    id: 'pending-school',
+    name: 'amendment.pdf',
+    data: 'data:application/pdf;base64,JVBERi0xLjQK',
+    now,
+  });
+  assert.deepEqual(
+    state()
+      .platform.training.institutions.find((row) => row.id === 'pending-school')
+      ?.agreements?.map((row) => row.name),
+    ['agreement.pdf', 'amendment.pdf'],
+  );
   act(admin, {
     type: 'institution-story',
     id: 'pending-school',
@@ -765,12 +925,54 @@ test('school agreements gate activation and group venture certification respects
     now,
   });
   act(school, {
+    type: 'institution-group',
+    id: 'second-team',
+    name: 'Second team',
+    studentIds: [pupil, teammate],
+    now,
+  });
+  const classRecord = {
+    type: 'institution-class',
+    id: 'all-teams-class',
+    groupIds: ['demo-school-group', 'second-team'],
+    date: '2026-11-11',
+    challenge: 'Compare the customer interviews from both teams.',
+    attendance: [pupil, teammate, pupil],
+    now,
+  } as const;
+  reject(
+    'demo-guest',
+    {
+      ...classRecord,
+      groupIds: [...classRecord.groupIds],
+      attendance: [...classRecord.attendance],
+    },
+    /teams from your high school/,
+  );
+  act(school, {
+    ...classRecord,
+    groupIds: [...classRecord.groupIds],
+    attendance: [...classRecord.attendance],
+  });
+  assert.deepEqual(state().platform.training.classes.at(-1)?.attendance, [pupil, teammate]);
+  assert.deepEqual(state().platform.training.classes.at(-1)?.groupIds, classRecord.groupIds);
+  act(school, {
+    type: 'institution-cohort',
+    id: 'term-at-creation',
+    name: 'Cohort at creation',
+    startsOn: '',
+    endsOn: '',
+    incubationIds: [],
+    now,
+  });
+  act(school, {
     type: 'venture-save',
     now,
     venture: {
       id: 'group-venture',
       ownerId: school,
       groupId: 'demo-school-group',
+      cohortId: 'term-at-creation',
       name: 'School Venture',
       sector: 'Services',
       stage: 'Idea',
@@ -786,7 +988,95 @@ test('school agreements gate activation and group venture certification respects
     decision: 'approved',
     now,
   });
-  launch(school, 'group-venture');
+  const created = state().platform.ventures.find((row) => row.id === 'group-venture')!;
+  assert.equal(cohortForVenture(state().platform, created)?.id, 'term-at-creation');
+  reject(
+    'demo-guest',
+    { type: 'venture-cohort', id: 'group-venture', cohortId: '', now },
+    /venture from your institution/,
+  );
+  act(school, { type: 'venture-cohort', id: 'group-venture', cohortId: '', now });
+  assert.equal(
+    state().platform.ventures.find((row) => row.id === 'group-venture')?.status,
+    'approved',
+  );
+  const product = {
+    id: 'group-product',
+    ownerId: school,
+    ventureId: 'group-venture',
+    name: 'Classroom toolkit',
+    description: 'A toolkit developed during the school venture.',
+    status: 'pending' as const,
+    price: 500,
+  };
+  act(school, { type: 'product-save', product, now });
+  reject(
+    admin,
+    { type: 'venture-review', entity: 'product', id: product.id, decision: 'approved', now },
+    /marketplace product/i,
+  );
+  reject(
+    school,
+    {
+      type: 'training-payment-request',
+      id: 'school-payment',
+      purpose: 'marketplace',
+      targetId: product.id,
+      now,
+    },
+    /ineligible/,
+  );
+  launch(school, 'group-venture', [product.id]);
+  reject(
+    school,
+    { type: 'product-evidence', productId: product.id, evidence: 'School pilot results.', now },
+    /product/,
+  );
+  const old = structuredClone(state().platform);
+  old.products.find((row) => row.id === product.id)!.status = 'approved';
+  old.training.payments.push({
+    id: 'old-paid-school-listing',
+    purpose: 'marketplace',
+    accountId: school,
+    targetId: product.id,
+    amount: 1000,
+    status: 'confirmed',
+    submittedAt: now,
+  });
+  assert.equal(
+    canPublishProduct(
+      old,
+      old.products.find((row) => row.id === product.id)!,
+    ),
+    false,
+  );
+  act(school, {
+    type: 'institution-student',
+    id: pupil,
+    age: 16,
+    gender: 'Female',
+    form: 'Grade 10',
+    admissionNumber: 'A-042',
+    name: 'Updated student name',
+    now,
+  });
+  assert.equal(
+    state().platform.training.students.find((row) => row.id === pupil)?.form,
+    'Grade 10',
+  );
+  reject(
+    'demo-guest',
+    {
+      type: 'institution-cohort',
+      id: 'external-term',
+      name: 'Different term',
+      startsOn: '',
+      endsOn: '',
+      incubationIds: ['pathway'],
+      now,
+    },
+    /pathways from this institution/,
+  );
   const record = (learnerId: string, score: number, key: ReturnType<typeof openStage>) => ({
     ...key,
     type: 'stage-offline-result' as const,
@@ -831,10 +1121,184 @@ test('school agreements gate activation and group venture certification respects
     state().platform.training.contributions,
     batch.entries.map((entry) => ({ ...entry, ventureId: batch.ventureId })),
   );
+  reject(admin, final, /request this certificate/);
+  act(school, {
+    type: 'institution-cohort',
+    id: 'term-one',
+    name: 'Term 1',
+    startsOn: '2026-01-01',
+    endsOn: '2026-04-01',
+    incubationIds: ['pathway'],
+    now,
+  });
+  const schoolRequest = {
+    type: 'institution-certificates-request',
+    entries: [
+      { incubationId: 'pathway', learnerId: pupil, kind: 'venture' },
+      { incubationId: 'pathway', learnerId: pupil, kind: 'getting-started' },
+    ],
+    now,
+  } as const;
+  reject(
+    school,
+    {
+      ...schoolRequest,
+      entries: [schoolRequest.entries[0], { ...schoolRequest.entries[1], learnerId: teammate }],
+    },
+    /every selected learner/i,
+  );
+  assert.equal(state().platform.training.certificateRequests?.length ?? 0, 0);
+  act(school, { ...schoolRequest, entries: [...schoolRequest.entries] });
+  act(school, { ...schoolRequest, entries: [...schoolRequest.entries] });
+  assert.equal(state().platform.training.certificateRequests?.length, 2);
   act(admin, final);
   act(admin, { ...final, id: 'school-stage-one', kind: 'getting-started' });
   reject(admin, { ...final, id: 'teammate-final', learnerId: teammate }, /required stages/);
   assert.equal(state().platform.training.payments.length, 0);
+});
+
+test('administrators manage events and categories without dropping registrations or applying stale edits', () => {
+  const { act, reject, admin, owner, state } = trainingScenario();
+  const original = state().sessions.find(
+    (row) => row.capacity !== null && row.status === 'upcoming',
+  )!;
+  const category = { id: 'field-work', label: 'Field visits', type: 'workshop' } as const;
+  reject(owner, { type: 'event-category-save', category, now }, /permission/);
+  act(admin, { type: 'event-category-save', category, now });
+  const edit = {
+    type: 'event-save',
+    previous: JSON.stringify(original),
+    now,
+    session: {
+      ...original,
+      title: 'Community enterprise field visit',
+      categoryId: category.id,
+      type: category.type,
+      status: 'completed',
+    },
+  } as const;
+  const registrations = structuredClone(state().registrations);
+  act(admin, edit);
+  assert.deepEqual(state().registrations, registrations);
+  const archived = state().sessions.find((row) => row.id === original.id)!;
+  assert.equal(archived.status, 'completed');
+  assert.equal(sessionCategory(archived, state().platform.eventCategories).label, 'Field visits');
+  reject(admin, edit, /event changed/i);
+  const reschedule = {
+    ...edit,
+    previous: JSON.stringify(archived),
+    now: '2026-12-20T09:00:00Z',
+    session: {
+      ...archived,
+      startsAt: '2027-01-14T09:00:00+03:00',
+      endsAt: '2027-01-14T11:00:00+03:00',
+      publication: 'draft' as const,
+    },
+  };
+  act(admin, reschedule);
+  const draft = state().sessions.find((row) => row.id === original.id)!;
+  assert.equal(draft.status, 'upcoming');
+  assert.equal(draft.registrationDeadline, null);
+  assert.equal(draft.publication, 'draft');
+  assert.deepEqual(state().registrations, registrations);
+  assert.throws(
+    () =>
+      applyDemoAction(login(state(), owner), {
+        type: 'registration',
+        sessionId: draft.id,
+        operation: 'register',
+        now: reschedule.now,
+      }),
+    /draft/,
+  );
+  act(admin, {
+    ...reschedule,
+    previous: JSON.stringify(draft),
+    session: { ...draft, publication: 'published' },
+  });
+  assert.equal(state().sessions.find((row) => row.id === original.id)?.publication, 'published');
+  const unscheduled = {
+    ...draft,
+    id: 'planning-event',
+    startsAt: null,
+    endsAt: null,
+    summary: '',
+    venue: '',
+  };
+  act(admin, { ...reschedule, previous: 'null', session: unscheduled });
+  reject(
+    admin,
+    {
+      ...reschedule,
+      previous: JSON.stringify(unscheduled),
+      session: {
+        ...unscheduled,
+        summary: edit.session.summary,
+        venue: original.venue,
+        publication: 'published',
+      },
+    },
+    /start and end/,
+  );
+  const newEvent = {
+    ...edit,
+    previous: 'null',
+    session: { ...edit.session, id: 'new-field-visit', status: 'upcoming' as const },
+  };
+  act(admin, newEvent);
+  assert.equal(state().sessions.at(-1)?.id, 'new-field-visit');
+  const savedEvent = state().sessions.at(-1)!;
+  const withPresenters = {
+    ...newEvent,
+    previous: JSON.stringify(savedEvent),
+    session: {
+      ...savedEvent,
+      hostIds: [owner],
+      presenters: [
+        {
+          id: 'linked-host',
+          accountId: owner,
+          role: 'host' as const,
+          name: 'Demo host',
+          profession: 'Venture founder',
+        },
+        {
+          id: 'guest-facilitator',
+          role: 'facilitator' as const,
+          name: 'Guest facilitator',
+          profession: 'Enterprise trainer',
+        },
+      ],
+    },
+  };
+  act(admin, withPresenters);
+  const updatedEvent = state().sessions.at(-1)!;
+  assert.equal(updatedEvent.presenters?.[1]?.profession, 'Enterprise trainer');
+  assert.deepEqual(updatedEvent.hostIds, [owner]);
+  reject(
+    admin,
+    {
+      ...withPresenters,
+      previous: JSON.stringify(updatedEvent),
+      session: {
+        ...updatedEvent,
+        presenters: [
+          { ...withPresenters.session.presenters[1]!, photo: 'data:image/svg+xml;base64,PHN2Zz4=' },
+        ],
+        hostIds: [],
+      },
+    },
+    /presenter names/,
+  );
+  reject(
+    admin,
+    {
+      ...newEvent,
+      previous: JSON.stringify(state().sessions.at(-1)),
+      session: { ...newEvent.session, endsAt: newEvent.session.startsAt },
+    },
+    /start and end/,
+  );
 });
 
 test('organisation approval gates opportunity creation and later owner edits invalidate older CMS drafts', () => {

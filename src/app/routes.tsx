@@ -11,6 +11,8 @@ import { AccountAccess } from '../features/accounts/AccountAccess';
 import { AccountEntryRedirect } from '../features/accounts/AccountLink';
 import { roleAccessPath } from '../features/accounts/role-requests';
 import { BreadcrumbProvider } from '../shared/BreadcrumbProvider';
+import { SiteLoader } from '../shared/SiteLoader';
+import { RouteLoadError } from './RouteLoadError';
 const DashboardLayout = lazy(() =>
   import('../features/dashboard/DashboardLayout').then((m) => ({ default: m.DashboardLayout })),
 );
@@ -163,6 +165,7 @@ function ApplicationEntry() {
 export function createYerhRoutes(): RouteObject[] {
   return [
     {
+      errorElement: <RouteLoadError />,
       element: (
         <BreadcrumbProvider identifyPage={breadcrumbPageKey}>
           <AccountAccess />
@@ -187,13 +190,7 @@ function siteRoutes(): RouteObject[] {
   return [
     {
       element: (
-        <Suspense
-          fallback={
-            <div className="status-page" role="status">
-              Loading the hub…
-            </div>
-          }
-        >
+        <Suspense fallback={<SiteLoader screen />}>
           <SiteLayout />
         </Suspense>
       ),
@@ -266,13 +263,7 @@ function siteRoutes(): RouteObject[] {
       path: 'dashboard',
       element: (
         <RequireDemo>
-          <Suspense
-            fallback={
-              <p className="status-page" role="status">
-                Loading your dashboard…
-              </p>
-            }
-          >
+          <Suspense fallback={<SiteLoader screen />}>
             <DashboardLayout />
           </Suspense>
         </RequireDemo>

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { lazy, useEffect, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
 import { useCatalog } from '../../app/useCatalog';
@@ -8,7 +8,14 @@ import { OpportunityForm } from './WorkspaceEditors';
 import { PageIntro } from '../../shared/PageIntro';
 import { DemoNotice } from '../demo/DemoNotice';
 import { usePageTitle } from '../../shared/usePageTitle';
-import { activeWorkspaceModule, workspaceHref } from '../dashboard/dashboard-navigation';
+import {
+  activeWorkspaceModule,
+  institutionHref,
+  institutionModule,
+  workspaceHref,
+} from '../dashboard/dashboard-navigation';
+import { canPublishProduct, institutionAccess } from '../../domain/incubation';
+import { amount, field } from './TrainingForms';
 import { MentorWorkspace } from './MentorWorkspace';
 import {
   WorkspaceDialog,
@@ -17,11 +24,24 @@ import {
   WorkspaceTable,
 } from './WorkspaceControls';
 import { ApprovalWorkspace } from './ApprovalWorkspace';
-import { ProductRegistry, VentureRegistry } from './VentureWorkspace';
 import { IncubationWorkspace, UniversitySelection } from './IncubationWorkspace';
 import { InstitutionPortal, InstitutionsAdmin } from './InstitutionWorkspace';
 import { InstitutionResults } from './InstitutionResults';
 import { TrainingCertificates, TrainingPayments } from './TrainingReview';
+import { AdminVentures } from './AdminVentures';
+
+const VentureRegistry = lazy(() => import('./VentureWorkspace'));
+const ProductRegistry = lazy(() => import('./ProductWorkspace'));
+const AdminCourseWorkspace = lazy(() =>
+  import('./CourseWorkspace').then(({ AdminCourseWorkspace }) => ({
+    default: AdminCourseWorkspace,
+  })),
+);
+const MentorCourseWorkspace = lazy(() =>
+  import('./CourseWorkspace').then(({ MentorCourseWorkspace }) => ({
+    default: MentorCourseWorkspace,
+  })),
+);
 
 const now = () => new Date().toISOString();
 function Field({
@@ -83,14 +103,30 @@ export function WorkspacePage() {
   const { courses, media } = useCatalog();
   const [params] = useSearchParams();
   const [success, setSuccess] = useState('');
-  const activeModule = account ? activeWorkspaceModule(account, params.get('tab')) : undefined;
+  const p = state.platform;
+  const contextId = params.get('institution');
+  const school = p.training.institutions.find((entry) =>
+    contextId ? entry.id === contextId : entry.adminId === account?.id,
+  );
+  const access = school && account ? institutionAccess(school, account) : null;
+  const activeModule = account
+    ? contextId
+      ? access
+        ? institutionModule(params.get('tab'), access === 'manage')
+        : undefined
+      : activeWorkspaceModule(account, params.get('tab'))
+    : undefined;
   const tab = activeModule?.id;
-  useEffect(() => setSuccess(''), [tab, account?.id]);
+  useEffect(() => setSuccess(''), [tab, account?.id, contextId]);
   usePageTitle(activeModule?.label ?? 'Workspace');
   if (!account) return null;
-  const p = state.platform;
-  const school = p.training.institutions.find((entry) => entry.adminId === account.id);
-  const schoolStaff = can(account, 'school');
+  const schoolStaff = contextId ? access === 'manage' : can(account, 'school');
+  const workspaceAccount =
+    contextId && school && schoolStaff
+      ? { ...account, id: school.adminId, role: 'school_admin' as const }
+      : account;
+  const schoolLink = (tab: string) =>
+    contextId ? institutionHref(tab, contextId) : workspaceHref(tab);
   const schoolLocked =
     schoolStaff &&
     (school?.status !== 'active' || school.kind !== 'high-school') &&
@@ -98,15 +134,30 @@ export function WorkspacePage() {
     tab !== 'member-results';
   const org = p.organisations.find((o) => o.accountId === account.id);
   const mentor = p.mentors.find((m) => m.accountId === account.id);
+  const displayedApplication = p.opportunityApplications.find(
+    (application) =>
+      application.id === params.get('application') &&
+      (tab === 'applications'
+        ? application.accountId === account.id
+        : tab === 'applicants' &&
+          p.opportunities.some(
+            (opportunity) =>
+              opportunity.id === application.opportunityId && opportunity.ownerId === account.id,
+          )),
+  );
   function run(action: PlatformAction) {
-    const ok = execute(action);
+    const ok = execute(contextId ? { ...action, institutionContextId: contextId } : action);
     if (ok) {
       const messages: Record<string, string> = {
         'institution-contributions': 'Team contributions saved.',
-        'product-save':
-          'Product submitted. A platform administrator can review it under Approval queue → Product listings.',
-        'incubation-apply':
-          'Venture submitted. A platform administrator can assign a mentor under Approval queue → Incubation applications.',
+        'institution-certificates-request':
+          'Certificate requests sent to the platform administrator.',
+        'product-save': schoolStaff
+          ? 'Product saved.'
+          : 'Product submitted. A platform administrator can review it under Approval queue → Product listings.',
+        'incubation-apply': schoolStaff
+          ? 'Pathway submitted to the platform team.'
+          : 'Venture submitted. A platform administrator can assign a mentor under Approval queue → Incubation applications.',
         'product-evidence':
           'Product evidence submitted. The mentor or platform administrator can review it under Product evidence reviews.',
       };
@@ -137,15 +188,19 @@ export function WorkspacePage() {
   );
   const name = (id: string) =>
     state.accounts.find((a) => a.id === id)?.name ?? 'Member unavailable';
+  const compact = can(account, 'admin') || schoolStaff || !!contextId;
   return (
     <>
-      <PageIntro
-        className="workspace-page-intro"
-        eyebrow={activeModule?.label ?? 'Workspace'}
-        title={activeModule?.label ?? 'Workspace'}
-        description={activeModule?.description ?? 'Choose an available tool from your dashboard.'}
-      />
+      {!compact && (
+        <PageIntro
+          className="workspace-page-intro"
+          eyebrow={activeModule?.label ?? 'Workspace'}
+          title={activeModule?.label ?? 'Workspace'}
+          description={activeModule?.description ?? 'Choose an available tool from your dashboard.'}
+        />
+      )}
       <section className="container section workspace-content">
+        {compact && <h1 className="sr-only">{activeModule?.label ?? 'Workspace'}</h1>}
         <DemoNotice />
         <div className="workspace-main">
           {success && (
@@ -155,30 +210,50 @@ export function WorkspacePage() {
           )}
           {schoolLocked && (
             <p>
-              Group venture tools are available in active high-school portals.{' '}
-              <Link to="/dashboard/workspace?tab=school">Open institution portal</Link>
+              Contact the platform team for access to group venture tools.{' '}
+              <Link to={schoolLink('school')}>Open institution portal</Link>
             </p>
           )}
           {tab === 'school' && (
             <Panel title="Institution portal">
-              <InstitutionPortal p={p} account={account} save={run} />
+              <InstitutionPortal
+                p={p}
+                account={workspaceAccount}
+                accounts={state.accounts}
+                save={run}
+                portalHref={schoolLink}
+              />
             </Panel>
           )}
           {tab === 'member-results' && (
-            <Panel title="Member results and certificates">
-              {school?.status === 'active' ? (
-                <InstitutionResults p={p} school={school} accounts={state.accounts} save={run} />
+            <Panel title="Results & Certificates">
+              {school?.status === 'active' && access ? (
+                <InstitutionResults
+                  p={p}
+                  school={school}
+                  accounts={state.accounts}
+                  save={run}
+                  readonly={access === 'view'}
+                  incubationHref={schoolLink('incubation')}
+                />
               ) : (
-                <p>
-                  Member results are available once your institution portal is active.{' '}
-                  <Link to={workspaceHref('school')}>Check your portal status</Link>
-                </p>
+                <p>Contact the platform team for access to results and certificates.</p>
               )}
             </Panel>
           )}
           {tab === 'institutions' && (
-            <Panel title="Institution onboarding">
-              <InstitutionsAdmin p={p} accounts={state.accounts} save={run} />
+            <Panel title="Institution directory">
+              <InstitutionsAdmin p={p} accounts={state.accounts} save={run} operator={account} />
+            </Panel>
+          )}
+          {tab === 'admin-courses' && (
+            <Panel title="Course administration">
+              <AdminCourseWorkspace p={p} courses={courses} save={run} name={name} />
+            </Panel>
+          )}
+          {tab === 'course-proposals' && (
+            <Panel title="Course proposals">
+              <MentorCourseWorkspace p={p} mentorId={account.id} save={run} />
             </Panel>
           )}
           {tab === 'payments' && (
@@ -186,60 +261,154 @@ export function WorkspacePage() {
               <TrainingPayments p={p} save={run} name={name} />
             </Panel>
           )}
+          {tab === 'manage-ventures' && <AdminVentures p={p} save={run} name={name} />}
+          {tab === 'manage-products' &&
+            (() => {
+              const rows = p.products.filter((product) =>
+                p.ventures.some((venture) => venture.id === product.ventureId && !venture.groupId),
+              );
+              return (
+                <WorkspaceTable
+                  label="marketplace products"
+                  columns={['Name', 'Owner', 'Status', 'Marketplace', 'Action']}
+                  rows={rows.map((row) => {
+                    const owner = name(row.ownerId);
+                    return {
+                      id: row.id,
+                      search: [
+                        row.name,
+                        owner,
+                        row.status,
+                        p.ventures.find((venture) => venture.id === row.ventureId)?.name,
+                      ].join(' '),
+                      cells: [
+                        row.name,
+                        owner,
+                        <WorkspaceStatus>{row.status}</WorkspaceStatus>,
+                        canPublishProduct(p, row) ? 'Live' : 'Private',
+                        <WorkspaceFormDialog
+                          action="Review record"
+                          title={row.name}
+                          submit="Save status"
+                          onSave={(data) =>
+                            run({
+                              type: 'venture-review',
+                              id: row.id,
+                              entity: 'product',
+                              decision: field(data, 'status') as typeof row.status,
+                              now: now(),
+                            })
+                          }
+                        >
+                          <p className="workspace-detail-copy">{row.description}</p>
+                          {'price' in row && (
+                            <p>
+                              {p.ventures.find((venture) => venture.id === row.ventureId)?.name} ·{' '}
+                              {amount(row.price)}
+                            </p>
+                          )}
+                          <label>
+                            Status
+                            <select name="status" defaultValue={row.status}>
+                              <option value="pending">Pending review</option>
+                              <option value="approved">Approved</option>
+                              <option value="rejected">Rejected</option>
+                            </select>
+                          </label>
+                        </WorkspaceFormDialog>,
+                      ],
+                    };
+                  })}
+                />
+              );
+            })()}
           {tab === 'ventures' && !schoolLocked && (
-            <Panel title="My ventures">
-              <VentureRegistry p={p} account={account} save={run} />
+            <Panel title="Ventures">
+              <VentureRegistry
+                p={p}
+                account={workspaceAccount}
+                save={run}
+                portalHref={schoolLink}
+              />
             </Panel>
           )}
           {tab === 'products' && !schoolLocked && (
             <Panel title="Products & services">
-              <ProductRegistry p={p} account={account} save={run} />
+              <ProductRegistry
+                p={p}
+                account={workspaceAccount}
+                save={run}
+                portalHref={schoolLink}
+              />
             </Panel>
           )}
           {tab === 'incubation' && !schoolLocked && (
             <Panel title="Venture incubation">
               {schoolStaff && (
                 <p>
-                  <Link to={workspaceHref('member-results')}>
-                    View member results and certificates
-                  </Link>
+                  <Link to={schoolLink('member-results')}>View results and certificates</Link>
                 </p>
               )}
-              {can(account, 'learn') && (
+              {can(workspaceAccount, 'learn') && (
                 <UniversitySelection p={p} account={account} save={run} modal />
               )}
-              <IncubationWorkspace p={p} account={account} save={run} accountName={name} />
+              <IncubationWorkspace
+                key={contextId ?? account.id}
+                p={p}
+                account={workspaceAccount}
+                save={run}
+                accountName={name}
+                selectedVenture={params.get('venture')}
+                portalHref={schoolLink}
+              />
             </Panel>
           )}
           {tab === 'applications' && (
-            <Panel title="My opportunity applications">
-              <WorkspaceTable
-                label="opportunity applications"
-                columns={['Opportunity', 'Status', 'Action']}
-                actions={
-                  <Link to="/opportunities" className="button button-outline workspace-action">
-                    Find opportunities
-                  </Link>
-                }
-                rows={p.opportunityApplications
-                  .filter((a) => a.accountId === account.id)
-                  .map((application) => {
-                    const title =
-                      p.opportunities.find((o) => o.id === application.opportunityId)?.title ??
-                      'Opportunity';
-                    return {
-                      id: application.id,
-                      search: title + ' ' + application.status,
-                      cells: [
-                        title,
-                        <WorkspaceStatus>{application.status}</WorkspaceStatus>,
-                        <WorkspaceDialog action="View application" title={title}>
-                          {() => <p className="workspace-detail-copy">{application.motivation}</p>}
-                        </WorkspaceDialog>,
-                      ],
-                    };
-                  })}
-              />
+            <Panel title="Opportunity applications">
+              {displayedApplication ? (
+                <section className="workspace-record">
+                  <Link to={workspaceHref('applications')}>← Opportunity applications</Link>
+                  <h3>
+                    {p.opportunities.find(
+                      (entry) => entry.id === displayedApplication.opportunityId,
+                    )?.title ?? 'Opportunity'}
+                  </h3>
+                  <p className="workspace-detail-copy">{displayedApplication.motivation}</p>
+                </section>
+              ) : (
+                <WorkspaceTable
+                  label="opportunity applications"
+                  columns={['Opportunity', 'Action']}
+                  actions={
+                    <Link to="/opportunities" className="button button-outline workspace-action">
+                      Find opportunities
+                    </Link>
+                  }
+                  rows={p.opportunityApplications
+                    .filter((a) => a.accountId === account.id)
+                    .map((application) => {
+                      const title =
+                        p.opportunities.find((o) => o.id === application.opportunityId)?.title ??
+                        'Opportunity';
+                      return {
+                        id: application.id,
+                        search: title,
+                        cells: [
+                          title,
+                          <Link
+                            to={
+                              workspaceHref('applications') +
+                              '&application=' +
+                              encodeURIComponent(application.id)
+                            }
+                          >
+                            View application
+                          </Link>,
+                        ],
+                      };
+                    })}
+                />
+              )}
             </Panel>
           )}
           {tab === 'mentor' && (
@@ -324,12 +493,6 @@ export function WorkspacePage() {
                     <dt>Sectors</dt>
                     <dd>{org.sectors}</dd>
                   </div>
-                  <div>
-                    <dt>Status</dt>
-                    <dd>
-                      <WorkspaceStatus>{org.status}</WorkspaceStatus>
-                    </dd>
-                  </div>
                 </dl>
               )}
               <WorkspaceFormDialog
@@ -372,20 +535,19 @@ export function WorkspacePage() {
             </Panel>
           )}
           {tab === 'opportunities' && (
-            <Panel title="My opportunities">
+            <Panel title="Opportunities">
               <WorkspaceTable
                 label="opportunities"
-                columns={['Opportunity', 'Category', 'Status', 'Actions']}
+                columns={['Opportunity', 'Category', 'Actions']}
                 actions={opportunityEditor()}
                 rows={p.opportunities
                   .filter((item) => item.ownerId === account.id)
                   .map((item) => ({
                     id: item.id,
-                    search: [item.title, item.category, item.status].join(' '),
+                    search: [item.title, item.category].join(' '),
                     cells: [
                       item.title,
                       item.category,
-                      <WorkspaceStatus>{item.status}</WorkspaceStatus>,
                       <div className="workspace-row-actions">
                         {item.status !== 'archived' && opportunityEditor(item)}
                         {item.status === 'draft' && (
@@ -415,74 +577,90 @@ export function WorkspacePage() {
           )}
           {tab === 'applicants' && (
             <Panel title="Opportunity applicants">
-              <WorkspaceTable
-                label="applicants"
-                columns={['Applicant', 'Opportunity', 'Status', 'Action']}
-                rows={p.opportunityApplications.flatMap((application) => {
-                  const opportunity = p.opportunities.find(
-                    (item) => item.id === application.opportunityId,
-                  );
-                  if (
-                    !opportunity ||
-                    (opportunity.ownerId !== account.id && !can(account, 'admin'))
-                  )
-                    return [];
-                  const applicant = name(application.accountId);
-                  const canDecide = ['submitted', 'shortlisted'].includes(application.status);
-                  return [
-                    {
-                      id: application.id,
-                      search: [applicant, opportunity.title, application.status].join(' '),
-                      cells: [
-                        applicant,
-                        opportunity.title,
-                        <WorkspaceStatus>{application.status}</WorkspaceStatus>,
-                        <WorkspaceDialog
-                          action={canDecide ? 'Review applicant' : 'View application'}
-                          title={applicant}
-                        >
-                          {(finish) => (
-                            <>
-                              <p className="workspace-detail-copy">{application.motivation}</p>
-                              {canDecide && (
-                                <div className="workspace-form-footer">
-                                  {(['shortlisted', 'accepted', 'rejected'] as const).map(
-                                    (status) => (
-                                      <button
-                                        key={status}
-                                        type="button"
-                                        className="button button-outline"
-                                        onClick={() =>
-                                          finish(
-                                            run({
-                                              type: 'opportunity-review',
-                                              id: application.id,
-                                              status,
-                                              now: now(),
-                                            }),
-                                          )
-                                        }
-                                      >
-                                        {
-                                          {
-                                            shortlisted: 'Shortlist',
-                                            accepted: 'Accept',
-                                            rejected: 'Reject',
-                                          }[status]
-                                        }
-                                      </button>
-                                    ),
+              {displayedApplication ? (
+                <section className="workspace-record">
+                  <Link to={workspaceHref('applicants')}>← Applicants</Link>
+                  <h3>{name(displayedApplication.accountId)}</h3>
+                  <p className="workspace-detail-copy">{displayedApplication.motivation}</p>
+                </section>
+              ) : (
+                <WorkspaceTable
+                  label="applicants"
+                  columns={['Applicant', 'Opportunity', 'Action']}
+                  rows={p.opportunityApplications.flatMap((application) => {
+                    const opportunity = p.opportunities.find(
+                      (item) => item.id === application.opportunityId,
+                    );
+                    if (
+                      !opportunity ||
+                      (opportunity.ownerId !== account.id && !can(account, 'admin'))
+                    )
+                      return [];
+                    const applicant = name(application.accountId);
+                    const canDecide = ['submitted', 'shortlisted'].includes(application.status);
+                    return [
+                      {
+                        id: application.id,
+                        search: [applicant, opportunity.title].join(' '),
+                        cells: [
+                          applicant,
+                          opportunity.title,
+                          canDecide ? (
+                            <WorkspaceDialog action="Review applicant" title={applicant}>
+                              {(finish) => (
+                                <>
+                                  <p className="workspace-detail-copy">{application.motivation}</p>
+                                  {canDecide && (
+                                    <div className="workspace-form-footer">
+                                      {(['shortlisted', 'accepted', 'rejected'] as const).map(
+                                        (status) => (
+                                          <button
+                                            key={status}
+                                            type="button"
+                                            className="button button-outline"
+                                            onClick={() =>
+                                              finish(
+                                                run({
+                                                  type: 'opportunity-review',
+                                                  id: application.id,
+                                                  status,
+                                                  now: now(),
+                                                }),
+                                              )
+                                            }
+                                          >
+                                            {
+                                              {
+                                                shortlisted: 'Shortlist',
+                                                accepted: 'Accept',
+                                                rejected: 'Reject',
+                                              }[status]
+                                            }
+                                          </button>
+                                        ),
+                                      )}
+                                    </div>
                                   )}
-                                </div>
+                                </>
                               )}
-                            </>
-                          )}
-                        </WorkspaceDialog>,
-                      ],
-                    },
-                  ];
-                })}
-              />
+                            </WorkspaceDialog>
+                          ) : (
+                            <Link
+                              to={
+                                workspaceHref('applicants') +
+                                '&application=' +
+                                encodeURIComponent(application.id)
+                              }
+                            >
+                              View application
+                            </Link>
+                          ),
+                        ],
+                      },
+                    ];
+                  })}
+                />
+              )}
             </Panel>
           )}
           {tab === 'discovery' && (

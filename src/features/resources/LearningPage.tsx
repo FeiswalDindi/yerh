@@ -10,6 +10,15 @@ import { DemoNotice } from '../demo/DemoNotice';
 import { NotFoundPage } from '../info/NotFoundPage';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { can } from '../../domain/roles';
+import {
+  authoredCourseId,
+  authoredLessonId,
+  courseCharge,
+  coursePricing,
+  coursePurchased,
+} from '../../domain/courses';
+import { WorkspaceDialog } from '../platform/WorkspaceControls';
+import { amount } from '../platform/TrainingForms';
 export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
   const { courseId } = useParams();
   const { search } = useLocation();
@@ -22,6 +31,12 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
     course &&
     account &&
     state.platform.enrollments[account.id]?.includes(course.id)
+  );
+  const paid = !!(course && account && coursePurchased(state.platform, course.id, account.id));
+  const fee = course ? courseCharge(state.platform, course.id) : 0;
+  const access = !!(enabled && can(account, 'learn') && enrolled);
+  const proposal = state.platform.courseCommerce?.proposals.find(
+    (row) => row.status === 'published' && authoredCourseId(row) === courseId,
   );
   const completed = course?.lessonIds.filter((id) => done.includes(id)).length ?? 0;
   const finished = !!course?.lessonIds.length && completed === course.lessonIds.length;
@@ -54,23 +69,54 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
             </Link>
             {can(account, 'learn') && enabled ? (
               <div className="course-enrollment">
-                <button
-                  className="button"
-                  onClick={() =>
-                    execute({
-                      type: 'enroll',
-                      courseId: course.id,
-                      operation: enrolled ? 'withdraw' : 'enroll',
-                      now: new Date().toISOString(),
-                    })
-                  }
-                >
-                  {enrolled ? 'Withdraw enrollment' : 'Enroll in this course'}
-                </button>
+                {fee > 0 && !paid && !enrolled ? (
+                  <WorkspaceDialog action={`Pay ${amount(fee)} and enroll`} title="Course payment">
+                    {(finish) => (
+                      <>
+                        <p>
+                          {course.title} · {amount(fee)}
+                        </p>
+                        <p>This is a simulated payment. Course materials unlock after payment.</p>
+                        <button
+                          type="button"
+                          className="button"
+                          onClick={() =>
+                            finish(
+                              execute({
+                                type: 'course-purchase',
+                                id: course.id,
+                                expectedPrice: fee,
+                                now: new Date().toISOString(),
+                              }),
+                            )
+                          }
+                        >
+                          Confirm demo payment
+                        </button>
+                      </>
+                    )}
+                  </WorkspaceDialog>
+                ) : (
+                  <button
+                    className="button"
+                    onClick={() =>
+                      execute({
+                        type: 'enroll',
+                        courseId: course.id,
+                        operation: enrolled ? 'withdraw' : 'enroll',
+                        now: new Date().toISOString(),
+                      })
+                    }
+                  >
+                    {enrolled ? 'Withdraw enrollment' : 'Enroll in this course'}
+                  </button>
+                )}
                 <p role="status">
                   {enrolled
                     ? 'You’re enrolled. Your progress is saved as you mark lessons complete.'
-                    : 'Enroll to track your progress and qualify for a course completion certificate.'}
+                    : fee > 0 && !paid
+                      ? 'Pay upfront to unlock all modules.'
+                      : 'Enroll to track your progress and qualify for a course completion certificate.'}
                 </p>
                 {enrolled && !dashboard && (
                   <Link className="text-link" to="/dashboard/learning">
@@ -78,7 +124,7 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
                   </Link>
                 )}
               </div>
-            ) : (
+            ) : !account || account.role === 'guest' || account.role === 'entrepreneur' ? (
               <p>
                 <AccountLink
                   className="button"
@@ -88,6 +134,8 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
                   {account ? 'Request learner access' : 'Sign in to enroll'}
                 </AccountLink>
               </p>
+            ) : (
+              <p>Course enrollment is available to learner accounts.</p>
             )}
             <div className="learning-progress">
               <span>
@@ -114,17 +162,30 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
             <div className="learning-lessons">
               {course.lessonIds.map((id, i) => {
                 const lesson = lessons.find((l) => l.id === id);
-                return lesson ? (
+                const module = proposal?.modules.find(
+                  (module) => authoredLessonId(proposal, module) === id,
+                );
+                return lesson || module ? (
                   <article key={id}>
                     <span className="lesson-number">{String(i + 1).padStart(2, '0')}</span>
                     <div>
-                      <h2>{lesson.title}</h2>
-                      <a className="text-link" href={lesson.href} target="_blank" rel="noreferrer">
-                        <Play size={15} />
-                        Watch original video
-                      </a>
+                      <h2>{lesson?.title ?? module?.title}</h2>
+                      {(access ||
+                        (fee === 0 && !proposal && (!account || can(account, 'learn')))) &&
+                        lesson && (
+                          <a
+                            className="text-link"
+                            href={lesson.href}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <Play size={15} />
+                            Watch original video
+                          </a>
+                        )}
+                      {access && module && <p className="workspace-detail-copy">{module.body}</p>}
                     </div>
-                    {account && enabled && can(account, 'learn') && enrolled ? (
+                    {access ? (
                       <button
                         className={`button ${done.includes(id) ? 'button-gold' : ''}`}
                         aria-pressed={done.includes(id)}
@@ -140,7 +201,9 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
                         )}
                       </button>
                     ) : (
-                      <span className="source-note">Enroll to track progress</span>
+                      <span className="source-note">
+                        {fee > 0 ? 'Module locked until enrollment' : 'Enroll to track progress'}
+                      </span>
                     )}
                   </article>
                 ) : null;
@@ -167,7 +230,10 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
                 <h2>{c.title}</h2>
                 <p>{c.description}</p>
                 <small>
-                  {c.lessonIds.length} video lessons
+                  {c.lessonIds.length} lessons ·{' '}
+                  {coursePricing(state.platform, c.id).price
+                    ? amount(courseCharge(state.platform, c.id))
+                    : 'Free'}
                   {account
                     ? ` · ${c.lessonIds.filter((id) => done.includes(id)).length} completed`
                     : ''}

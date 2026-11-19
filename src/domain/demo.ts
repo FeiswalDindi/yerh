@@ -9,6 +9,7 @@ import {
 import { can, type Role } from './roles.ts';
 import { applyPlatformAction, isPlatformAction } from './platform-actions.ts';
 import type { PlatformAction, PlatformState } from './platform';
+import { courseEntries } from './courses.ts';
 export type DemoRole = Role;
 export interface DemoAccount {
   id: string;
@@ -289,7 +290,7 @@ export function applyDemoAction(state: DemoState, action: DemoAction): DemoState
       };
     case 'progress': {
       if (
-        !Object.entries(state.platform.courseLessons).some(
+        !courseEntries(state.platform).some(
           ([courseId, lessonIds]) =>
             lessonIds.includes(action.lessonId) &&
             (state.platform.enrollments[actor.id] ?? []).includes(courseId),

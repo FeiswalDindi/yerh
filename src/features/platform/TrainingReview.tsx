@@ -7,16 +7,13 @@ import {
   WorkspaceTabs,
 } from './WorkspaceControls';
 import {
-  certificateFee,
-  credentialReady,
+  incubationCertificateQueue,
   feeLabels,
   feePurposes,
   getStage,
   incubationLearners,
   passedStage,
   passMark,
-  paymentFor,
-  stageIds,
 } from '../../domain/incubation';
 import type { Incubation, PlatformState } from '../../domain/platform';
 import {
@@ -51,16 +48,7 @@ export function MentorStages({
         key={stage.id}
         open={!!needsReview || pending.length > 0 || work.steps.some((step) => step.requested)}
       >
-        <summary>
-          {stage.title} ·{' '}
-          {pending.length
-            ? 'Exam ready to grade'
-            : needsReview
-              ? 'Review requested'
-              : work.examOpenedAt
-                ? 'Exam opened'
-                : 'Work in progress'}
-        </summary>
+        <summary>{stage.title}</summary>
         {stage.steps.map((step) => {
           const entry = work.steps.find((row) => row.id === step.id);
           if (!entry) return null;
@@ -192,10 +180,12 @@ export function ProductReviewQueue({
   const entries = p.training.productReviews.filter(
     (review) =>
       review.status === 'pending' &&
-      (!mentorId ||
-        p.incubations.some(
-          (path) => path.id === review.incubationId && path.mentorId === mentorId,
-        )),
+      p.incubations.some(
+        (path) =>
+          path.id === review.incubationId &&
+          (!mentorId || path.mentorId === mentorId) &&
+          p.ventures.some((venture) => venture.id === path.ventureId && !venture.groupId),
+      ),
   );
   return (
     <WorkspaceTable
@@ -422,83 +412,66 @@ export function TrainingCertificates({
   name: (id: string) => string;
   courseRecords: ReactNode;
 }) {
-  const kinds = [...stageIds, 'venture'] as const;
   const learnerName = (id: string) =>
     p.training.students.find((student) => student.id === id)?.name ?? name(id);
   const ventureName = (id: string) =>
     p.ventures.find((venture) => venture.id === id)?.name ?? 'Venture';
   const credentials = p.training.credentials;
   const columns = ['Certificate', 'Learner', 'Venture', 'Status', 'Action'];
-  const queue = p.incubations.flatMap((path) =>
-    incubationLearners(p, path).flatMap((learnerId) =>
-      kinds
-        .filter(
-          (kind) =>
-            credentialReady(p, path, learnerId, kind) &&
-            !credentials.some(
-              (c) => c.incubationId === path.id && c.learnerId === learnerId && c.kind === kind,
-            ),
-        )
-        .map((kind) => {
-          const title = credentialTitle(p.training, kind);
-          const learner = learnerName(learnerId);
-          const venture = ventureName(path.ventureId);
-          const fee = certificateFee(p, path, kind);
-          const payment =
-            kind === 'getting-started' || kind === 'advanced'
-              ? paymentFor(p.training, kind, path.id)
-              : undefined;
-          const ready = !fee || payment?.status === 'confirmed';
-          const status = ready
-            ? 'Ready to issue'
-            : payment?.status === 'pending'
-              ? 'Payment under review'
-              : 'Payment due';
-          return {
-            id: path.id + ':' + learnerId + ':' + kind,
-            search: [title, learner, venture, status].join(' '),
-            cells: [
-              title,
-              learner,
-              venture,
-              <WorkspaceStatus>{status}</WorkspaceStatus>,
-              ready ? (
-                <WorkspaceDialog action="Issue certificate" title={title}>
-                  {(finish) => (
-                    <>
-                      <p>
-                        {learner} · {venture}
-                      </p>
-                      <div className="workspace-form-footer">
-                        <button
-                          className="button"
-                          onClick={() =>
-                            finish(
-                              submitTraining(save, {
-                                type: 'training-credential-issue',
-                                id: crypto.randomUUID(),
-                                incubationId: path.id,
-                                learnerId,
-                                kind,
-                              }),
-                            )
-                          }
-                        >
-                          Approve and issue certificate
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </WorkspaceDialog>
-              ) : payment?.status === 'pending' ? (
-                <Link to="/dashboard/workspace?tab=payments">Review payment</Link>
-              ) : (
-                <span>{amount(fee)} · Learner to record payment</span>
-              ),
-            ],
-          };
-        }),
-    ),
+  const queue = incubationCertificateQueue(p).map(
+    ({ key, path, learnerId, kind, fee, payment, ready }) => {
+      const title = credentialTitle(p.training, kind);
+      const learner = learnerName(learnerId);
+      const venture = ventureName(path.ventureId);
+      const status = ready
+        ? 'Ready to issue'
+        : payment?.status === 'pending'
+          ? 'Payment under review'
+          : 'Payment due';
+      return {
+        id: key,
+        search: [title, learner, venture, status].join(' '),
+        cells: [
+          title,
+          learner,
+          venture,
+          <WorkspaceStatus>{status}</WorkspaceStatus>,
+          ready ? (
+            <WorkspaceDialog action="Issue certificate" title={title}>
+              {(finish) => (
+                <>
+                  <p>
+                    {learner} · {venture}
+                  </p>
+                  <div className="workspace-form-footer">
+                    <button
+                      className="button"
+                      onClick={() =>
+                        finish(
+                          submitTraining(save, {
+                            type: 'training-credential-issue',
+                            id: crypto.randomUUID(),
+                            incubationId: path.id,
+                            learnerId,
+                            kind,
+                          }),
+                        )
+                      }
+                    >
+                      Approve and issue certificate
+                    </button>
+                  </div>
+                </>
+              )}
+            </WorkspaceDialog>
+          ) : payment?.status === 'pending' ? (
+            <Link to="/dashboard/workspace?tab=payments">Review payment</Link>
+          ) : (
+            <span>{amount(fee)} · Learner to record payment</span>
+          ),
+        ],
+      };
+    },
   );
   return (
     <WorkspaceTabs

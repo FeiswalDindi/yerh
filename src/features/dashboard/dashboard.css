@@ -80,6 +80,19 @@
   font-weight: 650;
 }
 
+.dashboard-nav-badge {
+  margin-inline-start: auto;
+  flex: none;
+  min-width: 1.2rem;
+  padding: 2px 4px;
+  border-radius: 999px;
+  background: #b42318;
+  color: white;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-align: center;
+}
+
 .role-nav .role-nav-sublist {
   margin: 3px 0 4px 12px;
   padding-left: 8px;
@@ -237,6 +250,16 @@
 
 .dashboard-notifications-panel li > a:hover {
   background: var(--yerh-gold-light);
+}
+
+.dashboard-notifications-seen {
+  margin-bottom: 10px;
+}
+
+.dashboard-notifications-new {
+  display: block;
+  color: #b42318;
+  font-weight: 650;
 }
 
 .dashboard-drawer {
@@ -556,6 +579,50 @@ html:has(.dashboard-drawer[open], .dashboard-notifications-dialog[open]) {
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 16px;
+}
+
+.dashboard-pathway {
+  margin-bottom: 28px;
+}
+
+.dashboard-pathway-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 20px;
+  border: 1px solid var(--yerh-border);
+  border-inline-start: 4px solid var(--yerh-gold);
+  background: var(--yerh-white);
+  color: var(--yerh-navy);
+  text-align: left;
+}
+
+.dashboard-pathway-card:hover {
+  background: var(--yerh-gold-light);
+}
+
+.dashboard-pathway-card > span {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+}
+
+.dashboard-pathway-card strong {
+  font-size: 1.2rem;
+}
+
+.dashboard-pathway-card small,
+.dashboard-course-price del {
+  color: var(--yerh-muted);
+}
+
+.dashboard-general-courses {
+  margin-bottom: 14px;
+}
+
+.dashboard-course-price {
+  font-weight: 650;
 }
 
 .dashboard-catalogue-search,
