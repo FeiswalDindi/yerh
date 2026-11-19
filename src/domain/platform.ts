@@ -3,7 +3,7 @@ import type { CommunitySession } from './community';
 import type { EventCategory, EventCommand } from './events';
 import type { AppliedRole, Role } from './roles';
 import type { TrainingAction, TrainingState } from './incubation';
-import type { CourseCommand, CourseCommerce } from './courses';
+import type { CourseCommand, CourseCommerce, CourseCompletion } from './courses';
 export type ReviewStatus = 'pending' | 'approved' | 'rejected';
 export interface RoleApplication {
   id: string;
@@ -145,6 +145,7 @@ export interface PlatformState {
     issuedBy: string;
   }[];
   courseLessons: Record<string, string[]>;
+  courseCompletions?: CourseCompletion[];
   applications: RoleApplication[];
   opportunities: Opportunity[];
   opportunityApplications: OpportunityApplication[];

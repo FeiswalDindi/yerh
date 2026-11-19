@@ -9,7 +9,7 @@ import {
   completedStage,
   stageUnlocked,
 } from '../../domain/incubation';
-import { courseLessonIds } from '../../domain/courses';
+import { courseCertificateQueue, courseCompletionKey } from '../../domain/courses';
 import { cmsHref, institutionHref, workspaceHref } from './dashboard-navigation';
 import { roleAccessPath, roleApplicationPath } from '../accounts/role-requests';
 
@@ -49,6 +49,15 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
       readKeyScope: roleApplicationPath,
     },
   ];
+
+  if (!admin)
+    updates.push({
+      label: 'Course certificates issued',
+      itemIds: platform.certificates
+        .filter((record) => record.accountId === id)
+        .map((record) => record.id),
+      to: '/dashboard/certificates',
+    });
 
   if (can(account, 'community'))
     updates.push({
@@ -168,18 +177,7 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
       },
       {
         label: 'Course certificates ready to issue',
-        itemIds: Object.entries(platform.enrollments).flatMap(([learner, courses]) =>
-          courses.flatMap((course) => {
-            const lessons = courseLessonIds(platform, course);
-            return lessons?.length &&
-              lessons.every((lesson) => state.progress[learner]?.includes(lesson)) &&
-              !platform.certificates.some(
-                (record) => record.accountId === learner && record.courseId === course,
-              )
-              ? [JSON.stringify([learner, course])]
-              : [];
-          }),
-        ),
+        itemIds: courseCertificateQueue(state).map(courseCompletionKey),
         to: `${certificates}&view=courses`,
         sidebarHref: certificates,
       },

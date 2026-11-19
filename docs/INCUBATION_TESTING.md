@@ -56,6 +56,8 @@ Select **Switch demo role** in the blue header to switch accounts in the same ta
 2. As a mentor, open **Course proposals → Propose a course**, fill in the outline, and attach a PDF up to 250 KB. As platform admin, open **Courses → Proposals**, review the PDF, and approve with feedback and a royalty percentage.
 3. Return as mentor. Select **Build course**, add a module, and publish with a price. As admin, set a discount in **Courses → Course catalogue**. Pay as a founder and verify the charged price, paid enrollment, and royalty in **Courses → Sales and royalties** and the mentor’s workspace.
 4. Open **Sign in** to see the institution selector. The **Sign-in settings** gear in **Institutions → Institution directory** controls the YERH option. Open **Create an account** and verify that you can register with an active institution or leave it blank.
+5. As a guest, enroll in **Business foundations** and mark the lessons complete. The last lesson brings **Course completed** into view. Select **Track your certificate** to see **Awaiting issuance**.
+6. As platform administrator, open **Certificates → Course certificates**. Find the guest’s **Ready to issue** row, select **Issue certificate**, and confirm. Return as the guest, open **Certificates**, and verify that you can view and print the certificate.
 
 ## 6. Manage events and preview the catalogue
 

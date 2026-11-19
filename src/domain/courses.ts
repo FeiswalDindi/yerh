@@ -1,8 +1,13 @@
 import type { PlatformState } from './platform';
-import type { DemoAccount } from './demo';
+import type { DemoAccount, DemoState } from './demo';
 import { can } from './roles.ts';
 
 export type CoursePrice = { price: number; discount: number };
+export type CourseCompletion = {
+  accountId: string;
+  courseId: string;
+  completedAt?: string;
+};
 export type Proposal = {
   id: string;
   mentorId: string;
@@ -99,6 +104,42 @@ export function courseEntries(p: PlatformState) {
           ] as const,
       ),
   ];
+}
+
+export function courseCompletionKey({ accountId, courseId }: CourseCompletion) {
+  return JSON.stringify([accountId, courseId]);
+}
+
+export function courseCompletionRecords(state: DemoState): CourseCompletion[] {
+  const p = state.platform;
+  const completed = new Map(
+    (p.courseCompletions ?? []).map((record) => [courseCompletionKey(record), record]),
+  );
+  function recover(accountId: string, courseId: string) {
+    const progress = state.progress[accountId];
+    if (!progress?.length) return;
+    const record = { accountId, courseId };
+    const key = courseCompletionKey(record);
+    if (completed.has(key)) return;
+    const lessons = courseLessonIds(p, courseId);
+    if (lessons?.length && lessons.every((id) => progress.includes(id))) {
+      completed.set(key, record);
+    }
+  }
+  for (const [accountId, courses] of Object.entries(p.enrollments))
+    for (const courseId of courses) recover(accountId, courseId);
+  // Older local records can have lesson progress and enrollment history after withdrawal.
+  for (const event of p.audit)
+    if (event.action === 'enroll' || event.action === 'course-purchase')
+      recover(event.actorId, event.targetId);
+  return [...completed.values()];
+}
+
+export function courseCertificateQueue(state: DemoState) {
+  const issued = new Set(state.platform.certificates.map(courseCompletionKey));
+  return courseCompletionRecords(state).filter(
+    (record) => !issued.has(courseCompletionKey(record)),
+  );
 }
 const validAmount = (n: number) => Number.isSafeInteger(n) && n >= 0 && n <= 1_000_000;
 const validPercent = (n: number) => Number.isInteger(n) && n >= 0 && n <= 100;

@@ -1,5 +1,6 @@
 import type { CmsSnapshot, Opportunity } from './platform';
 import type { DemoState } from './demo';
+import { authoredCourseId, courseCompletionRecords } from './courses.ts';
 import { eventCategories, isPublishedSession, validEventPresenters } from './events.ts';
 const object = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === 'object' && !Array.isArray(v);
@@ -394,6 +395,12 @@ export function assertCmsSnapshot(value: CmsSnapshot, state?: DemoState) {
       );
   }
   if (state) {
+    const retainedCourses = new Set([
+      ...courseIds,
+      ...(state.platform.courseCommerce?.proposals ?? [])
+        .filter((course) => course.status === 'published')
+        .map(authoredCourseId),
+    ]);
     demand(
       state.registrations.every((r) => value.sessions.some((s) => s.id === r.sessionId)),
       'Do not delete sessions with registrations.',
@@ -407,9 +414,10 @@ export function assertCmsSnapshot(value: CmsSnapshot, state?: DemoState) {
     demand(
       Object.values(state.platform.enrollments)
         .flat()
-        .every((id) => courseIds.has(id)) &&
-        state.platform.certificates.every((c) => courseIds.has(c.courseId)),
-      'Do not delete courses with enrollments or issued certificates.',
+        .every((id) => retainedCourses.has(id)) &&
+        courseCompletionRecords(state).every((record) => retainedCourses.has(record.courseId)) &&
+        state.platform.certificates.every((c) => retainedCourses.has(c.courseId)),
+      'Do not delete courses with enrollments, completions, or issued certificates.',
     );
     demand(
       value.opportunities.every((o) => state.accounts.some((a) => a.id === o.ownerId)),

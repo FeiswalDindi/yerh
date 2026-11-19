@@ -97,6 +97,7 @@ export async function checkPlatformRendering() {
                     <Route index element={<RoleDashboard />} />
                     <Route path="profile" element={<ProfilePage />} />
                     <Route path="learning" element={<DashboardCatalogue kind="learning" />} />
+                    <Route path="learning/:courseId" element={<LearningPage dashboard />} />
                     <Route path="events" element={<DashboardEvents />} />
                     <Route path="marketplace" element={<DashboardCatalogue kind="marketplace" />} />
                     <Route path="marketplace/:slug" element={<ContentDetail dashboard />} />
@@ -349,6 +350,56 @@ export async function checkPlatformRendering() {
   assert.ok(publicListing.includes('href="/marketplace?category=Healthcare"'));
   assert.ok(publicListing.includes('aria-label="Advertisements"'));
   assert.ok(render('/dashboard/certificates', 'demo-guest').includes('No certificates yet'));
+  const course = catalog.courses[0]!;
+  const completedGuest = structuredClone(state);
+  completedGuest.platform.enrollments['demo-guest'] = [course.id];
+  completedGuest.progress['demo-guest'] = [...course.lessonIds];
+  const completedCourse = render(
+    '/dashboard/learning/' + course.id,
+    'demo-guest',
+    undefined,
+    completedGuest,
+  );
+  assert.ok(completedCourse.includes('Course completed'));
+  assert.ok(completedCourse.includes('Track your certificate'));
+  assert.ok(
+    render('/dashboard/certificates', 'demo-guest', undefined, completedGuest).includes(
+      'Awaiting issuance',
+    ),
+  );
+  const courseQueue = render(
+    '/dashboard/workspace?tab=certificates&view=courses',
+    'demo-admin',
+    undefined,
+    completedGuest,
+  );
+  assert.ok(courseQueue.includes('Course certificates ready to issue'));
+  assert.ok(courseQueue.includes('Ready to issue'));
+  assert.ok(courseQueue.includes('Issue certificate:'));
+  assert.ok(courseQueue.includes(course.title));
+  const issuedGuest = applyDemoAction(
+    { ...completedGuest, activeAccountId: 'demo-admin' },
+    {
+      type: 'certificate-issue',
+      id: 'guest-course-render-certificate',
+      accountId: 'demo-guest',
+      courseId: course.id,
+      now: '2026-11-19T09:00:00Z',
+    },
+  );
+  assert.ok(
+    render('/dashboard/certificates', 'demo-guest', undefined, issuedGuest).includes(
+      '/certificates/guest-course-render-certificate',
+    ),
+  );
+  const verification = render(
+    '/certificates/guest-course-render-certificate',
+    'demo-guest',
+    undefined,
+    issuedGuest,
+  );
+  assert.ok(verification.includes('Course completion certificate'));
+  assert.ok(verification.includes('Print certificate'));
   assert.ok(!render('/dashboard', 'demo-mentor').includes('tab=approvals'));
   const mentorDashboard = render('/dashboard', 'demo-mentor');
   assert.ok(mentorDashboard.includes('aria-label="Notifications, 1 update"'));

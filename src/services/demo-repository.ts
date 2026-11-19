@@ -1,5 +1,6 @@
 import { isDemoState, migrateDemoState } from '../domain/demo-validation';
 import { migrateSchoolPathways } from '../domain/incubation';
+import { courseCompletionRecords } from '../domain/courses';
 import accounts from '../mocks/data/accounts.json';
 import community from '../mocks/data/community.json';
 import sessions from '../mocks/data/community-events.json';
@@ -33,6 +34,7 @@ export const browserDemoRepository: DemoRepository = {
         if (isDemoState(value, accounts as DemoState['accounts'])) {
           Reflect.deleteProperty(value.platform.training, 'contributions');
           migrateSchoolPathways(value.platform);
+          value.platform.courseCompletions = courseCompletionRecords(value);
           return value;
         }
       }

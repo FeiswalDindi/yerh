@@ -234,6 +234,7 @@
   "cmsReleases": [],
   "cmsRevision": 0,
   "certificates": [],
+  "courseCompletions": [],
   "courseCommerce": {
     "prices": {
       "business-foundations": { "price": 750, "discount": 0 },

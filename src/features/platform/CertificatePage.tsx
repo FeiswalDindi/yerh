@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
 import { useCatalog } from '../../app/useCatalog';
 import { NotFoundPage } from '../info/NotFoundPage';
@@ -78,18 +78,30 @@ export function CertificatePage() {
   if (!record) return <NotFoundPage />;
   return (
     <section className="container section narrow-content">
-      <div className="terms-document">
-        <p className="eyebrow">LOCAL DEMO COMPLETION RECORD</p>
-        <h1>Course completion</h1>
-        <h2>{courses.find((c) => c.id === record.courseId)?.title}</h2>
-        <p>{state.accounts.find((a) => a.id === record.accountId)?.name}</p>
-        <p>Issued {new Date(record.issuedAt).toLocaleDateString('en-KE')}</p>
+      <div className="terms-document training-certificate">
+        <p className="eyebrow">YERH · DEVELOPMENT DEMO</p>
+        <h1>Course completion certificate</h1>
+        <h2>{state.accounts.find((a) => a.id === record.accountId)?.name}</h2>
+        <p>Completed {courses.find((c) => c.id === record.courseId)?.title ?? 'a YERH course'}</p>
+        <p>
+          Issued{' '}
+          {new Date(record.issuedAt).toLocaleDateString('en-KE', {
+            dateStyle: 'medium',
+            timeZone: 'Africa/Nairobi',
+          })}
+        </p>
         <p>Record ID: {record.id}</p>
         <p className="source-note">
           This is a browser-local demonstration of administrator-issued completion records. It is
           not an accredited qualification or a production certificate.
         </p>
-        <Link to="/learn">Explore learning pathways →</Link>
+        <button
+          type="button"
+          className="button button-outline training-certificate-print"
+          onClick={() => window.print()}
+        >
+          Print certificate
+        </button>
       </div>
     </section>
   );

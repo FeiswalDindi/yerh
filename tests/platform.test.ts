@@ -17,6 +17,7 @@ import {
   type StageId,
 } from '../src/domain/incubation.ts';
 import { sessionCategory } from '../src/domain/events.ts';
+import { courseCertificateQueue, courseCompletionRecords } from '../src/domain/courses.ts';
 import type { PlatformAction } from '../src/domain/platform.ts';
 const fixture = (n: string) =>
   JSON.parse(readFileSync(new URL(`../src/mocks/data/${n}.json`, import.meta.url), 'utf8'));
@@ -472,8 +473,23 @@ test('a guest can complete a course, earn a certificate, and reserve and cancel 
     () => applyDemoAction(login(s, 'demo-admin'), certificate),
     /lessons must be completed/,
   );
-  for (const lessonId of course.lessonIds) s = applyDemoAction(s, { type: 'progress', lessonId });
+  for (const lessonId of course.lessonIds.slice(0, -1))
+    s = applyDemoAction(s, { type: 'progress', lessonId, now });
+  assert.deepEqual(courseCertificateQueue(s), []);
+  const lessonId = course.lessonIds.at(-1)!;
+  s = applyDemoAction(s, { type: 'progress', lessonId, now });
+  const completion = { accountId: 'demo-guest', courseId: course.id, completedAt: now };
+  assert.deepEqual(courseCertificateQueue(s), [completion]);
+  s = applyDemoAction(s, { type: 'enroll', courseId: course.id, operation: 'withdraw', now });
+  const legacy = { ...s, platform: { ...s.platform, courseCompletions: undefined } };
+  assert.deepEqual(courseCertificateQueue(legacy), [
+    { accountId: 'demo-guest', courseId: course.id },
+  ]);
+  assert.deepEqual(courseCertificateQueue(s), [completion]);
   s = applyDemoAction(login(s, 'demo-admin'), certificate);
+  assert.deepEqual(courseCertificateQueue(s), []);
+  assert.deepEqual(courseCompletionRecords(s), [completion]);
+  assert.throws(() => applyDemoAction(s, certificate), /already exists/);
   s = login(s, 'demo-guest');
   assert.equal(s.platform.certificates[0]?.accountId, 'demo-guest');
   const reservation = { type: 'registration', sessionId: 'demo-customer-discovery', now } as const;

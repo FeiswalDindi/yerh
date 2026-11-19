@@ -9,7 +9,7 @@ import {
 import { can, type Role } from './roles.ts';
 import { applyPlatformAction, isPlatformAction } from './platform-actions.ts';
 import type { PlatformAction, PlatformState } from './platform';
-import { courseEntries } from './courses.ts';
+import { courseCompletionKey, courseCompletionRecords, courseEntries } from './courses.ts';
 export type DemoRole = Role;
 export interface DemoAccount {
   id: string;
@@ -104,7 +104,7 @@ export type DemoAction =
   | { type: 'moderate'; threadId: string }
   | { type: 'membership'; groupId: string; now?: string }
   | { type: 'forum-membership'; forumId: string }
-  | { type: 'progress'; lessonId: string }
+  | { type: 'progress'; lessonId: string; now?: string }
   | { type: 'interest'; eventId: string }
   | { type: 'request'; id: string; mentorId: string; goal: string }
   | { type: 'request-status'; requestId: string; status: 'accepted' | 'declined' }
@@ -289,6 +289,7 @@ export function applyDemoAction(state: DemoState, action: DemoAction): DemoState
         ),
       };
     case 'progress': {
+      if (action.now !== undefined) timestamp(action.now);
       if (
         !courseEntries(state.platform).some(
           ([courseId, lessonIds]) =>
@@ -298,8 +299,11 @@ export function applyDemoAction(state: DemoState, action: DemoAction): DemoState
       )
         throw new Error('Enroll in this course before updating progress.');
       const ids = state.progress[actor.id] ?? [];
-      return {
+      const records = courseCompletionRecords(state);
+      const known = new Set(records.map(courseCompletionKey));
+      const next = {
         ...state,
+        platform: { ...state.platform, courseCompletions: records },
         progress: {
           ...state.progress,
           [actor.id]: ids.includes(action.lessonId)
@@ -307,6 +311,15 @@ export function applyDemoAction(state: DemoState, action: DemoAction): DemoState
             : [...ids, action.lessonId],
         },
       };
+      for (const completed of courseCompletionRecords(next)) {
+        if (!known.has(courseCompletionKey(completed))) {
+          records.push({
+            ...completed,
+            ...(action.now ? { completedAt: action.now } : {}),
+          });
+        }
+      }
+      return next;
     }
     case 'interest': {
       const ids = state.interests[actor.id] ?? [];

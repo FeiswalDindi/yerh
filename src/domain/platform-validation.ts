@@ -128,6 +128,13 @@ export function isPlatformState(v: unknown): v is PlatformState {
     Object.values(p.enrollments).every(
       (ids) => Array.isArray(ids) && ids.every((id) => typeof id === 'string'),
     ) &&
+    (p.courseCompletions === undefined ||
+      records(
+        p.courseCompletions,
+        (row) =>
+          fields(row, ['accountId', 'courseId']) &&
+          (row.completedAt === undefined || typeof row.completedAt === 'string'),
+      )) &&
     Number.isInteger(p.cmsRevision) &&
     p.cmsRevision >= 0 &&
     p.applications.every(

@@ -17,6 +17,7 @@ import {
   applyCourseAction,
   courseActions,
   courseCharge,
+  courseCompletionRecords,
   courseLessonIds,
   coursePurchased,
   type CourseCommand,
@@ -216,16 +217,17 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
   switch (action.type) {
     case 'certificate-issue': {
       require('admin');
-      const lessons = courseLessonIds(p, action.courseId);
       if (
-        !lessons?.length ||
-        !accounts.some((a) => a.id === action.accountId) ||
-        !lessons.every((id) => (state.progress[action.accountId] ?? []).includes(id))
+        !courseCompletionRecords(state).some(
+          (row) => row.accountId === action.accountId && row.courseId === action.courseId,
+        )
       )
         throw new Error('All course lessons must be completed before issuing a certificate.');
       if (
         p.certificates.some(
-          (c) => c.accountId === action.accountId && c.courseId === action.courseId,
+          (c) =>
+            c.id === action.id ||
+            (c.accountId === action.accountId && c.courseId === action.courseId),
         )
       )
         throw new Error('A certificate already exists for this course.');
@@ -788,6 +790,7 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
           [],
       }));
     }
+    p.courseCompletions = courseCompletionRecords(state);
     p.courseLessons = Object.fromEntries(snapshot.catalog.courses.map((c) => [c.id, c.lessonIds]));
     p.cmsRevision++;
     p.cmsReleases = [

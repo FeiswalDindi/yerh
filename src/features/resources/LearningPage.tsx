@@ -1,8 +1,9 @@
+import { useEffect, useRef } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { AccountLink } from '../accounts/AccountLink';
 import { roleAccessPath } from '../accounts/role-requests';
 import { dashboardCatalogueItemPath, dashboardCataloguePaths } from '../dashboard/catalogue-paths';
-import { ArrowRight, Check, Play } from 'lucide-react';
+import { ArrowRight, Check, CircleCheck, Play } from 'lucide-react';
 import { useCatalog } from '../../app/useCatalog';
 import { useDemo } from '../../app/useDemo';
 import { PageIntro } from '../../shared/PageIntro';
@@ -14,6 +15,7 @@ import {
   authoredCourseId,
   authoredLessonId,
   courseCharge,
+  courseCompletionRecords,
   coursePricing,
   coursePurchased,
 } from '../../domain/courses';
@@ -23,7 +25,7 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
   const { courseId } = useParams();
   const { search } = useLocation();
   const { courses, lessons } = useCatalog();
-  const { state, account, execute, enabled } = useDemo();
+  const { state, account, execute, enabled, error } = useDemo();
   const course = courses.find((c) => c.id === courseId);
   usePageTitle(course?.title ?? 'Learn');
   const done = account ? (state.progress[account.id] ?? []) : [];
@@ -39,13 +41,27 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
     (row) => row.status === 'published' && authoredCourseId(row) === courseId,
   );
   const completed = course?.lessonIds.filter((id) => done.includes(id)).length ?? 0;
-  const finished = !!course?.lessonIds.length && completed === course.lessonIds.length;
+  const completion =
+    course &&
+    account &&
+    courseCompletionRecords(state).find(
+      (record) => record.accountId === account.id && record.courseId === course.id,
+    );
   const certificate =
     course &&
     account &&
     state.platform.certificates.find(
       (record) => record.accountId === account.id && record.courseId === course.id,
     );
+  const finished = !!(completion || certificate);
+  const completionBanner = useRef<HTMLElement>(null);
+  const justCompleted = useRef(false);
+  useEffect(() => {
+    if (finished && justCompleted.current) {
+      justCompleted.current = false;
+      completionBanner.current?.focus();
+    }
+  }, [finished]);
   if (courseId && !course) return <NotFoundPage />;
   return (
     <>
@@ -111,16 +127,18 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
                     {enrolled ? 'Withdraw enrollment' : 'Enroll in this course'}
                   </button>
                 )}
-                <p role="status">
-                  {enrolled
-                    ? 'You’re enrolled. Your progress is saved as you mark lessons complete.'
-                    : fee > 0 && !paid
-                      ? 'Pay upfront to unlock all modules.'
-                      : 'Enroll to track your progress and qualify for a course completion certificate.'}
-                </p>
+                {!finished && (
+                  <p role="status">
+                    {enrolled
+                      ? 'You’re enrolled. Your progress is saved as you mark lessons complete.'
+                      : fee > 0 && !paid
+                        ? 'Pay upfront to unlock all modules.'
+                        : 'Enroll to track your progress and qualify for a course completion certificate.'}
+                  </p>
+                )}
                 {enrolled && !dashboard && (
                   <Link className="text-link" to="/dashboard/learning">
-                    Go to My learning
+                    Go to courses
                   </Link>
                 )}
               </div>
@@ -143,21 +161,39 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
               </span>
               <progress value={completed} max={course.lessonIds.length} />
             </div>
-            {certificate ? (
-              <p className="course-completion-notice" role="status">
-                Certificate issued.{' '}
-                <Link className="text-link" to={`/certificates/${certificate.id}`}>
-                  View certificate
-                </Link>
+            {error && (
+              <p className="workspace-dialog-error" role="alert">
+                {error}
               </p>
-            ) : (
-              enrolled &&
-              finished && (
-                <p className="course-completion-notice" role="status">
-                  Course complete. Your certificate will appear in My certificates after an
-                  administrator issues it.
-                </p>
-              )
+            )}
+            {finished && (
+              <section
+                className="course-completion-notice"
+                ref={completionBanner}
+                tabIndex={-1}
+                aria-labelledby="course-complete-title"
+              >
+                <CircleCheck size={26} aria-hidden="true" />
+                <div>
+                  <div role="status">
+                    <h2 id="course-complete-title">Course completed</h2>
+                    <p>
+                      Congratulations, {account?.name.split(' ')[0]}! You completed {course.title}.
+                    </p>
+                    <p>
+                      {certificate
+                        ? 'Your certificate is ready.'
+                        : 'Your completion is in the administrator’s certificate queue.'}
+                    </p>
+                  </div>
+                  <Link
+                    className="text-link"
+                    to={certificate ? `/certificates/${certificate.id}` : '/dashboard/certificates'}
+                  >
+                    {certificate ? 'View certificate' : 'Track your certificate'}
+                  </Link>
+                </div>
+              </section>
             )}
             <div className="learning-lessons">
               {course.lessonIds.map((id, i) => {
@@ -189,7 +225,21 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
                       <button
                         className={`button ${done.includes(id) ? 'button-gold' : ''}`}
                         aria-pressed={done.includes(id)}
-                        onClick={() => execute({ type: 'progress', lessonId: id })}
+                        onClick={() => {
+                          const finalLesson =
+                            !finished &&
+                            !done.includes(id) &&
+                            completed === course.lessonIds.length - 1;
+                          if (
+                            execute({
+                              type: 'progress',
+                              lessonId: id,
+                              now: new Date().toISOString(),
+                            }) &&
+                            finalLesson
+                          )
+                            justCompleted.current = true;
+                        }}
                       >
                         {done.includes(id) ? (
                           <>

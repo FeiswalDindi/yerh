@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useCatalog } from '../../app/useCatalog';
 import { useDemo } from '../../app/useDemo';
 import { can } from '../../domain/roles';
+import { courseCertificateQueue, courseCompletionKey } from '../../domain/courses';
 import { PageIntro } from '../../shared/PageIntro';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { dashboardCataloguePaths } from './catalogue-paths';
@@ -40,18 +41,26 @@ export function DashboardCertificates() {
       issuedAt: record.issuedAt,
     })),
   ].sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
+  const pending = courseCertificateQueue(state)
+    .filter((record) => record.accountId === account.id)
+    .map((record) => ({
+      id: courseCompletionKey(record),
+      title: courses.find((course) => course.id === record.courseId)?.title ?? 'Course completion',
+      category: 'Course',
+      issuedAt: '',
+    }));
   return (
     <>
       <PageIntro
         eyebrow="Certificates"
         title="Certificates"
-        description="View your issued incubation and course certificates."
+        description="Track course certificates and view issued certificates."
         className="workspace-page-intro"
       />
       <section className="container section workspace-content">
         <WorkspaceTable
           label="certificates"
-          columns={['Certificate', 'Venture or type', 'Issued', 'Action']}
+          columns={['Certificate', 'Venture or type', 'Certificate status', 'Issued', 'Action']}
           empty="No certificates yet"
           actions={
             can(account, 'learn') && (
@@ -63,19 +72,26 @@ export function DashboardCertificates() {
               </Link>
             )
           }
-          rows={records.map((record) => ({
+          rows={[...pending, ...records].map((record) => ({
             id: record.id,
             search: [record.title, record.category].join(' '),
             cells: [
               record.title,
               record.category,
-              new Date(record.issuedAt).toLocaleDateString('en-KE', {
-                dateStyle: 'medium',
-                timeZone: 'Africa/Nairobi',
-              }),
-              <Link to={'/certificates/' + record.id} aria-label="View certificate">
-                View
-              </Link>,
+              record.issuedAt ? 'Issued' : 'Awaiting issuance',
+              record.issuedAt
+                ? new Date(record.issuedAt).toLocaleDateString('en-KE', {
+                    dateStyle: 'medium',
+                    timeZone: 'Africa/Nairobi',
+                  })
+                : '—',
+              record.issuedAt ? (
+                <Link to={'/certificates/' + record.id} aria-label="View certificate">
+                  View
+                </Link>
+              ) : (
+                '—'
+              ),
             ],
           }))}
         />

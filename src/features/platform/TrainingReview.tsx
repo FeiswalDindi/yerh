@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import type { DemoState } from '../../domain/demo';
+import type { Course } from '../../domain/hub';
+import { courseCertificateQueue } from '../../domain/courses';
 import {
   WorkspaceDialog,
   WorkspaceFormDialog,
@@ -22,6 +24,7 @@ import {
   type CredentialKind,
 } from '../../domain/incubation';
 import type { Incubation, PlatformState } from '../../domain/platform';
+import { CourseCertificates } from './CourseCertificates';
 import {
   amount,
   credentialTitle,
@@ -588,16 +591,18 @@ function SchoolCertificateReview({
 }
 
 export function TrainingCertificates({
-  p,
+  state,
   save,
   name,
-  courseRecords,
+  courses,
 }: {
-  p: PlatformState;
+  state: DemoState;
   save: Save;
   name: (id: string) => string;
-  courseRecords: ReactNode;
+  courses: Course[];
 }) {
+  const p = state.platform;
+  const courseQueue = courseCertificateQueue(state);
   const [params, setParams] = useSearchParams();
   const approvalHref = '/dashboard/workspace?tab=certificates&view=approval';
   const learnerName = (id: string) =>
@@ -796,7 +801,14 @@ export function TrainingCertificates({
             />
           ),
         },
-        { id: 'courses', label: 'Course completion records', content: courseRecords },
+        {
+          id: 'courses',
+          label: 'Course certificates',
+          count: courseQueue.length,
+          content: (
+            <CourseCertificates state={state} courses={courses} pending={courseQueue} save={save} />
+          ),
+        },
       ]}
     />
   );

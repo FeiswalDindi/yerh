@@ -1,7 +1,7 @@
 import type { DemoState, DemoAccount } from './demo';
 import { canonicalRole, roleLabels } from './roles.ts';
 import { isPlatformState } from './platform-validation.ts';
-import { courseLessonIds } from './courses.ts';
+import { courseCompletionKey, courseLessonIds } from './courses.ts';
 import { assertCmsSnapshot, assertOpportunity } from './cms.ts';
 import { validTrainingReferences } from './incubation-validation.ts';
 import { eventCategories, isPublishedSession, validEventPresenters } from './events.ts';
@@ -346,6 +346,13 @@ export function isDemoState(
   )
     return false;
   if (
+    !unique((p.courseCompletions ?? []).map(courseCompletionKey)) ||
+    !(p.courseCompletions ?? []).every(
+      (row) =>
+        accounts.has(row.accountId) &&
+        !!courseLessonIds(p, row.courseId)?.length &&
+        (row.completedAt === undefined || date(row.completedAt)),
+    ) ||
     !p.certificates.every(
       (c) =>
         accounts.has(c.accountId) &&

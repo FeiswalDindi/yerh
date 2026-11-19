@@ -358,6 +358,27 @@ a.collection-card:hover {
   width: 100%;
   accent-color: var(--yerh-gold);
 }
+.course-completion-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-block: 20px 28px;
+  padding: clamp(16px, 3vw, 28px);
+  border-inline-start: 4px solid var(--yerh-gold);
+  background: var(--yerh-gold-light);
+  color: var(--yerh-ink);
+}
+.course-completion-notice svg {
+  color: var(--yerh-navy);
+}
+.course-completion-notice h2 {
+  margin-bottom: 8px;
+  font-size: clamp(1.3rem, 2.7vw, 1.65rem);
+}
+.course-completion-notice .text-link {
+  margin-top: 10px;
+  text-decoration: underline;
+}
 .learning-lessons article {
   display: flex;
   align-items: center;

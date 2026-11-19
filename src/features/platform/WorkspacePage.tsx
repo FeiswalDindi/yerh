@@ -160,6 +160,7 @@ export function WorkspacePage() {
         'product-evidence':
           'Product evidence submitted. The mentor or platform administrator can review it under Product evidence reviews.',
         'school-credentials-issue': 'School certificates issued.',
+        'certificate-issue': 'Course certificate issued.',
         'school-certificates-reject': 'Certificate decision saved and shared with the school.',
         'stage-offline-score-edit': 'Mark updated.',
         'school-stage-open': 'Assessment opened. You can now record marks.',
@@ -252,6 +253,11 @@ export function WorkspacePage() {
           )}
           {tab === 'admin-courses' && (
             <Panel title="Course administration">
+              <p>
+                <Link to={workspaceHref('certificates') + '&view=courses'}>
+                  Course certificates
+                </Link>
+              </p>
               <AdminCourseWorkspace p={p} courses={courses} save={run} name={name} />
             </Panel>
           )}
@@ -769,76 +775,7 @@ export function WorkspacePage() {
           )}
           {tab === 'certificates' && (
             <Panel title="Certificates">
-              <TrainingCertificates
-                p={p}
-                save={run}
-                name={name}
-                courseRecords={
-                  <WorkspaceTable
-                    label="course completion records"
-                    columns={['Learner', 'Course', 'Action']}
-                    empty="No course completion records have been issued."
-                    actions={
-                      <WorkspaceFormDialog
-                        action="Issue course record"
-                        create
-                        submit="Issue completion record"
-                        onSave={(data) =>
-                          run({
-                            type: 'certificate-issue',
-                            id: crypto.randomUUID(),
-                            accountId: String(data.get('account')),
-                            courseId: String(data.get('course')),
-                            now: now(),
-                          })
-                        }
-                      >
-                        <p>All lessons must be completed before a demo record can be issued.</p>
-                        <label>
-                          Learner
-                          <select name="account">
-                            {state.accounts.map((a) => (
-                              <option key={a.id} value={a.id}>
-                                {a.name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label>
-                          Course
-                          <select name="course">
-                            {courses.map((course) => (
-                              <option key={course.id} value={course.id}>
-                                {course.title}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      </WorkspaceFormDialog>
-                    }
-                    rows={p.certificates.map((record) => {
-                      const title =
-                        courses.find((course) => course.id === record.courseId)?.title ??
-                        'Course completion';
-                      const learner = name(record.accountId);
-                      return {
-                        id: record.id,
-                        search: learner + ' ' + title,
-                        cells: [
-                          learner,
-                          title,
-                          <Link
-                            to={'/certificates/' + record.id}
-                            aria-label="View verification record"
-                          >
-                            View
-                          </Link>,
-                        ],
-                      };
-                    })}
-                  />
-                }
-              />
+              <TrainingCertificates state={state} courses={courses} save={run} name={name} />
             </Panel>
           )}
           {tab === 'reports' && (

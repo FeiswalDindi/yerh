@@ -8,7 +8,7 @@ import { DashboardCatalogueCards, type CatalogueEntry } from './DashboardCatalog
 import { DashboardCatalogueSearch } from './DashboardCatalogueSearch';
 import { DashboardCategoryRail } from './DashboardCategoryRail';
 import { useCatalogueFilters } from './useCatalogueFilters';
-import { coursePricing } from '../../domain/courses';
+import { courseCompletionRecords, coursePricing } from '../../domain/courses';
 import { completedStage, managesVenture } from '../../domain/incubation';
 import { WorkspaceDialog } from '../platform/WorkspaceControls';
 import { workspaceHref } from './dashboard-navigation';
@@ -46,6 +46,12 @@ export function DashboardCatalogue({ kind }: { kind: 'learning' | 'marketplace' 
   if (learning) {
     const enrolled = state.platform.enrollments[account.id] ?? [];
     const completed = state.progress[account.id] ?? [];
+    const finished = new Set([
+      ...courseCompletionRecords(state)
+        .filter((row) => row.accountId === account.id)
+        .map((row) => row.courseId),
+      ...p.certificates.filter((row) => row.accountId === account.id).map((row) => row.courseId),
+    ]);
     entries = courses
       .filter((course) => !mine || enrolled.includes(course.id))
       .map((course) => {
@@ -58,7 +64,7 @@ export function DashboardCatalogue({ kind }: { kind: 'learning' | 'marketplace' 
           title: course.title,
           summary: course.description,
           category: course.level,
-          details: `${total} ${total === 1 ? 'lesson' : 'lessons'}`,
+          details: `${total} ${total === 1 ? 'lesson' : 'lessons'}${finished.has(course.id) ? ' · Completed' : ''}`,
           price,
           progress: isEnrolled && total ? { done, total } : undefined,
         };
