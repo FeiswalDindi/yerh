@@ -44,13 +44,20 @@ function DashboardNavigation({
   const pathname = routePath.replace(/\/$/, '');
   const params = new URLSearchParams(search);
   const { state } = useDemo();
+  const primary = state.platform.training.institutions.find(
+    (school) => school.adminId === account.id,
+  );
   const linked = state.platform.training.institutions.filter(
     (school) => school.adminId !== account.id && institutionAccess(school, account),
   );
   const selectedSchool = linked.find((school) => school.id === params.get('institution'));
   const schoolModule =
     selectedSchool &&
-    institutionModule(params.get('tab'), institutionAccess(selectedSchool, account) === 'manage');
+    institutionModule(
+      params.get('tab'),
+      institutionAccess(selectedSchool, account) === 'manage',
+      selectedSchool.kind,
+    );
   const studioOpen = pathname === '/dashboard/cms';
   const studioModule = cmsModule(params.get('module'));
   const activeTab = activeWorkspaceModule(account, params.get('tab'))?.id;
@@ -74,22 +81,32 @@ function DashboardNavigation({
   return (
     <nav className="role-nav" aria-label="Dashboard navigation">
       {[
-        ...dashboardGroups(account),
+        ...(account.role === 'guest'
+          ? []
+          : dashboardGroups(
+              account,
+              primary?.kind === 'high-school' && primary.status === 'active',
+            )),
         ...linked.map((school) => ({
           label: school.name,
-          links: (institutionAccess(school, account) === 'manage'
+          links: (school.kind !== 'high-school'
             ? [
-                ['school', 'Institution portal'],
-                ['member-results', 'Results & Certificates'],
-                ...(school.kind === 'high-school'
-                  ? [
-                      ['ventures', 'Ventures'],
-                      ['products', 'Products'],
-                      ['incubation', 'Incubation'],
-                    ]
-                  : []),
+                [
+                  'school',
+                  institutionAccess(school, account) === 'manage'
+                    ? 'Institution portal'
+                    : 'Member Progress',
+                ],
               ]
-            : [['member-results', 'Results & Certificates']]
+            : institutionAccess(school, account) === 'manage'
+              ? [
+                  ['school', 'Institution portal'],
+                  ['member-results', 'Results & Certificates'],
+                  ['ventures', 'Ventures'],
+                  ['products', 'Products'],
+                  ['incubation', 'Incubation'],
+                ]
+              : [['member-results', 'Results & Certificates']]
           ).map(([tab, label]) => ({ label: label!, to: institutionHref(tab!, school.id) })),
         })),
       ].map((group) => (

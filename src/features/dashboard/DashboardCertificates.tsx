@@ -10,7 +10,7 @@ import { dashboardCataloguePaths } from './catalogue-paths';
 import { credentialTitle } from '../platform/TrainingForms';
 import { WorkspaceTable } from '../platform/WorkspaceControls';
 
-export function DashboardCertificates() {
+export function DashboardCertificates({ publicAccount = false }: { publicAccount?: boolean }) {
   const { state, account } = useDemo();
   const { courses } = useCatalog();
   usePageTitle('Certificates');
@@ -66,7 +66,7 @@ export function DashboardCertificates() {
             can(account, 'learn') && (
               <Link
                 className="button button-outline workspace-action"
-                to={dashboardCataloguePaths.learning}
+                to={publicAccount ? '/learn' : dashboardCataloguePaths.learning}
               >
                 Browse courses <ArrowRight size={16} aria-hidden="true" />
               </Link>

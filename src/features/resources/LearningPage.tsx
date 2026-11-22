@@ -67,7 +67,7 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
     <>
       <PageIntro
         eyebrow="Learn"
-        title={course?.title ?? 'Learn at your own pace.'}
+        title={course?.title ?? 'Courses'}
         description={
           course?.description ??
           'Explore structured pathways built from the original YERH videos, with local demo progress tracking.'
@@ -137,7 +137,10 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
                   </p>
                 )}
                 {enrolled && !dashboard && (
-                  <Link className="text-link" to="/dashboard/learning">
+                  <Link
+                    className="text-link"
+                    to={account?.role === 'guest' ? '/learn' : '/dashboard/learning'}
+                  >
                     Go to courses
                   </Link>
                 )}
@@ -188,7 +191,13 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
                   </div>
                   <Link
                     className="text-link"
-                    to={certificate ? `/certificates/${certificate.id}` : '/dashboard/certificates'}
+                    to={
+                      certificate
+                        ? `/certificates/${certificate.id}`
+                        : account?.role === 'guest'
+                          ? '/account/certificates'
+                          : '/dashboard/certificates'
+                    }
                   >
                     {certificate ? 'View certificate' : 'Track your certificate'}
                   </Link>
@@ -265,32 +274,56 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
             </p>
           </>
         ) : (
-          <div className="collection-grid">
-            {courses.map((c) => (
+          <div className="course-directory">
+            <section className="profile-panel" aria-labelledby="incubation-catalogue-title">
+              <h2 id="incubation-catalogue-title">Incubation Pathway</h2>
+              <p>
+                Build a venture through three stages of practical learning with an affiliated
+                university or hub.
+              </p>
               <Link
-                className="collection-card"
-                key={c.id}
+                className="button"
                 to={
-                  dashboard
-                    ? dashboardCatalogueItemPath('learning', c.id)
-                    : `/learn/${encodeURIComponent(c.id)}`
+                  account?.role === 'entrepreneur'
+                    ? '/dashboard/workspace?tab=incubation'
+                    : account?.role === 'guest'
+                      ? '/account#incubation'
+                      : '/apply'
                 }
               >
-                <p className="eyebrow">{c.level}</p>
-                <h2>{c.title}</h2>
-                <p>{c.description}</p>
-                <small>
-                  {c.lessonIds.length} lessons ·{' '}
-                  {coursePricing(state.platform, c.id).price
-                    ? amount(courseCharge(state.platform, c.id))
-                    : 'Free'}
-                  {account
-                    ? ` · ${c.lessonIds.filter((id) => done.includes(id)).length} completed`
-                    : ''}
-                </small>
-                <ArrowRight />
+                {account?.role === 'entrepreneur' ? 'Open pathway' : 'Apply for incubation'}
               </Link>
-            ))}
+            </section>
+            <section aria-labelledby="general-courses-title">
+              <h2 id="general-courses-title">General Courses</h2>
+              <div className="collection-grid">
+                {courses.map((c) => (
+                  <Link
+                    className="collection-card"
+                    key={c.id}
+                    to={
+                      dashboard
+                        ? dashboardCatalogueItemPath('learning', c.id)
+                        : `/learn/${encodeURIComponent(c.id)}`
+                    }
+                  >
+                    <p className="eyebrow">{c.level}</p>
+                    <h2>{c.title}</h2>
+                    <p>{c.description}</p>
+                    <small>
+                      {c.lessonIds.length} lessons ·{' '}
+                      {coursePricing(state.platform, c.id).price
+                        ? amount(courseCharge(state.platform, c.id))
+                        : 'Free'}
+                      {account
+                        ? ` · ${c.lessonIds.filter((id) => done.includes(id)).length} completed`
+                        : ''}
+                    </small>
+                    <ArrowRight />
+                  </Link>
+                ))}
+              </div>
+            </section>
           </div>
         )}
       </section>

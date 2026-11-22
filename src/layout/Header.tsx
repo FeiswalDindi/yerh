@@ -99,7 +99,9 @@ export function Header({
             </span>
             <div className="demo-strip-links">
               <Link to="/demo">Switch demo role</Link>
-              <Link to="/dashboard">My workspace</Link>
+              <Link to={account.role === 'guest' ? '/account' : '/dashboard'}>
+                {account.role === 'guest' ? 'Account' : 'My workspace'}
+              </Link>
               <button
                 type="button"
                 className="demo-strip-signout"
@@ -144,7 +146,10 @@ export function Header({
 
               {account ? (
                 <>
-                  <Link className="header-login" to="/dashboard">
+                  <Link
+                    className="header-login"
+                    to={account.role === 'guest' ? '/account' : '/dashboard'}
+                  >
                     MY ACCOUNT
                   </Link>
                   <button

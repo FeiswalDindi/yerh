@@ -9,6 +9,8 @@ import { TermsDialog } from '../legal/TermsDialog';
 import { GoogleAccountButton } from './GoogleAccountButton';
 import { accountDestination, type AccountRequest } from './account-navigation';
 import { institutionAccess } from '../../domain/incubation';
+import { institutionSignInProblem } from '../../domain/institution-members';
+import type { DemoAccount } from '../../domain/demo';
 import { institutionHref } from '../dashboard/dashboard-navigation';
 import './account.css';
 
@@ -17,10 +19,13 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
   const { state } = useDemo();
   const [register, setRegister] = useState(mode === 'register');
   const [selecting, setSelecting] = useState(mode !== 'register');
-  const [institution, setInstitution] = useState('');
   const institutions = state.platform.training.institutions.filter(
     (school) => school.status === 'active',
   );
+  const [institution, setInstitution] = useState(() => {
+    const requested = new URLSearchParams(search).get('institution');
+    return institutions.find((school) => school.id === requested)?.id ?? '';
+  });
   const yerh = state.platform.training.yerhSignIn !== false;
   const dialog = useRef<HTMLDialogElement>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -156,19 +161,35 @@ function AccountForm({
   const { account, state, enabled, execute, error } = useDemo();
   const navigate = useNavigate();
   const [termsOpen, setTermsOpen] = useState(false);
-  const [notice, setNotice] = useState('');
   const [actionFailed, setActionFailed] = useState(false);
   const host = platformHref(register ? '/register' : '/login');
-  const destination = accountDestination(search, '/dashboard');
   const institutions = state.platform.training.institutions.filter(
     (school) => school.status === 'active',
   );
-  const message = notice || (actionFailed ? error : '');
+  const selectedSchool = institutions.find((school) => school.id === institution);
+  const message = actionFailed ? error : '';
+  const wrongInstitution =
+    account && !register ? institutionSignInProblem(state.platform, account, institution) : null;
+
+  function destination(member: DemoAccount) {
+    const access = selectedSchool && institutionAccess(selectedSchool, member);
+    const fallback =
+      selectedSchool && access
+        ? institutionHref(
+            selectedSchool.kind === 'high-school' && access === 'view'
+              ? 'member-results'
+              : 'school',
+            selectedSchool.id,
+          )
+        : member.role === 'guest'
+          ? '/account'
+          : '/dashboard';
+    return accountDestination(search, fallback);
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!enabled || account) return;
-    setNotice('');
     const form = new FormData(event.currentTarget);
     const email = String(form.get('email') ?? '')
       .trim()
@@ -188,32 +209,19 @@ function AccountForm({
         now: new Date().toISOString(),
       });
       setActionFailed(!created);
-      if (created) navigate('/dashboard', { replace: true });
+      if (created) navigate(accountDestination(search, '/account'), { replace: true });
       return;
     }
 
-    const member = state.accounts.find((person) => person.email.toLowerCase() === email);
-    if (!member) {
-      setActionFailed(false);
-      setNotice('No preview account uses that email. Check the address or create an account.');
-      return;
-    }
-    const signedIn = execute({ type: 'login', accountId: member.id });
+    const signedIn = execute({ type: 'email-sign-in', email, institutionId: institution });
     setActionFailed(!signedIn);
     if (signedIn) {
-      const school = institutions.find((entry) => entry.id === institution);
-      const access = school && institutionAccess(school, member);
-      navigate(
-        school && access && destination === '/dashboard'
-          ? institutionHref(access === 'manage' ? 'school' : 'member-results', school.id)
-          : destination,
-        { replace: true },
-      );
+      const member = state.accounts.find((person) => person.email.toLowerCase() === email);
+      if (member) navigate(destination(member), { replace: true });
     }
   }
 
   function signOut() {
-    setNotice('');
     setActionFailed(!execute({ type: 'logout' }));
   }
 
@@ -250,12 +258,16 @@ function AccountForm({
         <div className="account-form">
           {account.suspended ? (
             <p>This account is suspended.</p>
+          ) : wrongInstitution ? (
+            <p className="account-error" role="alert">
+              {wrongInstitution}
+            </p>
           ) : (
             <>
               <p>
                 You’re signed in as <strong>{account.name}</strong>.
               </p>
-              <Link className="button account-submit" to={destination}>
+              <Link className="button account-submit" to={destination(account)}>
                 Continue <ArrowRight size={18} aria-hidden="true" />
               </Link>
             </>
@@ -305,17 +317,19 @@ function AccountForm({
                 />
               </label>
               <label className="account-field">
-                Institution (optional)
-                <select name="institution" defaultValue={institution}>
+                Preferred institution (optional)
+                <select name="institution" defaultValue="">
                   <option value="">No institution selected</option>
                   {state.platform.training.yerhSignIn !== false && (
                     <option value="yerh">YERH</option>
                   )}
-                  {institutions.map((school) => (
-                    <option key={school.id} value={school.id}>
-                      {school.name}
-                    </option>
-                  ))}
+                  {institutions
+                    .filter((school) => school.kind !== 'high-school')
+                    .map((school) => (
+                      <option key={school.id} value={school.id}>
+                        {school.name}
+                      </option>
+                    ))}
                 </select>
               </label>
               <div className="account-agreement">

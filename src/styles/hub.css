@@ -354,6 +354,14 @@ a.collection-card:hover {
   gap: 12px;
   margin: 24px 0;
 }
+.guest-account-content,
+.course-directory {
+  display: grid;
+  gap: 24px;
+}
+.course-directory > section > h2 {
+  margin-bottom: 12px;
+}
 .learning-progress progress {
   width: 100%;
   accent-color: var(--yerh-gold);

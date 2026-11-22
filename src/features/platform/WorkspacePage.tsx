@@ -24,7 +24,7 @@ import {
   WorkspaceTable,
 } from './WorkspaceControls';
 import { ApprovalWorkspace } from './ApprovalWorkspace';
-import { IncubationWorkspace, UniversitySelection } from './IncubationWorkspace';
+import { IncubationWorkspace } from './IncubationWorkspace';
 import { InstitutionPortal, InstitutionsAdmin } from './InstitutionWorkspace';
 import { InstitutionResults } from './InstitutionResults';
 import { TrainingCertificates, TrainingPayments } from './TrainingReview';
@@ -112,7 +112,7 @@ export function WorkspacePage() {
   const activeModule = account
     ? contextId
       ? access
-        ? institutionModule(params.get('tab'), access === 'manage')
+        ? institutionModule(params.get('tab'), access === 'manage', school?.kind)
         : undefined
       : activeWorkspaceModule(account, params.get('tab'))
     : undefined;
@@ -121,6 +121,9 @@ export function WorkspacePage() {
   usePageTitle(activeModule?.label ?? 'Workspace');
   if (!account) return null;
   const schoolStaff = contextId ? access === 'manage' : can(account, 'school');
+  const affiliation = p.training.institutions.find(
+    (row) => row.id === p.training.affiliations[account.id],
+  );
   const workspaceAccount =
     contextId && school && schoolStaff
       ? { ...account, id: school.adminId, role: 'school_admin' as const }
@@ -151,6 +154,14 @@ export function WorkspacePage() {
       const messages: Record<string, string> = {
         'institution-certificates-request':
           'Certificate requests sent to the platform administrator.',
+        'institution-invite':
+          'Invitation created. Open the invitation link from the member roster.',
+        'institution-invite-bulk': 'Invitations created. Open the links from the invitations list.',
+        'institution-invite-revoke': 'Invitation revoked.',
+        'institution-create':
+          'Institution created. Follow the Portal activation steps to open access.',
+        'institution-assign-admin': 'Institution administrator assigned.',
+        'institution-activate': 'Institution activated. The portal is open to assigned staff.',
         'product-save': schoolStaff
           ? 'Product saved.'
           : 'Product submitted. A platform administrator can review it under Approval queue → Product listings.',
@@ -220,10 +231,11 @@ export function WorkspacePage() {
             </p>
           )}
           {tab === 'school' && (
-            <Panel title="Institution portal">
+            <Panel title={school?.name ?? 'Institution portal'} showTitle={!!school}>
               <InstitutionPortal
                 p={p}
-                account={workspaceAccount}
+                account={account}
+                school={school}
                 accounts={state.accounts}
                 save={run}
                 portalHref={schoolLink}
@@ -232,7 +244,7 @@ export function WorkspacePage() {
           )}
           {tab === 'member-results' && (
             <Panel title="Results & Certificates">
-              {school?.status === 'active' && access ? (
+              {school?.status === 'active' && access && school.kind === 'high-school' ? (
                 <InstitutionResults
                   p={p}
                   school={school}
@@ -241,6 +253,8 @@ export function WorkspacePage() {
                   readonly={access === 'view'}
                   incubationHref={schoolLink('incubation')}
                 />
+              ) : school?.status === 'active' && access ? (
+                <Link to={schoolLink('school') + '&view=progress'}>Member Progress</Link>
               ) : (
                 <p>Contact the platform team for access to results and certificates.</p>
               )}
@@ -359,9 +373,7 @@ export function WorkspacePage() {
                   <Link to={schoolLink('member-results')}>Results &amp; Certificates</Link>
                 </p>
               )}
-              {can(workspaceAccount, 'learn') && (
-                <UniversitySelection p={p} account={account} save={run} modal />
-              )}
+              {!schoolStaff && affiliation && <p>Affiliated institution · {affiliation.name}</p>}
               <IncubationWorkspace
                 key={contextId ?? account.id}
                 p={p}
@@ -750,11 +762,19 @@ export function WorkspacePage() {
                           <label>
                             Role
                             <select name="role" defaultValue={member.role}>
-                              {Object.entries(roleLabels).map(([id, label]) => (
-                                <option key={id} value={id}>
-                                  {label}
-                                </option>
-                              ))}
+                              {Object.entries(roleLabels)
+                                .filter(
+                                  ([id]) =>
+                                    (id !== 'entrepreneur' || member.role === 'entrepreneur') &&
+                                    (id !== 'school_admin' ||
+                                      member.role === 'guest' ||
+                                      member.role === 'school_admin'),
+                                )
+                                .map(([id, label]) => (
+                                  <option key={id} value={id}>
+                                    {label}
+                                  </option>
+                                ))}
                             </select>
                           </label>
                           <label className="inline-checkbox">

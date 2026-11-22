@@ -105,7 +105,7 @@ export function isTrainingState(value: unknown): value is TrainingState {
       value.institutions,
       (row) =>
         fields(row, ['id', 'name', 'kind', 'adminId', 'status', 'story']) &&
-        ['high-school', 'university'].includes(String(row.kind)) &&
+        ['high-school', 'university', 'hub'].includes(String(row.kind)) &&
         ['pending', 'active', 'inactive'].includes(String(row.status)) &&
         money(row.amount) &&
         typeof row.featured === 'boolean' &&
@@ -203,11 +203,12 @@ export function validTrainingReferences(p: PlatformState, accounts: DemoAccount[
         row.incubationIds.every((id) => {
           const path = paths.get(id);
           const venture = p.ventures.find((venture) => venture.id === path?.ventureId);
+          const kind = institutions.get(row.institutionId)?.kind;
           return (
             !!path &&
             (!!venture?.groupId
               ? schoolForVenture(p, venture)?.id === row.institutionId
-              : institutions.get(row.institutionId)?.kind === 'university')
+              : kind === 'university' || kind === 'hub')
           );
         }),
     ) &&
@@ -231,7 +232,9 @@ export function validTrainingReferences(p: PlatformState, accounts: DemoAccount[
     unique(t.productReviews.map((row) => row.productId)) &&
     t.institutions.every(
       (institution) =>
-        accountIds.has(institution.adminId) &&
+        (institution.adminId
+          ? accountIds.has(institution.adminId)
+          : institution.status === 'pending') &&
         unique((institution.agreements ?? []).map((row) => row.id)) &&
         (institution.agreements ?? []).every(
           (row) =>
@@ -241,7 +244,9 @@ export function validTrainingReferences(p: PlatformState, accounts: DemoAccount[
           (ids) => unique(ids) && ids.every((id) => accountIds.has(id)),
         ),
     ) &&
-    unique(t.institutions.map((institution) => institution.adminId)) &&
+    unique(
+      t.institutions.flatMap((institution) => (institution.adminId ? [institution.adminId] : [])),
+    ) &&
     t.students.every(
       (student) => institutions.get(student.institutionId)?.kind === 'high-school',
     ) &&

@@ -201,22 +201,24 @@ export function MobileNavigationDrawer({
                       <div className="feiso-account-role-badge">{roleLabels[account.role]}</div>
                       <div className="feiso-account-actions">
                         <Link
-                          to="/dashboard"
+                          to={account.role === 'guest' ? '/account' : '/dashboard'}
                           onClick={() => setOpen(false)}
                           className="button button-gold feiso-dashboard-btn"
                         >
                           <LayoutDashboard size={16} />
-                          My Workspace
+                          {account.role === 'guest' ? 'Account' : 'My Workspace'}
                         </Link>
                         <div className="feiso-account-row-btns">
-                          <Link
-                            to="/dashboard/profile"
-                            onClick={() => setOpen(false)}
-                            className="feiso-sub-btn"
-                          >
-                            <UserCircle size={15} />
-                            Profile
-                          </Link>
+                          {account.role !== 'guest' && (
+                            <Link
+                              to="/dashboard/profile"
+                              onClick={() => setOpen(false)}
+                              className="feiso-sub-btn"
+                            >
+                              <UserCircle size={15} />
+                              Profile
+                            </Link>
+                          )}
                           <button
                             type="button"
                             onClick={() => {

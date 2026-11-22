@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
 import { memberPath } from '../../domain/community';
 import type { DemoAccount } from '../../domain/demo';
+import { accountInstitution } from '../../domain/incubation';
 import { roleLabels } from '../../domain/roles';
 import { PageIntro } from '../../shared/PageIntro';
 import { usePageTitle } from '../../shared/usePageTitle';
@@ -11,7 +12,6 @@ import { RoleRequestForm, RoleRequestHistory } from '../accounts/RoleRequestForm
 import { accountRoleRequests, roleAccessSectionId } from '../accounts/role-requests';
 import { DemoNotice } from '../demo/DemoNotice';
 import { workspaceHref } from './dashboard-navigation';
-import { UniversitySelection } from '../platform/IncubationWorkspace';
 
 type ProfileFields = Pick<DemoAccount, 'name' | 'location' | 'headline' | 'bio'>;
 
@@ -126,7 +126,7 @@ function ProfileForm({ person }: { person: DemoAccount }) {
 
 export function ProfilePage() {
   usePageTitle('Profile');
-  const { account, state, execute } = useDemo();
+  const { account, state } = useDemo();
   const { hash, key } = useLocation();
   const roleAccess = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -141,6 +141,7 @@ export function ProfilePage() {
   if (!account) return null;
   const requests = accountRoleRequests(state.platform.applications, account.id);
   const pending = requests.find((request) => request.status === 'pending');
+  const affiliation = accountInstitution(state.platform, account.id);
   const isGuest = account.role === 'guest';
   const initials = account.name
     .trim()
@@ -212,15 +213,12 @@ export function ProfilePage() {
           </aside>
           <div className="dashboard-profile-settings">
             <ProfileForm key={account.id} person={account} />
-            {(isGuest || account.role === 'entrepreneur') &&
-              state.platform.training.institutions.some(
-                (school) => school.kind === 'university' && school.status === 'active',
-              ) && (
-                <section className="profile-panel dashboard-profile-card">
-                  <h2>University affiliation</h2>
-                  <UniversitySelection p={state.platform} account={account} save={execute} />
-                </section>
-              )}
+            {affiliation && (
+              <section className="profile-panel dashboard-profile-card">
+                <h2>Institution affiliation</h2>
+                <p>{affiliation.name}</p>
+              </section>
+            )}
             {account.role !== 'school_admin' && (
               <section
                 className="profile-panel dashboard-profile-card role-request-panel"

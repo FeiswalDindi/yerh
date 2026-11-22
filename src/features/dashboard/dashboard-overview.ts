@@ -1,4 +1,5 @@
 import type { DemoAccount, DemoState } from '../../domain/demo';
+import { institutionProgramme } from '../../domain/institution-programme';
 import type { Role } from '../../domain/roles';
 import { workspaceHref } from './dashboard-navigation';
 import { roleAccessPath } from '../accounts/role-requests';
@@ -22,6 +23,22 @@ export function dashboardMetrics(state: DemoState, account: DemoAccount): Metric
   switch (account.role) {
     case 'school_admin': {
       const school = p.training.institutions.find((entry) => entry.adminId === id);
+      if (school?.kind !== 'high-school') {
+        const programme = school && institutionProgramme(p, state.accounts, school.id, account);
+        if (!programme) return [];
+        const ventures = programme.members.flatMap((member) => member.ventures);
+        const progress = workspaceHref('school') + '&view=progress';
+        return [
+          { label: 'Members', value: programme.members.length, to: workspaceHref('school') },
+          { label: 'Ventures', value: ventures.length, to: progress },
+          {
+            label: 'Ventures with all stages assessed',
+            value: ventures.filter((venture) => venture.assessments === venture.stages.length)
+              .length,
+            to: progress,
+          },
+        ];
+      }
       return [
         {
           label: 'Students',

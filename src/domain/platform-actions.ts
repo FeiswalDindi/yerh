@@ -3,7 +3,17 @@ import { can, applicationRoles, roleLabels } from './roles.ts';
 import { assertCmsSnapshot, assertOpportunity, safeUrl } from './cms.ts';
 import type { PlatformAction, CmsSnapshot, Opportunity } from './platform';
 import { applyTrainingAction, canGraduate, isTrainingAction } from './incubation-actions.ts';
-import { institutionAccess, managesVenture, schoolForVenture } from './incubation.ts';
+import {
+  activeIncubationPartner,
+  institutionAccess,
+  managesVenture,
+  schoolForVenture,
+} from './incubation.ts';
+import {
+  acceptInstitutionInvitation,
+  institutionMembershipProblem,
+  manageInstitutionInvitation,
+} from './institution-members.ts';
 import {
   assertSession,
   eventCategories,
@@ -42,6 +52,9 @@ const schoolCommands = new Set([
   'institution-profile',
   'institution-group',
   'institution-class',
+  'institution-invite',
+  'institution-invite-bulk',
+  'institution-invite-revoke',
 ]);
 export function isPlatformAction(action: { type: string }): action is PlatformAction {
   return (
@@ -50,6 +63,10 @@ export function isPlatformAction(action: { type: string }): action is PlatformAc
     [
       'certificate-issue',
       'signup',
+      'institution-invite',
+      'institution-invite-bulk',
+      'institution-invite-revoke',
+      'institution-invite-accept',
       'role-apply',
       'role-change-request',
       'role-review',
@@ -98,13 +115,18 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
   const now = action.now;
   if (!Number.isFinite(Date.parse(now))) throw new Error('Invalid action time.');
   const operator = state.accounts.find((a) => a.id === state.activeAccountId) ?? null;
+  if (action.type === 'institution-invite-accept')
+    return acceptInstitutionInvitation(state, operator, action);
   let actor = operator;
   if (action.type === 'signup') {
     if (actor) throw new Error('Sign out before creating another account.');
     const email = action.email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Enter a valid email.');
     if (!action.consent) throw new Error('Consent is required to create the preview account.');
-    if (!action.id || state.accounts.some((a) => a.id === action.id || a.email === email))
+    if (
+      !action.id ||
+      state.accounts.some((a) => a.id === action.id || a.email.toLowerCase() === email)
+    )
       throw new Error('An account already exists with this email.');
     const institution = action.institutionId;
     if (
@@ -112,21 +134,15 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       (institution === 'yerh'
         ? state.platform.training.yerhSignIn === false
         : !state.platform.training.institutions.some(
-            (school) => school.id === institution && school.status === 'active',
+            (school) =>
+              school.id === institution &&
+              school.status === 'active' &&
+              school.kind !== 'high-school',
           ))
     )
       throw new Error('Select an available institution.');
     return {
       ...state,
-      platform: institution
-        ? {
-            ...state.platform,
-            training: {
-              ...state.platform.training,
-              affiliations: { ...state.platform.training.affiliations, [action.id]: institution },
-            },
-          }
-        : state.platform,
       activeAccountId: action.id,
       accounts: [
         ...state.accounts,
@@ -143,6 +159,7 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
           joinedAt: now.slice(0, 10),
           phone: action.phone.trim(),
           ageRange: action.ageRange,
+          ...(institution ? { preferredInstitutionId: institution } : {}),
         },
       ],
     };
@@ -162,6 +179,11 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
   } else actor = operator;
   const schoolId =
     school?.id ??
+    (action.type === 'institution-invite' ||
+    action.type === 'institution-invite-bulk' ||
+    action.type === 'institution-invite-revoke'
+      ? action.institutionId
+      : undefined) ??
     p.training.institutions.find((row) => row.adminId === operator.id)?.id ??
     (action.type === 'training-credential-issue' ||
     action.type === 'school-credentials-issue' ||
@@ -215,6 +237,15 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
     return { ...state, platform: p };
   }
   switch (action.type) {
+    case 'institution-invite':
+    case 'institution-invite-bulk':
+    case 'institution-invite-revoke': {
+      if (school && school.id !== action.institutionId)
+        throw new Error('This action is unavailable in the selected institution.');
+      const ids = manageInstitutionInvitation(p, accounts, operator, action);
+      for (const id of ids) audit(id);
+      break;
+    }
     case 'certificate-issue': {
       require('admin');
       if (
@@ -247,7 +278,7 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       if (action.type === 'role-apply' && actor.role !== 'guest')
         throw new Error('Request a different role from My profile.');
       if (action.type === 'role-change-request' && actor.role === 'guest')
-        throw new Error('Apply for your first role from the Guest dashboard.');
+        throw new Error('Apply for your first role from your account.');
       if (!applicationRoles.includes(action.role))
         throw new Error('This role requires staff assignment.');
       if (actor.role === action.role) throw new Error('You already hold this role.');
@@ -257,11 +288,22 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
         throw new Error('Application ID already exists.');
       if (['partner', 'investor'].includes(action.role)) text(action.organisation, 3, 120);
       if (action.role === 'mentor') text(action.expertise, 5, 500);
+      const institution =
+        action.role === 'entrepreneur'
+          ? activeIncubationPartner(p, action.institutionId)
+          : undefined;
+      if (action.role === 'entrepreneur' && !institution)
+        throw new Error('Select an active university or hub for your incubation application.');
+      if (institution) {
+        const problem = institutionMembershipProblem(p, actor.id, institution.id);
+        if (problem) throw new Error(problem);
+      }
       p.applications.push({
         id: action.id,
         accountId: actor.id,
         role: action.role,
         fromRole: actor.role,
+        ...(institution ? { institutionId: institution.id } : {}),
         motivation: text(action.motivation, 30),
         organisation: action.organisation.trim(),
         expertise: action.expertise.trim(),
@@ -289,6 +331,23 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
           throw new Error(
             'The member’s role changed. Reject this request and ask them to submit a new one.',
           );
+        if (application.role === 'entrepreneur') {
+          const institution = activeIncubationPartner(p, application.institutionId);
+          if (!institution)
+            throw new Error(
+              'The applicant must select an active university or hub before approval.',
+            );
+          const problem = institutionMembershipProblem(p, applicant.id, institution.id);
+          if (problem) throw new Error(problem);
+          p.training.affiliations[applicant.id] = institution.id;
+          for (const invitation of p.institutionInvitations ?? []) {
+            if (
+              invitation.status === 'pending' &&
+              invitation.email === applicant.email.toLowerCase()
+            )
+              invitation.status = 'revoked';
+          }
+        }
         accounts = accounts.map((a) =>
           a.id === application.accountId ? { ...a, role: application.role } : a,
         );
@@ -300,8 +359,19 @@ export function applyPlatformAction(state: DemoState, action: PlatformAction): D
       require('admin');
       if (action.accountId === actor.id)
         throw new Error('You cannot change your own administrative access.');
-      if (!accounts.some((a) => a.id === action.accountId)) throw new Error('Account not found.');
+      const target = accounts.find((a) => a.id === action.accountId);
+      if (!target) throw new Error('Account not found.');
       if (action.role && !Object.hasOwn(roleLabels, action.role)) throw new Error('Unknown role.');
+      if (
+        action.role === 'school_admin' &&
+        target.role !== 'guest' &&
+        target.role !== 'school_admin'
+      )
+        throw new Error('Choose a guest account to appoint a new institutional administrator.');
+      if (action.role === 'entrepreneur' && target.role !== 'entrepreneur')
+        throw new Error(
+          'Approve an incubation application or invite this member through an institution.',
+        );
       accounts = accounts.map((a) =>
         a.id === action.accountId
           ? {

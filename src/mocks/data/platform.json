@@ -99,7 +99,10 @@
       }
     ],
     "classes": [],
-    "affiliations": {}
+    "affiliations": {
+      "demo-founder": "demo-university",
+      "demo-mentee": "demo-university"
+    }
   },
   "applications": [],
   "opportunities": [

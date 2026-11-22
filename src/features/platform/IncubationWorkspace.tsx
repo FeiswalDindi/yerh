@@ -36,51 +36,6 @@ const shortDate = new Intl.DateTimeFormat('en-KE', {
   timeZone: 'Africa/Nairobi',
 });
 
-export function UniversitySelection({
-  p,
-  account,
-  save,
-  modal = false,
-}: {
-  p: PlatformState;
-  account: DemoAccount;
-  save: Save;
-  modal?: boolean;
-}) {
-  const universities = p.training.institutions.filter(
-    (school) => school.kind === 'university' && school.status === 'active',
-  );
-  if (universities.length === 0) return null;
-  return (
-    <TrainingForm
-      save={save}
-      label="Save university"
-      dialog={modal ? { action: 'Set university' } : undefined}
-      build={(data) => ({ type: 'institution-affiliation', id: field(data, 'university') })}
-    >
-      <label>
-        University
-        <select name="university" required defaultValue={p.training.affiliations[account.id] ?? ''}>
-          <option value="" disabled>
-            Select your university
-          </option>
-          {universities.map((school) => (
-            <option key={school.id} value={school.id}>
-              {school.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      {p.training.affiliations[account.id] && (
-        <small role="status">
-          Saved university ·{' '}
-          {universities.find((school) => school.id === p.training.affiliations[account.id])?.name}
-        </small>
-      )}
-    </TrainingForm>
-  );
-}
-
 export function IncubationWorkspace({
   p,
   account,

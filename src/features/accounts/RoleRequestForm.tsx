@@ -3,6 +3,11 @@ import { useDemo } from '../../app/useDemo';
 import type { DemoAccount } from '../../domain/demo';
 import type { RoleApplication } from '../../domain/platform';
 import { applicationRoles, roleLabels, type AppliedRole } from '../../domain/roles';
+import {
+  accountInstitution,
+  activeIncubationPartner,
+  institutionKindLabels,
+} from '../../domain/incubation';
 
 const roleDescriptions: Record<AppliedRole, string> = {
   entrepreneur: 'Build your venture and apply for support.',
@@ -18,26 +23,34 @@ export function RoleRequestForm({
   account: DemoAccount;
   pending?: RoleApplication;
 }) {
-  const { execute } = useDemo();
+  const { execute, state, error } = useDemo();
+  const p = state.platform;
   const isApplication = account.role === 'guest';
+  const affiliation = accountInstitution(p, account.id);
+  const institutions = p.training.institutions.filter(
+    (row) => (!affiliation || affiliation.id === row.id) && activeIncubationPartner(p, row.id),
+  );
+  const preferred = affiliation?.id ?? account.preferredInstitutionId;
   const options = applicationRoles.filter((role) => role !== account.role);
   const [selectedRole, setSelectedRole] = useState<AppliedRole>();
+  const [failed, setFailed] = useState(false);
   const role = selectedRole && options.includes(selectedRole) ? selectedRole : options[0]!;
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    if (
-      execute({
-        type: isApplication ? 'role-apply' : 'role-change-request',
-        id: crypto.randomUUID(),
-        role,
-        motivation: String(form.get('motivation') ?? ''),
-        organisation: String(form.get('organisation') ?? ''),
-        expertise: String(form.get('expertise') ?? ''),
-        now: new Date().toISOString(),
-      })
-    ) {
+    const saved = execute({
+      type: isApplication ? 'role-apply' : 'role-change-request',
+      id: crypto.randomUUID(),
+      role,
+      motivation: String(form.get('motivation') ?? ''),
+      organisation: String(form.get('organisation') ?? ''),
+      expertise: String(form.get('expertise') ?? ''),
+      institutionId: role === 'entrepreneur' ? String(form.get('institution') ?? '') : undefined,
+      now: new Date().toISOString(),
+    });
+    setFailed(!saved);
+    if (saved) {
       event.currentTarget.reset();
       setSelectedRole(undefined);
     }
@@ -46,8 +59,8 @@ export function RoleRequestForm({
   if (pending)
     return (
       <p className="role-request-status" role="status">
-        Your request for <strong>{roleLabels[pending.role]}</strong> is pending review. You can
-        continue using your current dashboard and its features.
+        Your request for <strong>{roleLabels[pending.role]}</strong> is pending review.
+        {isApplication && ' You can continue taking general courses and attending events.'}
       </p>
     );
 
@@ -67,6 +80,26 @@ export function RoleRequestForm({
         </select>
         <small className="role-request-hint">{roleDescriptions[role]}</small>
       </label>
+      {role === 'entrepreneur' && (
+        <label>
+          Affiliated university or hub
+          <select
+            name="institution"
+            defaultValue={institutions.some(({ id }) => id === preferred) ? preferred : ''}
+            required
+          >
+            <option value="">Choose your institution</option>
+            {institutions.map((institution) => (
+              <option key={institution.id} value={institution.id}>
+                {institution.name} · {institutionKindLabels[institution.kind]}
+              </option>
+            ))}
+          </select>
+          <small>
+            Describe your affiliation and venture plans below so YERH can review your application.
+          </small>
+        </label>
+      )}
       {(role === 'partner' || role === 'investor') && (
         <label>
           Organisation name
@@ -83,6 +116,7 @@ export function RoleRequestForm({
         {isApplication ? 'Why are you applying?' : 'Why are you requesting this role change?'}
         <textarea name="motivation" rows={4} required minLength={30} maxLength={2000} />
       </label>
+      {failed && error && <p role="alert">{error}</p>}
       <button className="button" type="submit">
         {isApplication ? 'Submit application' : 'Submit role change request'}
       </button>
@@ -91,6 +125,7 @@ export function RoleRequestForm({
 }
 
 export function RoleRequestHistory({ requests }: { requests: RoleApplication[] }) {
+  const { state } = useDemo();
   if (!requests.length) return null;
 
   return (
@@ -101,7 +136,26 @@ export function RoleRequestHistory({ requests }: { requests: RoleApplication[] }
           <li key={request.id}>
             <div className="role-request-history-heading">
               <strong>{roleLabels[request.role]}</strong>
+              <span>
+                {
+                  {
+                    pending: 'Pending',
+                    approved: 'Approved',
+                    rejected: 'Rejected',
+                    withdrawn: 'Closed',
+                  }[request.status]
+                }
+              </span>
             </div>
+            {request.institutionId && (
+              <p>
+                {
+                  state.platform.training.institutions.find(
+                    (row) => row.id === request.institutionId,
+                  )?.name
+                }
+              </p>
+            )}
             <p>{request.motivation}</p>
             {request.reason && <p>Reviewer feedback: {request.reason}</p>}
           </li>

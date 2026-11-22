@@ -10,6 +10,7 @@ import { can, type Role } from './roles.ts';
 import { applyPlatformAction, isPlatformAction } from './platform-actions.ts';
 import type { PlatformAction, PlatformState } from './platform';
 import { courseCompletionKey, courseCompletionRecords, courseEntries } from './courses.ts';
+import { institutionSignInProblem } from './institution-members.ts';
 export type DemoRole = Role;
 export interface DemoAccount {
   id: string;
@@ -17,6 +18,7 @@ export interface DemoAccount {
   suspended?: boolean;
   phone?: string;
   ageRange?: string;
+  preferredInstitutionId?: string;
   name: string;
   role: DemoRole;
   headline: string;
@@ -97,6 +99,7 @@ export type DemoAction =
   | PlatformAction
   | CommunityAction
   | { type: 'login'; accountId: string }
+  | { type: 'email-sign-in'; email: string; institutionId: string }
   | { type: 'logout' }
   | { type: 'profile'; name: string; headline: string; bio: string; location: string }
   | { type: 'topic'; id: string; forumId: string; title: string; body: string; now: string }
@@ -134,12 +137,27 @@ function timestamp(value: string) {
 export function applyDemoAction(state: DemoState, action: DemoAction): DemoState {
   if (isPlatformAction(action)) return applyPlatformAction(state, action);
   if (action.type === 'logout') return { ...state, activeAccountId: null };
-  if (action.type === 'login') {
-    if (!state.accounts.some((a) => a.id === action.accountId))
-      throw new Error('Unknown demo account');
-    if (state.accounts.find((a) => a.id === action.accountId)?.suspended)
-      throw new Error('This account is suspended.');
-    return { ...state, activeAccountId: action.accountId };
+  if (action.type === 'login' || action.type === 'email-sign-in') {
+    const member =
+      action.type === 'login'
+        ? state.accounts.find((account) => account.id === action.accountId)
+        : state.accounts.find(
+            (account) => account.email.toLowerCase() === action.email.trim().toLowerCase(),
+          );
+    if (!member)
+      throw new Error(
+        action.type === 'login'
+          ? 'Unknown demo account'
+          : 'This email cannot sign in to the selected institution.',
+      );
+    if (member.suspended) throw new Error('This account is suspended.');
+    if (action.type === 'email-sign-in') {
+      if (state.activeAccountId && state.activeAccountId !== member.id)
+        throw new Error('Sign out before signing in with a different email.');
+      const problem = institutionSignInProblem(state.platform, member, action.institutionId);
+      if (problem) throw new Error(problem);
+    }
+    return { ...state, activeAccountId: member.id };
   }
   const actor = currentAccount(state);
   if (!actor) throw new Error('Choose a demo account to try this action.');

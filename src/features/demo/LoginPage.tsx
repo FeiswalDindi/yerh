@@ -47,7 +47,13 @@ export function LoginPage() {
                     className="button"
                     onClick={() => {
                       if (execute({ type: 'login', accountId: person.id }))
-                        navigate(accountDestination(search, '/dashboard'), { replace: true });
+                        navigate(
+                          accountDestination(
+                            search,
+                            person.role === 'guest' ? '/account' : '/dashboard',
+                          ),
+                          { replace: true },
+                        );
                     }}
                   >
                     Login as {roleLabels[person.role]}

@@ -9,6 +9,8 @@ import { useDemo } from './useDemo';
 import { cmsModule, dashboardAccess } from '../features/dashboard/dashboard-navigation';
 import { AccountAccess } from '../features/accounts/AccountAccess';
 import { AccountEntryRedirect } from '../features/accounts/AccountLink';
+import { GuestAccount } from '../features/accounts/GuestAccount';
+import { InstitutionInvitationPage } from '../features/accounts/InstitutionInvitationPage';
 import { roleAccessPath } from '../features/accounts/role-requests';
 import { BreadcrumbProvider } from '../shared/BreadcrumbProvider';
 import { SiteLoader } from '../shared/SiteLoader';
@@ -159,7 +161,11 @@ function CollectionRedirect({ to }: { to: string }) {
 function ApplicationEntry() {
   const { account } = useDemo();
   if (account?.suspended) return <AccountEntryRedirect />;
-  return account ? <Navigate to={roleAccessPath} replace /> : <ApplicationsPage />;
+  return account ? (
+    <Navigate to={account.role === 'guest' ? '/account#incubation' : roleAccessPath} replace />
+  ) : (
+    <ApplicationsPage />
+  );
 }
 /** Compose under the host router; DemoProvider and ContentProvider are supplied at the app boundary. */
 export function createYerhRoutes(): RouteObject[] {
@@ -223,6 +229,23 @@ function siteRoutes(): RouteObject[] {
         { path: 'webinars', element: <EventCollectionPage type="webinars" /> },
         { path: 'learn', element: <LearningPage /> },
         { path: 'learn/:courseId', element: <LearningPage /> },
+        {
+          path: 'account',
+          element: (
+            <RequireDemo>
+              <GuestAccount />
+            </RequireDemo>
+          ),
+        },
+        {
+          path: 'account/certificates',
+          element: (
+            <RequireDemo>
+              <DashboardCertificates publicAccount />
+            </RequireDemo>
+          ),
+        },
+        { path: 'account/invitations/:id', element: <InstitutionInvitationPage /> },
         { path: 'forums', element: <ForumsPage /> },
         { path: 'forums/:threadId', element: <ThreadPage /> },
         { path: 'network', element: <NetworkPage /> },
@@ -262,7 +285,7 @@ function siteRoutes(): RouteObject[] {
     {
       path: 'dashboard',
       element: (
-        <RequireDemo>
+        <RequireDemo workspace>
           <Suspense fallback={<SiteLoader screen />}>
             <DashboardLayout />
           </Suspense>

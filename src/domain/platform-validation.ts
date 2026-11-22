@@ -135,6 +135,16 @@ export function isPlatformState(v: unknown): v is PlatformState {
           fields(row, ['accountId', 'courseId']) &&
           (row.completedAt === undefined || typeof row.completedAt === 'string'),
       )) &&
+    (p.institutionInvitations === undefined ||
+      records(
+        p.institutionInvitations,
+        (entry) =>
+          fields(entry, ['id', 'institutionId', 'name', 'email', 'invitedAt', 'invitedBy']) &&
+          ['pending', 'accepted', 'revoked'].includes(String(entry.status)) &&
+          (entry.status === 'accepted'
+            ? typeof entry.acceptedAccountId === 'string'
+            : entry.acceptedAccountId === undefined),
+      )) &&
     Number.isInteger(p.cmsRevision) &&
     p.cmsRevision >= 0 &&
     p.applications.every(
@@ -144,7 +154,8 @@ export function isPlatformState(v: unknown): v is PlatformState {
           (typeof a.fromRole === 'string' &&
             Object.hasOwn(roleLabels, a.fromRole) &&
             a.fromRole !== a.role)) &&
-        ['pending', 'approved', 'rejected'].includes(a.status),
+        (a.institutionId === undefined || typeof a.institutionId === 'string') &&
+        ['pending', 'approved', 'rejected', 'withdrawn'].includes(a.status),
     ) &&
     p.ventures.every(
       (a) =>

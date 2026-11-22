@@ -45,7 +45,7 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
       itemIds: platform.applications
         .filter((a) => a.accountId === id && a.status !== 'pending')
         .map((a) => `${a.id}:${a.status}`),
-      to: roleAccessPath,
+      to: account.role === 'guest' ? '/account#incubation' : roleAccessPath,
       readKeyScope: roleApplicationPath,
     },
   ];
@@ -56,7 +56,7 @@ export function dashboardUpdates(state: DemoState, account: DemoAccount): Dashbo
       itemIds: platform.certificates
         .filter((record) => record.accountId === id)
         .map((record) => record.id),
-      to: '/dashboard/certificates',
+      to: account.role === 'guest' ? '/account/certificates' : '/dashboard/certificates',
     });
 
   if (can(account, 'community'))

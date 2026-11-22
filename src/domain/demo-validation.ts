@@ -2,6 +2,7 @@ import type { DemoState, DemoAccount } from './demo';
 import { canonicalRole, roleLabels } from './roles.ts';
 import { isPlatformState } from './platform-validation.ts';
 import { courseCompletionKey, courseLessonIds } from './courses.ts';
+import { supportsIndividualIncubation } from './incubation.ts';
 import { assertCmsSnapshot, assertOpportunity } from './cms.ts';
 import { validTrainingReferences } from './incubation-validation.ts';
 import { eventCategories, isPublishedSession, validEventPresenters } from './events.ts';
@@ -140,6 +141,7 @@ export function isDemoState(
         strings(a.skills) &&
         typeof a.role === 'string' &&
         Object.hasOwn(roleLabels, a.role) &&
+        (a.preferredInstitutionId === undefined || typeof a.preferredInstitutionId === 'string') &&
         (a.suspended === undefined || typeof a.suspended === 'boolean'),
     ) &&
     list(
@@ -231,6 +233,18 @@ export function isDemoState(
       const baseline = expectedAccounts.find((s) => s.id === a.id)?.role ?? 'guest';
       return (
         a.role === baseline ||
+        (a.role === 'entrepreneur' &&
+          state.platform.institutionInvitations?.some(
+            (invite) =>
+              invite.status === 'accepted' &&
+              invite.acceptedAccountId === a.id &&
+              state.platform.audit.some(
+                (entry) =>
+                  entry.action === 'institution-invite-accept' &&
+                  entry.targetId === invite.id &&
+                  entry.actorId === a.id,
+              ),
+          )) ||
         state.platform.applications.some(
           (r) =>
             r.accountId === a.id &&
@@ -271,7 +285,15 @@ export function isDemoState(
   const opportunities = new Set(p.opportunities.map((o) => o.id));
   if (
     !unique(state.accounts.map((a) => a.email.toLowerCase())) ||
-    !state.accounts.every((a) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email))
+    !state.accounts.every(
+      (a) =>
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email) &&
+        (!a.preferredInstitutionId ||
+          a.preferredInstitutionId === 'yerh' ||
+          p.training.institutions.some(
+            (row) => row.id === a.preferredInstitutionId && supportsIndividualIncubation(row),
+          )),
+    )
   )
     return false;
   if (
@@ -293,7 +315,33 @@ export function isDemoState(
       (a) =>
         accounts.has(a.accountId) &&
         date(a.createdAt) &&
+        (a.institutionId === undefined ||
+          (a.role === 'entrepreneur' &&
+            p.training.institutions.some(
+              (row) => row.id === a.institutionId && supportsIndividualIncubation(row),
+            ))) &&
         (a.status === 'pending' || (!!a.reviewedBy && accounts.has(a.reviewedBy))),
+    )
+  )
+    return false;
+  const invitations = p.institutionInvitations ?? [];
+  if (
+    !unique(invitations.map((row) => row.id)) ||
+    !unique(invitations.filter((row) => row.status === 'pending').map((row) => row.email)) ||
+    !invitations.every(
+      (row) =>
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email) &&
+        accounts.has(row.invitedBy) &&
+        date(row.invitedAt) &&
+        p.training.institutions.some(
+          (institution) =>
+            institution.id === row.institutionId && supportsIndividualIncubation(institution),
+        ) &&
+        (row.status !== 'accepted' ||
+          state.accounts.some(
+            (account) =>
+              account.id === row.acceptedAccountId && account.email.toLowerCase() === row.email,
+          )),
     )
   )
     return false;

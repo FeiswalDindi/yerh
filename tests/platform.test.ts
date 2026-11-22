@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
-import { applyDemoAction, type DemoState } from '../src/domain/demo.ts';
+import { applyDemoAction, type DemoAction, type DemoState } from '../src/domain/demo.ts';
 import { isDemoState, migrateDemoState } from '../src/domain/demo-validation.ts';
 import { can } from '../src/domain/roles.ts';
+import { institutionProgramme } from '../src/domain/institution-programme.ts';
 import { assertCmsSnapshot } from '../src/domain/cms.ts';
 import type { Catalog } from '../src/domain/content.ts';
 import { mediaAssets } from '../src/config/media.ts';
@@ -18,7 +19,6 @@ import {
 } from '../src/domain/incubation.ts';
 import { sessionCategory } from '../src/domain/events.ts';
 import { courseCertificateQueue, courseCompletionRecords } from '../src/domain/courses.ts';
-import type { PlatformAction } from '../src/domain/platform.ts';
 const fixture = (n: string) =>
   JSON.parse(readFileSync(new URL(`../src/mocks/data/${n}.json`, import.meta.url), 'utf8'));
 const seed = (): DemoState => ({
@@ -184,6 +184,7 @@ test('signup creates only a guest, passwords are absent, and admin approval unlo
     type: 'role-apply',
     id: 'application',
     role: 'entrepreneur',
+    institutionId: 'demo-university',
     motivation: 'I am building a retail venture and would like structured learning and mentorship.',
     organisation: '',
     expertise: '',
@@ -500,6 +501,317 @@ test('a guest can complete a course, earn a certificate, and reserve and cancel 
   assert.ok(isDemoState(s, fixture('accounts')));
 });
 
+test('email sign-in requires the institution linked to the account', () => {
+  const initial = seed();
+  const emailLogin = (email: string, institutionId: string, state = initial) =>
+    applyDemoAction(state, { type: 'email-sign-in', email, institutionId });
+
+  assert.equal(
+    emailLogin('  DEMO-FOUNDER@EXAMPLE.TEST ', 'demo-university').activeAccountId,
+    'demo-founder',
+  );
+  assert.throws(
+    () => emailLogin('demo-founder@example.test', 'demo-high-school'),
+    /selected institution/,
+  );
+  assert.throws(() => emailLogin('demo-founder@example.test', 'yerh'), /selected institution/);
+  assert.equal(
+    emailLogin('demo-school@example.test', 'demo-high-school').activeAccountId,
+    'demo-school',
+  );
+  assert.throws(
+    () => emailLogin('demo-school@example.test', 'demo-university'),
+    /selected institution/,
+  );
+  assert.throws(
+    () => emailLogin('demo-university-staff@example.test', 'demo-high-school'),
+    /selected institution/,
+  );
+  assert.equal(emailLogin('demo-admin@example.test', 'yerh').activeAccountId, 'demo-admin');
+  assert.throws(
+    () => emailLogin('demo-guest@example.test', 'demo-high-school'),
+    /selected institution/,
+  );
+  assert.throws(() => emailLogin('demo-guest@example.test', ''), /active portal/);
+  assert.throws(
+    () => emailLogin('demo-guest@example.test', 'yerh', login(initial, 'demo-admin')),
+    /sign out/i,
+  );
+  const deactivated = applyDemoAction(login(initial, 'demo-admin'), {
+    type: 'institution-deactivate',
+    id: 'demo-university',
+    now,
+  });
+  assert.throws(
+    () =>
+      emailLogin('demo-founder@example.test', 'demo-university', {
+        ...deactivated,
+        activeAccountId: null,
+      }),
+    /active portal/,
+  );
+  const signup = {
+    type: 'signup',
+    id: 'guest-with-preference',
+    name: 'Preview Guest',
+    email: 'preferred@example.test',
+    location: 'Nairobi',
+    phone: '',
+    ageRange: '',
+    consent: true,
+    institutionId: 'demo-university',
+    now,
+  } as const;
+  const guest = applyDemoAction(initial, signup);
+  assert.ok(isDemoState(guest, fixture('accounts')));
+  assert.equal(guest.accounts.at(-1)?.preferredInstitutionId, 'demo-university');
+  assert.equal(guest.platform.training.affiliations[signup.id], undefined);
+  const signedOut = { ...guest, activeAccountId: null };
+  assert.equal(emailLogin(signup.email, 'demo-university', signedOut).activeAccountId, signup.id);
+  assert.equal(emailLogin(signup.email, 'yerh', signedOut).activeAccountId, signup.id);
+  assert.throws(
+    () => emailLogin(signup.email, 'demo-high-school', signedOut),
+    /selected institution/,
+  );
+  assert.throws(
+    () =>
+      applyDemoAction(signedOut, { ...signup, id: 'duplicate', email: signup.email.toUpperCase() }),
+    /already exists/,
+  );
+});
+
+test('incubation applications need an active university or hub and record affiliation only on approval', () => {
+  const { act, reject, state, admin } = trainingScenario();
+  const guest = 'demo-guest';
+  const request = {
+    type: 'role-apply',
+    id: 'affiliation-application',
+    role: 'entrepreneur',
+    motivation: 'I am affiliated with this institution and want to test a local venture.',
+    organisation: '',
+    expertise: '',
+    now,
+  } as const;
+  reject(guest, request, /active university or hub/);
+  reject(guest, { ...request, institutionId: 'demo-high-school' }, /active university or hub/);
+  act(guest, { ...request, institutionId: 'demo-university' });
+  assert.equal(state().platform.training.affiliations[guest], undefined);
+  const review = {
+    type: 'role-review',
+    id: request.id,
+    decision: 'rejected',
+    reason: 'Please provide more detail about your affiliation.',
+    now,
+  } as const;
+  act(admin, review);
+  assert.equal(state().accounts.find((row) => row.id === guest)?.role, 'guest');
+  act(guest, { ...request, institutionId: 'demo-university', id: 'resubmitted' });
+  reject(
+    admin,
+    { type: 'account-admin', accountId: guest, role: 'entrepreneur', now },
+    /approve an incubation application/i,
+  );
+  act(admin, { ...review, id: 'resubmitted', decision: 'approved' });
+  assert.equal(state().accounts.find((row) => row.id === guest)?.role, 'entrepreneur');
+  assert.equal(state().platform.training.affiliations[guest], 'demo-university');
+});
+
+test('hub invitations are scoped, single use, and can activate new or existing learner accounts', () => {
+  const { act, reject, state, admin } = trainingScenario();
+  const hubStaff = 'demo-editor';
+  const hub = 'test-enterprise-hub';
+  act(admin, {
+    type: 'institution-create',
+    id: hub,
+    kind: 'hub',
+    name: 'Test Enterprise Hub',
+    adminId: '',
+    amount: 18000,
+    now,
+  });
+  assert.equal(state().platform.training.institutions.find((row) => row.id === hub)?.adminId, '');
+  const invite = {
+    type: 'institution-invite',
+    id: 'membership-link',
+    institutionId: hub,
+    email: 'invited-learner@example.test',
+    name: 'Invited Learner',
+    now,
+  } as const;
+  reject(hubStaff, invite, /active university or hub/);
+  act(admin, {
+    type: 'institution-proof',
+    id: hub,
+    name: 'test-hub-agreement.pdf',
+    data: 'data:application/pdf;base64,JVBERi0xLjQK',
+    now,
+  });
+  reject(admin, { type: 'institution-activate', id: hub, now }, /administrator before activating/);
+  const assign = { type: 'institution-assign-admin', id: hub, adminId: hubStaff, now } as const;
+  reject(admin, assign, /available institutional administrator/);
+  reject(admin, { ...assign, adminId: 'demo-school' }, /available institutional administrator/);
+  reject(
+    admin,
+    { type: 'account-admin', accountId: hubStaff, role: 'school_admin', now },
+    /guest account/,
+  );
+  act(admin, { type: 'account-admin', accountId: hubStaff, role: 'guest', now });
+  act(admin, { type: 'account-admin', accountId: hubStaff, role: 'school_admin', now });
+  reject(hubStaff, assign, /pending institution awaiting/);
+  act(admin, assign);
+  act(admin, { type: 'institution-activate', id: hub, now });
+  reject(
+    'demo-school',
+    { ...invite, institutionId: 'demo-high-school' },
+    /active university or hub/,
+  );
+  reject('demo-university-staff', invite, /authorized staff access/);
+  const batch = {
+    type: 'institution-invite-bulk',
+    institutionId: hub,
+    entries: [
+      { id: invite.id, name: invite.name, email: invite.email },
+      { id: 'another-hub-invitation', name: 'Second Learner', email: 'SECOND@example.test' },
+    ],
+    now,
+  } as const;
+  const bulk = { ...batch, entries: [...batch.entries] };
+  reject('demo-university-staff', bulk, /authorized staff access/);
+  reject(
+    hubStaff,
+    {
+      ...bulk,
+      entries: [batch.entries[0], { ...batch.entries[1], email: invite.email.toUpperCase() }],
+    },
+    /Entry 2.*more than once in the batch/,
+  );
+  reject(
+    hubStaff,
+    {
+      ...bulk,
+      entries: [batch.entries[0], { ...batch.entries[1], email: 'demo-founder@example.test' }],
+    },
+    /Entry 2.*already has an institution affiliation/,
+  );
+  assert.equal(state().platform.institutionInvitations?.length ?? 0, 0);
+  act(hubStaff, bulk);
+  assert.deepEqual(
+    state().platform.institutionInvitations?.map(({ email }) => email),
+    [invite.email, 'second@example.test'],
+  );
+  assert.equal(
+    applyDemoAction(
+      { ...state(), activeAccountId: null },
+      {
+        type: 'email-sign-in',
+        email: 'demo-editor@example.test',
+        institutionId: hub,
+      },
+    ).activeAccountId,
+    hubStaff,
+  );
+  const claim = {
+    type: 'institution-invite-accept',
+    id: invite.id,
+    accountId: 'new-invited-member',
+    location: 'Nairobi',
+    consent: true,
+    now,
+  } as const;
+  reject('demo-guest', claim, /sign out/i);
+  let accepted = applyDemoAction({ ...state(), activeAccountId: null }, claim);
+  assert.ok(isDemoState(accepted, fixture('accounts')));
+  assert.equal(accepted.activeAccountId, claim.accountId);
+  assert.equal(accepted.accounts.find((row) => row.id === claim.accountId)?.role, 'entrepreneur');
+  assert.equal(accepted.platform.training.affiliations[claim.accountId], hub);
+  const reportFor = (viewer: string, institutionId: string) =>
+    institutionProgramme(
+      accepted.platform,
+      accepted.accounts,
+      institutionId,
+      accepted.accounts.find((row) => row.id === viewer)!,
+    );
+  assert.deepEqual(
+    reportFor(hubStaff, hub)?.members.map(({ id }) => id),
+    [claim.accountId],
+  );
+  assert.equal(reportFor(hubStaff, hub)?.members[0]?.ventures.length, 0);
+  assert.equal(reportFor('demo-university-staff', hub), null);
+  assert.equal(reportFor(hubStaff, 'demo-university'), null);
+  assert.equal(reportFor(claim.accountId, hub), null);
+  assert.throws(() => applyDemoAction(accepted, claim), /no longer available/);
+
+  const guest = state().accounts.find((row) => row.id === 'demo-guest')!;
+  act(guest.id, { type: 'course-purchase', id: 'business-foundations', expectedPrice: 750, now });
+  act(guest.id, {
+    type: 'progress',
+    lessonId: 'business-opportunities-mapping-and-idea-generation',
+    now,
+  });
+  act(guest.id, {
+    type: 'role-apply',
+    id: 'earlier-request',
+    role: 'entrepreneur',
+    institutionId: 'demo-university',
+    motivation: 'I want to test a venture after completing my first short course.',
+    organisation: '',
+    expertise: '',
+    now,
+  });
+  act(admin, { ...invite, id: 'existing-link', email: guest.email, name: guest.name });
+  assert.equal(
+    applyDemoAction(
+      { ...state(), activeAccountId: null },
+      { type: 'email-sign-in', email: guest.email, institutionId: hub },
+    ).activeAccountId,
+    guest.id,
+  );
+  assert.throws(
+    () =>
+      applyDemoAction(
+        { ...state(), activeAccountId: null },
+        { type: 'email-sign-in', email: guest.email, institutionId: 'demo-university' },
+      ),
+    /selected institution/,
+  );
+  reject('demo-mentor', { ...claim, id: 'existing-link' }, /invited email/);
+  act(guest.id, { ...claim, id: 'existing-link' });
+  accepted = state();
+  assert.equal(accepted.accounts.find((row) => row.id === guest.id)?.role, 'entrepreneur');
+  assert.equal(accepted.accounts.length, fixture('accounts').length);
+  assert.ok(accepted.platform.enrollments[guest.id]?.includes('business-foundations'));
+  assert.ok(
+    accepted.progress[guest.id]?.includes('business-opportunities-mapping-and-idea-generation'),
+  );
+  assert.equal(
+    applyDemoAction(
+      { ...accepted, activeAccountId: null },
+      {
+        type: 'email-sign-in',
+        email: guest.email,
+        institutionId: hub,
+      },
+    ).activeAccountId,
+    guest.id,
+  );
+  assert.throws(
+    () =>
+      applyDemoAction(
+        { ...accepted, activeAccountId: null },
+        {
+          type: 'email-sign-in',
+          email: guest.email,
+          institutionId: 'demo-university',
+        },
+      ),
+    /selected institution/,
+  );
+  assert.equal(
+    accepted.platform.applications.find((row) => row.id === 'earlier-request')?.status,
+    'withdrawn',
+  );
+});
+
 test('members request role changes independently of first applications and retain their role until review', () => {
   const request = {
     type: 'role-change-request',
@@ -617,11 +929,11 @@ test('venture approval, incubation assignment, mentor updates and graduation pre
 
 function trainingScenario() {
   let state = seed();
-  const act = (accountId: string, action: PlatformAction) => {
+  const act = (accountId: string, action: DemoAction) => {
     state = applyDemoAction(login(state, accountId), action);
     assert.ok(isDemoState(state, fixture('accounts')), action.type);
   };
-  const reject = (accountId: string, action: PlatformAction, message: RegExp) =>
+  const reject = (accountId: string, action: DemoAction, message: RegExp) =>
     assert.throws(() => applyDemoAction(login(state, accountId), action), message);
   const owner = 'demo-founder';
   const mentor = 'demo-mentor';
@@ -723,8 +1035,48 @@ function trainingScenario() {
 test('graded stages complete in order independently of score and fees, with product-specific graduation and a free final credential', () => {
   const { act, reject, owner, mentor, admin, launch, openStage, product, visible, state } =
     trainingScenario();
+  const report = (viewer = 'demo-university-staff') => {
+    const { accounts, platform } = state();
+    return institutionProgramme(
+      platform,
+      accounts,
+      'demo-university',
+      accounts.find(({ id }) => id === viewer)!,
+    );
+  };
+  const programmeVenture = () => report()?.members.find(({ id }) => id === owner)?.ventures[0];
+  assert.equal(programmeVenture()?.action, 'Launch pathway');
   product('original');
   launch(owner, 'demo-venture-green', ['original']);
+  act(owner, {
+    type: 'venture-save',
+    venture: {
+      ...state().platform.ventures[0]!,
+      id: 'second-venture',
+      name: 'Second programme venture',
+    },
+    now,
+  });
+  act(admin, {
+    type: 'venture-review',
+    entity: 'venture',
+    id: 'second-venture',
+    decision: 'approved',
+    now,
+  });
+  act(owner, {
+    type: 'incubation-apply',
+    id: 'second-pathway',
+    ventureId: 'second-venture',
+    goal: 'Develop a separate offer for a different group of customers.',
+    now,
+  });
+  assert.deepEqual(
+    report()
+      ?.members.find(({ id }) => id === owner)
+      ?.ventures.map(({ action }) => action),
+    ['Prepare stage work', 'Awaiting mentor assignment'],
+  );
   act(owner, {
     type: 'product-evidence',
     productId: 'original',
@@ -749,6 +1101,8 @@ test('graded stages complete in order independently of score and fees, with prod
   } as const;
   reject(admin, final, /all required stages/);
   const key = openStage(owner, 'getting-started');
+  assert.equal(programmeVenture()?.action, 'Assessment open');
+  assert.deepEqual(programmeVenture()?.certificates, []);
   const attempt = (id: string, score: number, stageKey = key) => {
     act(owner, {
       ...stageKey,
@@ -769,6 +1123,13 @@ test('graded stages complete in order independently of score and fees, with prod
     false,
   );
   attempt('first-assessment', 0);
+  assert.equal(programmeVenture()?.stage?.id, 'advanced');
+  assert.equal(programmeVenture()?.certificates[0]?.payment, 'due');
+  assert.ok(programmeVenture()?.activity.some(({ title }) => title === 'Assessment graded'));
+  assert.doesNotMatch(
+    JSON.stringify(programmeVenture()),
+    /I tested the offer|using the stage rubric/,
+  );
   assert.equal(stageUnlocked(state().platform, state().platform.incubations[0]!, 'advanced'), true);
   const first = { ...final, id: 'first', kind: 'getting-started' } as const;
   reject(admin, first, /payment/);
@@ -779,13 +1140,47 @@ test('graded stages complete in order independently of score and fees, with prod
     targetId: 'pathway',
     now,
   });
+  assert.equal(programmeVenture()?.certificates[0]?.payment, 'pending');
+  act(admin, { type: 'training-payment-review', id: 'stage-payment', decision: 'declined', now });
+  assert.equal(programmeVenture()?.certificates[0]?.payment, 'declined');
+  act(owner, {
+    type: 'training-payment-request',
+    id: 'stage-payment-retry',
+    purpose: 'getting-started',
+    targetId: 'pathway',
+    now,
+  });
   reject(admin, first, /payment/);
-  act(admin, { type: 'training-payment-review', id: 'stage-payment', decision: 'confirmed', now });
+  act(admin, {
+    type: 'training-payment-review',
+    id: 'stage-payment-retry',
+    decision: 'confirmed',
+    now,
+  });
   act(admin, first);
+  assert.equal(programmeVenture()?.certificates[0]?.payment, 'confirmed');
+  assert.equal(programmeVenture()?.certificates[0]?.issuedAt, now);
+  act(admin, {
+    type: 'institution-access',
+    id: 'demo-university',
+    accountId: 'demo-guest',
+    access: 'view',
+    now,
+  });
+  assert.equal(report('demo-guest')?.canViewPayments, false);
+  assert.deepEqual(
+    report('demo-guest')?.members.find(({ id }) => id === owner)?.ventures[0]?.certificates,
+    [],
+  );
   reject(admin, first, /already been issued/);
   attempt('stage-two', 45, openStage(owner, 'advanced'));
   attempt('stage-three', 25, openStage(owner, 'funding'));
   act(admin, final);
+  assert.equal(programmeVenture()?.action, 'Pathway completed');
+  assert.equal(
+    programmeVenture()?.certificates.find(({ kind }) => kind === 'venture')?.payment,
+    'free',
+  );
   assert.equal(
     state().platform.training.credentials.find((record) => record.id === 'final')?.schoolScore,
     undefined,
@@ -858,7 +1253,7 @@ test('paid listings need confirmed payment and moderation, with settings and amo
 });
 
 test('school agreements gate activation and school ventures issue certificates with classifications for all completed assessments', () => {
-  const { act, reject, owner, admin, launch, openStage, state } = trainingScenario();
+  const { act, reject, admin, launch, openStage, state } = trainingScenario();
   const school = 'demo-school';
   const pupil = 'demo-student-a';
   const teammate = 'demo-student-b';
@@ -940,7 +1335,6 @@ test('school agreements gate activation and school ventures issue certificates w
     },
     /your high school/,
   );
-  act(owner, { type: 'institution-affiliation', id: 'demo-university', now });
   act(school, {
     type: 'institution-class',
     id: 'class',

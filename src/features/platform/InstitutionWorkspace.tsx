@@ -3,6 +3,8 @@ import { Settings } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { StudentDirectory } from './StudentDirectory';
 import { InstitutionResults } from './InstitutionResults';
+import { InstitutionMembers } from './InstitutionMembers';
+import { InstitutionProgramme } from './InstitutionProgramme';
 import type { DemoAccount } from '../../domain/demo';
 import type { Institution, TrainingState } from '../../domain/incubation';
 import type { PlatformState } from '../../domain/platform';
@@ -13,14 +15,18 @@ import {
   workspaceHref,
 } from '../dashboard/dashboard-navigation';
 import {
+  accountInstitution,
+  availableInstitutionAdministrators,
   cohortForVenture,
   institutionAccess,
+  institutionKindLabels,
   passMark,
   schoolCertificateClassifications,
 } from '../../domain/incubation';
 import { amount, field, submitTraining, TrainingForm, type Save } from './TrainingForms';
 import {
   WorkspaceDialog,
+  WorkspaceFormDialog,
   WorkspaceStatus,
   WorkspaceTable,
   WorkspaceTabs,
@@ -104,11 +110,7 @@ export function InstitutionsAdmin({
       />
     );
   const filter = params.get('filter') ?? '';
-  const staff = accounts.filter(
-    (account) =>
-      can(account, 'school') &&
-      !p.training.institutions.some((school) => school.adminId === account.id),
-  );
+  const staff = availableInstitutionAdministrators(p, accounts);
   return (
     <WorkspaceTable
       label="institutions"
@@ -145,54 +147,52 @@ export function InstitutionsAdmin({
               Show YERH in the institution selector
             </label>
           </TrainingForm>
-          {staff.length ? (
-            <TrainingForm
-              save={save}
-              dialog={{ action: 'Add institution', create: true }}
-              label="Create institution portal"
-              build={(data) => ({
+          <WorkspaceFormDialog
+            action="Add institution"
+            create
+            submit="Create institution"
+            onSave={(data) => {
+              const id = crypto.randomUUID();
+              const saved = submitTraining(save, {
                 type: 'institution-create',
-                id: crypto.randomUUID(),
+                id,
                 name: field(data, 'name'),
-                kind: field(data, 'kind') === 'university' ? 'university' : 'high-school',
+                kind: field(data, 'kind') as Institution['kind'],
                 adminId: field(data, 'admin'),
                 amount: Number(field(data, 'amount')),
-              })}
-            >
-              <label>
-                Institution name <input name="name" required minLength={3} maxLength={120} />
-              </label>
-              <label>
-                Institution type{' '}
-                <select name="kind">
-                  <option value="high-school">High school</option>
-                  <option value="university">University</option>
-                </select>
-              </label>
-              <label>
-                Institution administrator{' '}
-                <select name="admin" required>
-                  {staff.map((account) => (
-                    <option value={account.id} key={account.id}>
-                      {account.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Agreed contract amount (KES){' '}
-                <input name="amount" type="number" min="0" step="1" required />
-              </label>
-            </TrainingForm>
-          ) : (
-            <Link to={workspaceHref('users')}>Assign an institution administrator</Link>
-          )}
+              });
+              if (saved) setParams({ tab: 'institutions', record: id, area: 'intake' });
+              return saved;
+            }}
+          >
+            <label>
+              Institution name <input name="name" required minLength={3} maxLength={120} />
+            </label>
+            <label>
+              Institution type{' '}
+              <select name="kind">
+                {Object.entries(institutionKindLabels).map(([id, label]) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <InstitutionAdministratorField staff={staff} optional />
+            <p>
+              You can assign the administrator from Portal activation after creating the record.
+            </p>
+            <label>
+              Agreed contract amount (KES){' '}
+              <input name="amount" type="number" min="0" step="1" required />
+            </label>
+          </WorkspaceFormDialog>
         </>
       }
       rows={p.training.institutions
         .filter((school) => !filter || school.status === filter)
         .map((school) => {
-          const kind = school.kind === 'high-school' ? 'High school' : 'University';
+          const kind = institutionKindLabels[school.kind];
           const administrator = accounts.find((account) => account.id === school.adminId)?.name;
           return {
             id: school.id,
@@ -200,7 +200,7 @@ export function InstitutionsAdmin({
             cells: [
               school.name,
               kind,
-              administrator,
+              administrator ?? 'Unassigned',
               school.agreements?.length ?? (school.proof ? 1 : 0),
               <WorkspaceStatus>{school.status}</WorkspaceStatus>,
               <Link to={workspaceHref('institutions') + '&record=' + encodeURIComponent(school.id)}>
@@ -213,20 +213,43 @@ export function InstitutionsAdmin({
   );
 }
 
+function InstitutionAdministratorField({
+  staff,
+  optional = false,
+}: {
+  staff: DemoAccount[];
+  optional?: boolean;
+}) {
+  return (
+    <label>
+      Institution administrator
+      <select name="admin" defaultValue="" required={!optional}>
+        <option value="">{optional ? 'Assign later' : 'Choose an administrator'}</option>
+        {staff.map((account) => (
+          <option value={account.id} key={account.id}>
+            {account.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export function InstitutionPortal({
   p,
   account,
+  school,
   accounts,
   save,
   portalHref = workspaceHref,
 }: {
   p: PlatformState;
   account: DemoAccount;
+  school?: Institution;
   accounts: DemoAccount[];
   save: Save;
   portalHref?: (tab: string) => string;
 }) {
-  const school = p.training.institutions.find((entry) => entry.adminId === account.id);
   if (!school)
     return (
       <p>Your institution will appear here once the platform administrator sets up its portal.</p>
@@ -234,7 +257,53 @@ export function InstitutionPortal({
   const groups = p.training.groups.filter((group) => group.institutionId === school.id);
   const students = p.training.students.filter((student) => student.institutionId === school.id);
   const agreements = <AgreementsPanel school={school} accounts={accounts} save={save} />;
-  if (school.status !== 'active' || school.kind !== 'high-school') return agreements;
+  if (school.status !== 'active') return agreements;
+  if (school.kind !== 'high-school') {
+    const access = institutionAccess(school, account);
+    const progress = {
+      id: 'progress',
+      label: 'Member Progress',
+      content: (
+        <InstitutionProgramme
+          p={p}
+          institution={school}
+          accounts={accounts}
+          operator={account}
+          tab="progress"
+        />
+      ),
+    };
+    if (access !== 'manage') return access === 'view' ? progress.content : null;
+    return (
+      <WorkspaceTabs
+        label="Institution portal views"
+        views={[
+          {
+            id: 'members',
+            label: 'Members',
+            content: (
+              <InstitutionMembers p={p} institution={school} accounts={accounts} save={save} />
+            ),
+          },
+          progress,
+          {
+            id: 'programme-payments',
+            label: 'Payments & Certificates',
+            content: (
+              <InstitutionProgramme
+                p={p}
+                institution={school}
+                accounts={accounts}
+                operator={account}
+                tab="programme-payments"
+              />
+            ),
+          },
+          { id: 'agreements', label: 'Agreements', content: agreements },
+        ]}
+      />
+    );
+  }
   return (
     <WorkspaceTabs
       label="Institution portal views"
@@ -404,24 +473,29 @@ function InstitutionSettings({ school, save }: { school: Institution; save: Save
 }
 
 function InstitutionAccessEditor({
+  p,
   school,
   accounts,
   save,
   person,
 }: {
+  p: PlatformState;
   school: Institution;
   accounts: DemoAccount[];
   save: Save;
   person?: DemoAccount;
 }) {
-  const candidates = accounts.filter(
-    (account) =>
+  const candidates = accounts.filter((account) => {
+    const affiliation = accountInstitution(p, account.id);
+    return (
+      (!affiliation || affiliation.id === school.id) &&
       !account.suspended &&
       ['guest', 'admin'].includes(account.role) &&
       !school.staffIds?.includes(account.id) &&
       !school.contactIds?.includes(account.id) &&
-      account.id !== school.adminId,
-  );
+      account.id !== school.adminId
+    );
+  });
   if (!person && !candidates.length)
     return (
       <WorkspaceDialog action="Add staff or contact" create>
@@ -850,6 +924,106 @@ function AgreementsPanel({
   );
 }
 
+function InstitutionActivation({
+  school,
+  administrator,
+  availableStaff,
+  save,
+}: {
+  school: Institution;
+  administrator?: DemoAccount;
+  availableStaff: DemoAccount[];
+  save: Save;
+}) {
+  const needsAgreement = school.status === 'pending' && !school.proof;
+  const needsAdministrator = !can(administrator, 'school');
+  const canAssign = !school.adminId && availableStaff.length > 0;
+  const agreementsHref =
+    '?' +
+    new URLSearchParams({
+      tab: 'institutions',
+      record: school.id,
+      area: 'agreements',
+    });
+  const ready = !needsAgreement && !needsAdministrator;
+  return (
+    <section className="workspace-data workspace-data-toolbar institution-activation">
+      <div>
+        <h3>Portal activation</h3>
+        {ready ? (
+          <p>Ready to open the institution’s portal.</p>
+        ) : (
+          <>
+            {school.status === 'pending' && (
+              <p>
+                {needsAgreement ? (
+                  <>
+                    Upload the signed PDF in{' '}
+                    <Link className="text-link" to={agreementsHref} preventScrollReset>
+                      Agreements
+                    </Link>
+                    .
+                  </>
+                ) : (
+                  'Signed agreement uploaded.'
+                )}
+              </p>
+            )}
+            {needsAdministrator && (
+              <p>
+                {school.adminId ? (
+                  <>
+                    Restore the primary administrator’s access in{' '}
+                    <Link className="text-link" to={workspaceHref('users')}>
+                      Users &amp; roles
+                    </Link>
+                    .
+                  </>
+                ) : canAssign ? (
+                  'Assign a primary administrator to open the portal.'
+                ) : (
+                  <>
+                    Give an unassigned account the <strong>Institutional Administrator</strong> role
+                    in{' '}
+                    <Link className="text-link" to={workspaceHref('users')}>
+                      Users &amp; roles
+                    </Link>
+                    , then return here to assign that account.
+                  </>
+                )}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+      {canAssign && (
+        <TrainingForm
+          save={save}
+          label="Save administrator"
+          dialog={{ action: 'Assign administrator' }}
+          build={(data) => ({
+            type: 'institution-assign-admin',
+            id: school.id,
+            adminId: field(data, 'admin'),
+          })}
+        >
+          <InstitutionAdministratorField staff={availableStaff} />
+        </TrainingForm>
+      )}
+      {ready && (
+        <TrainingForm
+          save={save}
+          label="Activate institution"
+          dialog={{ action: 'Activate institution' }}
+          build={() => ({ type: 'institution-activate', id: school.id })}
+        >
+          <p>This opens the institution’s portal for its assigned staff.</p>
+        </TrainingForm>
+      )}
+    </section>
+  );
+}
+
 function InstitutionAdminDetails({
   p,
   school,
@@ -864,9 +1038,14 @@ function InstitutionAdminDetails({
   operator: DemoAccount;
 }) {
   const administrator = accounts.find((account) => account.id === school.adminId);
+  const availableStaff = availableInstitutionAdministrators(p, accounts, school.id);
   const students = p.training.students.filter((row) => row.institutionId === school.id);
   const groups = p.training.groups.filter((row) => row.institutionId === school.id);
-  const ventures = p.ventures.filter((row) => groups.some((group) => group.id === row.groupId));
+  const ventures = p.ventures.filter((row) =>
+    school.kind === 'high-school'
+      ? groups.some((group) => group.id === row.groupId)
+      : !row.groupId && p.training.affiliations[row.ownerId] === school.id,
+  );
   const managedProducts = p.products.filter((row) =>
     ventures.some((venture) => venture.id === row.ventureId),
   );
@@ -890,6 +1069,14 @@ function InstitutionAdminDetails({
           <InstitutionSettings school={school} save={save} />
         </div>
       </div>
+      {school.status !== 'active' && (
+        <InstitutionActivation
+          school={school}
+          administrator={administrator}
+          availableStaff={availableStaff}
+          save={save}
+        />
+      )}
       <WorkspaceTabs
         label="Institution administration pages"
         param="area"
@@ -902,11 +1089,11 @@ function InstitutionAdminDetails({
                 <dl className="workspace-profile">
                   <div>
                     <dt>Institution type</dt>
-                    <dd>{school.kind === 'high-school' ? 'High school' : 'University'}</dd>
+                    <dd>{institutionKindLabels[school.kind]}</dd>
                   </div>
                   <div>
                     <dt>Primary administrator</dt>
-                    <dd>{administrator?.name ?? '—'}</dd>
+                    <dd>{administrator?.name ?? 'Unassigned'}</dd>
                   </div>
                   <div>
                     <dt>Site visit</dt>
@@ -918,52 +1105,37 @@ function InstitutionAdminDetails({
                   </div>
                 </dl>
                 <div className="workspace-toolbar-actions">
-                  <TrainingForm
-                    save={save}
-                    label={
-                      school.status === 'active' ? 'Deactivate institution' : 'Activate institution'
-                    }
-                    dialog={{
-                      action:
-                        school.status === 'active'
-                          ? 'Deactivate institution'
-                          : 'Activate institution',
-                    }}
-                    build={() => ({
-                      type:
-                        school.status === 'active'
-                          ? 'institution-deactivate'
-                          : 'institution-activate',
-                      id: school.id,
-                    })}
-                  >
-                    <p>
-                      {school.status === 'active'
-                        ? 'Staff will retain their records. The shared portal will be locked.'
-                        : 'Review the signed agreement before opening access to this portal.'}
-                    </p>
-                  </TrainingForm>
                   {school.status === 'active' && (
-                    <TrainingForm
-                      save={save}
-                      label="Save success story"
-                      dialog={{ action: 'Edit success story' }}
-                      build={(data) => ({
-                        type: 'institution-story',
-                        id: school.id,
-                        story: field(data, 'story'),
-                        featured: data.get('featured') === 'on',
-                      })}
-                    >
-                      <label>
-                        Institution success story
-                        <textarea name="story" maxLength={3000} defaultValue={school.story} />
-                      </label>
-                      <label className="inline-checkbox">
-                        <input type="checkbox" name="featured" defaultChecked={school.featured} />
-                        Feature this institution on the homepage
-                      </label>
-                    </TrainingForm>
+                    <>
+                      <TrainingForm
+                        save={save}
+                        label="Deactivate institution"
+                        dialog={{ action: 'Deactivate institution' }}
+                        build={() => ({ type: 'institution-deactivate', id: school.id })}
+                      >
+                        <p>Staff will retain their records. The shared portal will be locked.</p>
+                      </TrainingForm>
+                      <TrainingForm
+                        save={save}
+                        label="Save success story"
+                        dialog={{ action: 'Edit success story' }}
+                        build={(data) => ({
+                          type: 'institution-story',
+                          id: school.id,
+                          story: field(data, 'story'),
+                          featured: data.get('featured') === 'on',
+                        })}
+                      >
+                        <label>
+                          Institution success story
+                          <textarea name="story" maxLength={3000} defaultValue={school.story} />
+                        </label>
+                        <label className="inline-checkbox">
+                          <input type="checkbox" name="featured" defaultChecked={school.featured} />
+                          Feature this institution on the homepage
+                        </label>
+                      </TrainingForm>
+                    </>
                   )}
                 </div>
               </>
@@ -978,7 +1150,7 @@ function InstitutionAdminDetails({
                 label="institution contacts"
                 columns={['Name', 'Email', 'Access', 'Status', 'Action']}
                 actions={
-                  <InstitutionAccessEditor school={school} accounts={accounts} save={save} />
+                  <InstitutionAccessEditor p={p} school={school} accounts={accounts} save={save} />
                 }
                 rows={people.map((person) => ({
                   id: person.id,
@@ -994,6 +1166,7 @@ function InstitutionAdminDetails({
                     <WorkspaceStatus>{person.suspended ? 'Suspended' : 'Active'}</WorkspaceStatus>,
                     person.id !== school.adminId && (
                       <InstitutionAccessEditor
+                        p={p}
                         school={school}
                         accounts={accounts}
                         save={save}
@@ -1010,12 +1183,26 @@ function InstitutionAdminDetails({
             label: 'Agreements',
             content: <AgreementsPanel school={school} accounts={accounts} save={save} />,
           },
-          {
-            id: 'students',
-            label: 'Students',
-            count: students.length,
-            content: <StudentDirectory students={students} groups={groups} />,
-          },
+          school.kind === 'high-school'
+            ? {
+                id: 'students',
+                label: 'Students',
+                count: students.length,
+                content: <StudentDirectory students={students} groups={groups} />,
+              }
+            : {
+                id: 'members',
+                label: 'Members',
+                content: (
+                  <InstitutionMembers
+                    p={p}
+                    institution={school}
+                    accounts={accounts}
+                    save={save}
+                    tabParameter="area"
+                  />
+                ),
+              },
           {
             id: 'ventures',
             label: 'Ventures & products',
@@ -1052,13 +1239,52 @@ function InstitutionAdminDetails({
               </>
             ),
           },
-          {
-            id: 'results',
-            label: 'Results & Certificates',
-            content: (
-              <InstitutionResults p={p} school={school} accounts={accounts} save={save} readonly />
-            ),
-          },
+          ...(school.kind === 'high-school'
+            ? [
+                {
+                  id: 'results',
+                  label: 'Results & Certificates',
+                  content: (
+                    <InstitutionResults
+                      p={p}
+                      school={school}
+                      accounts={accounts}
+                      save={save}
+                      readonly
+                    />
+                  ),
+                },
+              ]
+            : [
+                {
+                  id: 'progress',
+                  label: 'Member Progress',
+                  content: (
+                    <InstitutionProgramme
+                      p={p}
+                      institution={school}
+                      accounts={accounts}
+                      operator={operator}
+                      tab="progress"
+                      tabParameter="area"
+                    />
+                  ),
+                },
+                {
+                  id: 'programme-payments',
+                  label: 'Payments & Certificates',
+                  content: (
+                    <InstitutionProgramme
+                      p={p}
+                      institution={school}
+                      accounts={accounts}
+                      operator={operator}
+                      tab="programme-payments"
+                      tabParameter="area"
+                    />
+                  ),
+                },
+              ]),
           {
             id: 'activity',
             label: 'Activity log',

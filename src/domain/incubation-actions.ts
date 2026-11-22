@@ -2,6 +2,8 @@ import type { DemoAccount } from './demo';
 import type { PlatformState } from './platform';
 import { can } from './roles.ts';
 import {
+  accountInstitution,
+  availableInstitutionAdministrators,
   certificateFee,
   certificateKey,
   credentialKinds,
@@ -44,6 +46,7 @@ const trainingActionTypes = {
   'product-evidence': true,
   'product-evidence-review': true,
   'institution-create': true,
+  'institution-assign-admin': true,
   'institution-proof': true,
   'institution-settings': true,
   'yerh-sign-in': true,
@@ -57,7 +60,6 @@ const trainingActionTypes = {
   'institution-certificates-request': true,
   'institution-profile': true,
   'institution-group': true,
-  'institution-affiliation': true,
   'institution-class': true,
 } satisfies Record<TrainingAction['type'], true>;
 
@@ -604,23 +606,23 @@ export function applyTrainingAction(
       return action.productId;
     }
     case 'institution-create':
+      check(admin, 'Platform administrator access is required.');
       check(
-        admin && accounts.some((a) => a.id === action.adminId && can(a, 'school')),
-        'Select an active institutional administrator.',
+        !action.adminId ||
+          availableInstitutionAdministrators(p, accounts).some((row) => row.id === action.adminId),
+        'Select an available institutional administrator or assign one later.',
       );
       check(
-        ['high-school', 'university'].includes(action.kind) && money(action.amount),
+        ['high-school', 'university', 'hub'].includes(action.kind) && money(action.amount),
         'Enter a valid institution type and amount.',
       );
       check(
-        !t.institutions.some(
-          (i) =>
-            action.id === 'yerh' ||
-            i.id === action.id ||
-            i.adminId === action.adminId ||
-            i.name.toLowerCase() === action.name.trim().toLowerCase(),
-        ),
-        'This institution or administrator is already assigned.',
+        action.id &&
+          action.id !== 'yerh' &&
+          !t.institutions.some(
+            (i) => i.id === action.id || i.name.toLowerCase() === action.name.trim().toLowerCase(),
+          ),
+        'This institution already exists.',
       );
       t.institutions.push({
         id: action.id,
@@ -634,6 +636,21 @@ export function applyTrainingAction(
         featured: false,
       });
       return action.id;
+    case 'institution-assign-admin': {
+      const institution = t.institutions.find((row) => row.id === action.id);
+      check(
+        admin && institution?.status === 'pending' && !institution.adminId,
+        'Choose a pending institution awaiting an administrator.',
+      );
+      check(
+        availableInstitutionAdministrators(p, accounts, institution.id).some(
+          (row) => row.id === action.adminId,
+        ),
+        'Select an available institutional administrator.',
+      );
+      institution.adminId = action.adminId;
+      return institution.id;
+    }
     case 'yerh-sign-in':
       check(
         admin && typeof action.enabled === 'boolean',
@@ -661,6 +678,13 @@ export function applyTrainingAction(
             ),
           ),
           'Choose active guest accounts or platform administrators.',
+        );
+        check(
+          [...contacts, ...staff].every((id) => {
+            const affiliation = accountInstitution(p, id);
+            return !affiliation || affiliation.id === institution.id;
+          }),
+          'Choose accounts without an affiliation to another institution.',
         );
         institution.contactIds = contacts;
         institution.staffIds = staff;
@@ -727,6 +751,10 @@ export function applyTrainingAction(
               (institution.status === 'pending' && institution.proof)),
           'Review the signed agreement and proof before activating.',
         );
+        check(
+          accounts.some((row) => row.id === institution.adminId && can(row, 'school')),
+          'Assign an active institutional administrator before activating.',
+        );
         institution.status = 'active';
         migrateSchoolPathways(p);
       } else {
@@ -754,6 +782,11 @@ export function applyTrainingAction(
             !person.suspended &&
             ['guest', 'admin'].includes(person.role)),
         'Choose an active guest or platform administrator and a level of access.',
+      );
+      const affiliation = accountInstitution(p, person.id);
+      check(
+        action.access === 'none' || !affiliation || affiliation.id === institution.id,
+        'This account already has an institution affiliation.',
       );
       const staff = (institution.staffIds ?? []).filter((id) => id !== person.id);
       const contacts = (institution.contactIds ?? []).filter((id) => id !== person.id);
@@ -864,16 +897,6 @@ export function applyTrainingAction(
       });
       return action.id;
     }
-    case 'institution-affiliation':
-      check(
-        can(actor, 'learn') &&
-          t.institutions.some(
-            (i) => i.id === action.id && i.kind === 'university' && i.status === 'active',
-          ),
-        'Choose an active university.',
-      );
-      t.affiliations[actor.id] = action.id;
-      return action.id;
   }
 }
 

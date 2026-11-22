@@ -4,16 +4,18 @@ import type { EventCategory, EventCommand } from './events';
 import type { AppliedRole, Role } from './roles';
 import type { TrainingAction, TrainingState } from './incubation';
 import type { CourseCommand, CourseCommerce, CourseCompletion } from './courses';
+import type { InstitutionInvitation, InstitutionInvitationAction } from './institution-members';
 export type ReviewStatus = 'pending' | 'approved' | 'rejected';
 export interface RoleApplication {
   id: string;
   accountId: string;
   role: AppliedRole;
   fromRole?: Role;
+  institutionId?: string;
   motivation: string;
   organisation: string;
   expertise: string;
-  status: ReviewStatus;
+  status: ReviewStatus | 'withdrawn';
   createdAt: string;
   reviewedBy?: string;
   reason?: string;
@@ -146,6 +148,7 @@ export interface PlatformState {
   }[];
   courseLessons: Record<string, string[]>;
   courseCompletions?: CourseCompletion[];
+  institutionInvitations?: InstitutionInvitation[];
   applications: RoleApplication[];
   opportunities: Opportunity[];
   opportunityApplications: OpportunityApplication[];
@@ -164,6 +167,7 @@ type PlatformCommand =
   | TrainingAction
   | CourseCommand
   | EventCommand
+  | InstitutionInvitationAction
   | { type: 'certificate-issue'; id: string; accountId: string; courseId: string; now: string }
   | {
       type: 'signup';
@@ -184,6 +188,7 @@ type PlatformCommand =
       motivation: string;
       organisation: string;
       expertise: string;
+      institutionId?: string;
       now: string;
     }
   | {

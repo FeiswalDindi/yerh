@@ -1,6 +1,7 @@
 import { ArrowRight, Award, CalendarDays, GraduationCap, Store } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
+import { activeIncubationPartner } from '../../domain/incubation';
 import { roleLabels } from '../../domain/roles';
 import { PageIntro } from '../../shared/PageIntro';
 import { usePageTitle } from '../../shared/usePageTitle';
@@ -32,23 +33,44 @@ export function RoleDashboard() {
   const applications = accountRoleRequests(state.platform.applications, account.id);
   const recent = applications[0];
   const metrics = dashboardMetrics(state, account);
-  const links = dashboardGroups(account)
+  const institution = state.platform.training.institutions.find(
+    (row) => row.adminId === account.id,
+  );
+  const activeInstitution = institution?.status === 'active';
+  const offlineProgramme = activeInstitution && institution.kind === 'high-school';
+  const partner = activeIncubationPartner(
+    state.platform,
+    state.platform.training.affiliations[account.id],
+  );
+  const links = dashboardGroups(account, offlineProgramme)
     .slice(1, -1)
     .flatMap((group) => group.links);
   const priority =
-    account.role === 'school_admin'
+    account.role === 'school_admin' && offlineProgramme
       ? {
           label: 'Incubation Pathway',
           to: workspaceHref('incubation'),
           description: 'Run team pathways and open assessments.',
         }
-      : account.role === 'admin'
+      : account.role === 'school_admin' && activeInstitution
         ? {
-            label: 'Institutions',
-            to: workspaceHref('institutions'),
-            description: 'Manage institutional onboarding and access.',
+            label: 'Member Progress',
+            to: workspaceHref('school') + '&view=progress',
+            description: 'Track member activity and venture pathways.',
           }
-        : undefined;
+        : account.role === 'admin'
+          ? {
+              label: 'Institutions',
+              to: workspaceHref('institutions'),
+              description: 'Manage institutional onboarding and access.',
+            }
+          : account.role === 'entrepreneur' && partner
+            ? {
+                label: 'Incubation Pathway',
+                to: workspaceHref('incubation'),
+                description: `Launch or continue a venture pathway with ${partner.name}.`,
+              }
+            : undefined;
   const shortcuts = isGuest
     ? guestResourceLinks
     : [
@@ -63,7 +85,11 @@ export function RoleDashboard() {
         className={isGuest ? undefined : 'workspace-page-intro'}
         eyebrow={title}
         title={`Welcome, ${account.name.split(' ')[0]}.`}
-        description={`Signed in as ${roleLabels[account.role]}.`}
+        description={
+          account.role === 'school_admin' && institution
+            ? `Institutional Administrator · ${institution.name}`
+            : `Signed in as ${roleLabels[account.role]}.`
+        }
       />
       <section className="container section dashboard-overview">
         <DemoNotice />

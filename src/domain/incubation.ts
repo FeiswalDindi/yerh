@@ -1,4 +1,5 @@
 import type { Incubation, PlatformState, Product, Venture } from './platform';
+import type { DemoAccount } from './demo';
 import { can, type Role } from './roles.ts';
 
 export const stageIds = ['getting-started', 'advanced', 'funding'] as const;
@@ -60,10 +61,16 @@ export interface IncubationCredential {
   schoolScore?: number;
 }
 
+export const institutionKindLabels = {
+  'high-school': 'High school',
+  university: 'University',
+  hub: 'Hub',
+} as const;
+
 export interface Institution {
   id: string;
   name: string;
-  kind: 'high-school' | 'university';
+  kind: keyof typeof institutionKindLabels;
   adminId: string;
   amount: number;
   status: 'pending' | 'active' | 'inactive';
@@ -74,6 +81,40 @@ export interface Institution {
   staffIds?: string[];
   intake?: { notes: string; visit: string; terms: string };
   agreements?: Agreement[];
+}
+
+export function supportsIndividualIncubation(institution: Institution) {
+  return institution.kind === 'university' || institution.kind === 'hub';
+}
+
+export function accountInstitution(p: PlatformState, accountId: string) {
+  return (
+    p.training.institutions.find((institution) => institution.adminId === accountId) ??
+    p.training.institutions.find(
+      (institution) => institution.id === p.training.affiliations[accountId],
+    )
+  );
+}
+
+export function availableInstitutionAdministrators(
+  p: PlatformState,
+  accounts: DemoAccount[],
+  institutionId?: string,
+) {
+  return accounts.filter((account) => {
+    if (!can(account, 'school')) return false;
+    const affiliation = accountInstitution(p, account.id);
+    return !affiliation || (affiliation.id === institutionId && affiliation.adminId !== account.id);
+  });
+}
+
+export function activeIncubationPartner(p: PlatformState, id: string | undefined) {
+  return p.training.institutions.find(
+    (institution) =>
+      institution.id === id &&
+      institution.status === 'active' &&
+      supportsIndividualIncubation(institution),
+  );
 }
 export type Agreement = {
   id: string;
@@ -244,6 +285,7 @@ export type TrainingCommand =
       adminId: string;
       amount: number;
     }
+  | { type: 'institution-assign-admin'; id: string; adminId: string }
   | { type: 'institution-proof'; id: string; name: string; data: string }
   | {
       type: 'institution-settings';
@@ -306,8 +348,7 @@ export type TrainingCommand =
       date: string;
       challenge: string;
       attendance: string[];
-    }
-  | { type: 'institution-affiliation'; id: string };
+    };
 
 export type TrainingAction = TrainingCommand & { now: string };
 
@@ -337,7 +378,9 @@ export function institutionForPath(p: PlatformState, path: Incubation) {
   if (!venture) return undefined;
   if (venture.groupId) return schoolForVenture(p, venture);
   const affiliation = p.training.affiliations[path.ownerId];
-  return p.training.institutions.find((row) => row.kind === 'university' && row.id === affiliation);
+  return p.training.institutions.find(
+    (row) => row.id === affiliation && supportsIndividualIncubation(row),
+  );
 }
 
 /** Release legacy approval holds for teams in already onboarded schools. */

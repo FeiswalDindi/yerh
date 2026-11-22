@@ -1,4 +1,18 @@
 const origin = 'https://yerh.invalid';
+export const guestAccountPath = '/account';
+
+export function guestPublicDestination(path: string, search = '') {
+  if (path.startsWith('/dashboard/learning/'))
+    return path.replace('/dashboard/learning/', '/learn/');
+  if (path.startsWith('/dashboard/events/'))
+    return path.replace('/dashboard/events/', '/sessions/');
+  if (path === '/dashboard/learning') return '/learn';
+  if (path === '/dashboard/events')
+    return new URLSearchParams(search).get('view') === 'mine' ? '/account#reservations' : '/events';
+  if (path.startsWith('/dashboard/marketplace')) return path.slice('/dashboard'.length) + search;
+  if (path === '/dashboard/certificates') return '/account/certificates';
+  return guestAccountPath;
+}
 
 export interface AccountRequest {
   mode: 'login' | 'register';

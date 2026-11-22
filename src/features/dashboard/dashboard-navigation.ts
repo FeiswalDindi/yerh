@@ -1,4 +1,5 @@
 import { can, type Capability, type Role } from '../../domain/roles';
+import type { Institution } from '../../domain/incubation';
 import { dashboardCataloguePaths } from './catalogue-paths';
 
 type AccountAccess = { role: Role; suspended?: boolean };
@@ -107,7 +108,7 @@ const workspaceGroups = {
     {
       id: 'school',
       label: 'Institution portal',
-      description: 'Manage your agreement, students and venture teams.',
+      description: 'Manage programme participants and agreements.',
     },
     {
       id: 'member-results',
@@ -156,13 +157,20 @@ export const institutionHref = (tab: string, id: string) =>
   workspaceHref(tab) + '&institution=' + encodeURIComponent(id);
 export const ventureResultsHref = (base: string, venture: string, cohort = 'all') =>
   base + '&' + new URLSearchParams({ cohort, venture }).toString();
-export function institutionModule(requested: string | null, manage: boolean) {
-  const group = manage
-    ? [
-        ...workspaceGroups.school,
-        ...workspaceGroups.venture.filter((module) => module.id !== 'applications'),
-      ]
-    : workspaceGroups.school.filter((module) => module.id === 'member-results');
+export function institutionModule(
+  requested: string | null,
+  manage: boolean,
+  kind: Institution['kind'] = 'high-school',
+) {
+  const group =
+    kind !== 'high-school'
+      ? workspaceGroups.school
+      : manage
+        ? [
+            ...workspaceGroups.school,
+            ...workspaceGroups.venture.filter((module) => module.id !== 'applications'),
+          ]
+        : workspaceGroups.school.filter((module) => module.id === 'member-results');
   return requested ? group.find((module) => module.id === requested) : group[0];
 }
 export const cmsHref = (id: string) =>
@@ -262,14 +270,17 @@ const contentLinks = [
 
 export function dashboardGroups(
   account: AccountAccess,
+  schoolProgramme = true,
 ): { label: string; links: DashboardLink[] }[] {
   const groups: { label: string; links: DashboardLink[] }[] = [
     { label: 'Dashboard', links: [{ label: 'Overview', to: '/dashboard' }] },
   ];
   for (const group of workspaceOrder[account.role]) {
     if (!can(account, group)) continue;
+    if (account.role === 'school_admin' && group === 'venture' && !schoolProgramme) continue;
     const links: DashboardLink[] = modulesFor(account, group)
       .filter((module) => module.id !== 'institutions')
+      .filter((module) => schoolProgramme || module.id !== 'member-results')
       .map(({ id, label, description }) => ({
         label,
         description,

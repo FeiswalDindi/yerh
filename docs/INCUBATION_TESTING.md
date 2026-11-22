@@ -12,9 +12,53 @@ Run `npm run dev` from the repository and open [Demo accounts](http://127.0.0.1:
 
 Select **Switch demo role** in the blue header to switch accounts in the same tab. If the approval queue is empty but your product shows a pending status, return to the browser profile that shows the product and choose **Switch demo role to review** from **View**. **Reset demo data** clears previous local demo work.
 
+## 0. Guest access, applications, and institutional invitations
+
+Use the same browser profile and local address throughout. Each role sees the fictional records saved on that address. The invitation screen simulates account activation in the browser. Real email delivery and password setup require the authentication backend.
+
+### A. Apply for incubation as a guest
+
+1. Open **Demo accounts** and choose **Morgan Kariuki — Guest**, or create a fictional account from **Create account**. The guest lands on the public **Account** page. Open **Browse courses** and confirm the catalogue shows **Incubation Pathway** and **General Courses**.
+2. Open a general course. Enroll, confirm the demo payment if the course has a fee, and mark each lesson complete. Use **Track your certificate** and confirm the course certificate is visible in the public account. Open **Events** from the public site, reserve an open session, and check **Account → Event reservations**. Open `/dashboard` directly as the guest and confirm it redirects to the public account.
+3. In **Courses → Incubation Pathway**, select **Apply for incubation**. Keep **Youth Entrepreneur / Learner** selected, choose **Lakeside Demo University**, enter your affiliation and motivation, and select **Submit application**. Check that the application is pending and that the account still gives access to general courses.
+4. Switch to **Alex Mwangi — Platform Administrator**. Open **Approval queue → Role requests**. Search for the learner, find the affiliated institution in the table, and open **Review**. Choose **Reject**, enter a reason, and save. Switch back to the same guest and verify the feedback and the option to apply again.
+5. Submit a new application and approve it as Alex. Sign back in using the same learner account. The learner now lands on the entrepreneur dashboard. Check the affiliation in **Profile** or **Incubation**, verify earlier course progress, and create a venture to unlock **Launch venture** in the pathway workspace.
+
+### B. Onboard a hub and invite members
+
+1. As Alex, go to **Institution directory → Add institution**. Choose **Hub**, enter the name and agreed amount, and select an available administrator or leave **Assign later** selected. **Create institution** opens the pending record’s **Intake** page.
+2. If the administrator is unassigned, create a separate fictional guest account or use an available test account. As Alex, give it the **Institutional Administrator** role in **Users & roles → Manage access**. Return to the hub and select **Portal activation → Assign administrator**. Record the visit and terms and upload a dummy signed PDF up to 250 KB under **Agreements**. Click **Activate institution** in **Portal activation** and confirm. The institution changes from **Pending** to **Active**.
+3. Sign in as the hub administrator. Open **Institution portal → Members → Invite member**. Enter a fictional name and an unused email. Select **Create invitation**, then **Open invitation link** in the invitation row.
+4. On the invitation page, sign out of the staff account. Enter a fictional city or county, accept the demo terms, and select **Activate demo account**. Confirm that the account opens the entrepreneur dashboard immediately and displays the hub affiliation in **Profile**. Switch back to the hub administrator and verify that **Members** lists the learner and the invitation shows **Accepted**.
+5. Test an existing guest account with general-course progress by inviting its exact email. Sign in with that email from the invitation page and select **Accept invitation**. Confirm the same account opens the entrepreneur dashboard with its saved learning progress. Platform administrators can also invite members directly from **Institution directory → Manage institution → Members**.
+6. As the platform administrator, confirm the active hub appears in the public incubation application selector. A second institution administrator should only see invitations and members for the institution they manage.
+
+#### Invite a batch and check institution sign-in
+
+1. As **Ari Kamau** or the primary administrator of an active hub, open **Overview** and check the institution name below the welcome heading. Open **Institution portal** and confirm the institution name appears above the tabs.
+2. In **Members**, choose **Invite members**. Paste one name and email per line, such as `Amina Demo, amina-batch@example.test` and `Brian Demo, brian-batch@example.test` on separate lines. Select **Create invitations**. Confirm that each row has its own **Open invitation link**. Repeat with a duplicate or an email already affiliated elsewhere. The form should identify the matching entry and save none of the batch.
+3. Accept one of the new invitations and confirm the learner appears in that institution’s **Members** tab as a Youth Entrepreneur. Keep using the same browser profile and local address. Demo invitation links use records stored in that browser.
+4. Sign out and use the website’s **Sign in** link. Select **Lakeview Demo High School**, continue, and submit `demo-university-staff@example.test`. Verify the mismatch error and check that you are still signed out. Select **Change institution**, choose **Lakeside Demo University**, and retry with the same email. Ari’s portal should open. Repeat with an accepted hub invitee at the wrong university, then at their own hub.
+5. Use **YERH** for an independent account such as `demo-admin@example.test`. To verify the high-school route, use `demo-school@example.test` with **Lakeview Demo High School**. School student profiles remain offline.
+
+#### Track university and hub members
+
+1. Sign in as **Ari Kamau — Institutional Administrator** for **Lakeside Demo University**. Open **Institution portal → Member Progress**. On fresh demo data, **Demo Green Basket** is ready to launch, and members without a venture have **Create a venture** in the Next action column. Use a member’s name to see all their ventures and a venture’s name to see its three stages and pathway activity.
+2. For an end-to-end hub test, complete the hub invitation steps above. Before acceptance, check **Members → Invitations**. After acceptance, check **Member Progress** for the new member. As the learner, use the **Incubation Pathway** quick action. Create a venture in **Ventures**, approve it as Alex in **Approval queue → Ventures & organisations**, then go back to the learner and choose **Incubation → Launch venture**. A product is optional.
+3. As the institution administrator, confirm the venture shows **Awaiting mentor assignment**. Use **Next action** to filter on that value and **Export CSV** to verify the download has only the matching rows. As Alex, assign Jordan in **Approval queue → Incubation applications**. As the learner, open the pathway, save both **Getting Started** evidence steps, and select **Request stage review**. Switch to the institution administrator and confirm **Getting Started** shows **Awaiting mentor review**.
+4. As Jordan, go to **Mentees & milestones → Assigned ventures → Review stages**. Schedule the meeting and open the assessment. As the learner, submit an exam answer. As Jordan, grade it. The institution’s report should now show **Intermediate / Advanced** as the current stage. In **Payments & Certificates**, confirm the Getting Started fee shows **Payment needed**.
+5. As the learner, select **Record demo payment** for the Getting Started certificate. The institution should see **Awaiting confirmation**. As Alex, confirm it in **Payments → Awaiting confirmation**, then issue the certificate in **Certificates → Awaiting approval**. Back in the institution, verify **Confirmed** and **Issued**. For **Funding (Aid)** or the final venture certificate, verify **No fee** after the required stages are assessed.
+6. Create or launch a second venture for the same learner and confirm it has its own row and stage. Switch to Ari and verify that the hub learner is absent from the university report and CSV. As Alex, open the hub in **Institution directory → Manage institution → Member Progress** to verify the same hub report. A user assigned read-only institution access can view progress without programme payment records.
+
+### C. Verify the high-school route
+
+1. Choose **Sam Njeri — Institutional Administrator**, then open **Institution portal → Students**. Add a fictional student. Confirm the record asks for school details such as form and admission number and gives access to the staff roster.
+2. Use **Venture teams** to group students, record a session in **Classes**, and follow the [school results walkthrough](#3-school-cohorts-results-and-certificates) to launch a team venture, enter marks, and request certificates. Staff can download issued certificates for distribution.
+3. Return to **Demo accounts** and confirm the new student has no sign-in card. Confirm **Lakeview Demo High School** is available to its authorized staff and is omitted from the public incubation application selector. High-school institution records use **Students**, while university and hub records use **Members** and invitations.
+
 ## 1. Individual founder, mentor, and certificates
 
-1. Sign in as the founder. In **Incubation**, select **Set university** and choose **Lakeside Demo University**. To test a new university student, register with a fictional email, select a university in **Profile**, request the entrepreneur role, and approve it from **Approval queue → Role requests**.
+1. Sign in as the founder and open **Incubation**. To test a newly affiliated entrepreneur, use the guest application or institutional invitation walkthrough above.
 2. In **Products**, select **Add product**. In the dialog, choose **Demo Green Basket**, enter a product name, a description of at least 20 characters, and a price in KES. Select **Submit product for approval**. The product appears in the Products table.
 3. Open **View**, then select **Switch demo role to review**, then choose **Alex Mwangi — Platform Administrator**. In **Approval queue → Product listings**, select **Review listing**, then **Approve listing**.
 4. Switch back to the founder. In **Incubation**, select **Launch venture**. Choose **Demo Green Basket**, check the product under **Products in scope**, enter a goal of at least 30 characters, and select **Launch into incubation**. As platform administrator, open **Approval queue → Incubation applications**. Select **Review application** for the venture, choose the demo mentor and **Accept & assign**, then select **Save incubation decision**.
@@ -44,9 +88,9 @@ Select **Switch demo role** in the blue header to switch accounts in the same ta
 
 ## 4. Onboard and manage an institution
 
-1. As platform administrator, give an available demo member the **Institutional Administrator** role under **Users & roles → Manage access**. Go to **Institutions → Institution directory → Add institution**, choose the administrator and type, and enter the agreed amount.
+1. As platform administrator, open **Institutions → Institution directory → Add institution**, choose the type, and enter the agreed amount. Select an available administrator or use **Assign later**. For an unassigned institution, give an available test account the **Institutional Administrator** role under **Users & roles → Manage access**, then assign it from **Portal activation**.
 2. Select **Manage institution → Edit intake** to record the application, visit date, terms, and agreed amount. In **Staff & contacts**, select **Add staff or contact** to assign an eligible account, then use **Edit** to change or remove its access.
-3. In the institution’s **Agreements** tab, select **View** beside **Agreed terms** and upload a dummy signed PDF up to 250 KB. Return to **Intake** and choose **Activate institution**. Upload another agreement and check that both PDFs remain downloadable.
+3. In the institution’s **Agreements** tab, select **View** beside **Agreed terms** and upload a dummy signed PDF up to 250 KB. Once the primary administrator and agreement are in place, choose **Activate institution** above the tabs and confirm. Upload another agreement and check that both PDFs remain downloadable.
 4. Visit **Students**, **Ventures & products**, **Results & Certificates**, and **Activity log** in the institution’s admin record. Sign in as a school administrator to verify that the same institution’s **Agreements** tab is at the end of the portal navigation. Sign in as a results-only contact to verify that the contact can read results and issued certificates.
 5. In the platform admin record, open **Intake → Edit success story** to feature the institution in **My Story** on the homepage. Use **Deactivate institution** and **Activate institution** to test access and record retention.
 

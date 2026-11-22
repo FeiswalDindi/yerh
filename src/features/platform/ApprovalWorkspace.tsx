@@ -262,21 +262,25 @@ export function ApprovalWorkspace({
           content: (
             <WorkspaceTable
               label="role requests"
-              columns={['Applicant', 'Requested role', 'Request type', 'Action']}
+              columns={['Applicant', 'Requested role', 'Institution', 'Request type', 'Action']}
               empty="No role requests are awaiting review."
               rows={roles.map((application) => {
                 const applicant = name(application.accountId);
                 const role = roleLabels[application.role];
+                const institution = p.training.institutions.find(
+                  (row) => row.id === application.institutionId,
+                );
                 const request =
                   application.fromRole && application.fromRole !== 'guest'
                     ? `Role change from ${roleLabels[application.fromRole]}`
                     : 'Role application';
                 return {
                   id: application.id,
-                  search: `${applicant} ${role} ${request}`,
+                  search: `${applicant} ${role} ${institution?.name ?? ''} ${request}`,
                   cells: [
                     applicant,
                     role,
+                    institution?.name ?? '—',
                     request,
                     <WorkspaceFormDialog
                       action="Review request"
@@ -292,6 +296,11 @@ export function ApprovalWorkspace({
                         })
                       }
                     >
+                      {institution && (
+                        <p>
+                          <strong>Requested affiliation</strong> · {institution.name}
+                        </p>
+                      )}
                       <p>{application.motivation}</p>
                       <p>
                         {application.organisation} {application.expertise}

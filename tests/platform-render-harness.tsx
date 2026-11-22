@@ -22,6 +22,8 @@ import { CmsPage } from '../src/features/cms/CmsPage';
 import { CmsPreview } from '../src/features/cms/CmsPreview';
 import { RequireDemo } from '../src/features/demo/RequireDemo';
 import { LearningPage } from '../src/features/resources/LearningPage';
+import { GuestAccount } from '../src/features/accounts/GuestAccount';
+import { InstitutionInvitationPage } from '../src/features/accounts/InstitutionInvitationPage';
 import { useCatalog } from '../src/app/useCatalog';
 import { applyDemoAction, type DemoState } from '../src/domain/demo';
 import { DashboardLayout } from '../src/features/dashboard/DashboardLayout';
@@ -89,7 +91,7 @@ export async function checkPlatformRendering() {
                   <Route
                     path="/dashboard"
                     element={
-                      <RequireDemo>
+                      <RequireDemo workspace>
                         <DashboardLayout />
                       </RequireDemo>
                     }
@@ -112,7 +114,25 @@ export async function checkPlatformRendering() {
                       }
                     />
                   </Route>
+                  <Route path="/learn" element={<LearningPage />} />
                   <Route path="/learn/:courseId" element={<LearningPage />} />
+                  <Route
+                    path="/account"
+                    element={
+                      <RequireDemo>
+                        <GuestAccount />
+                      </RequireDemo>
+                    }
+                  />
+                  <Route
+                    path="/account/certificates"
+                    element={
+                      <RequireDemo>
+                        <DashboardCertificates publicAccount />
+                      </RequireDemo>
+                    }
+                  />
+                  <Route path="/account/invitations/:id" element={<InstitutionInvitationPage />} />
                 </Routes>
               </DemoCatalogOverlay>
             )}
@@ -243,9 +263,9 @@ export async function checkPlatformRendering() {
     );
   assert.ok(render('/apply').includes('Sign in before applying'));
   assert.ok(!render('/apply', 'demo-guest').includes('<option value="admin">'));
-  assert.ok(render('/dashboard/cms', 'demo-guest').includes('different role'));
+  assert.ok(!render('/dashboard/cms', 'demo-guest').includes('Dashboard navigation'));
   assert.ok(render('/dashboard/cms', 'demo-founder').includes('different role'));
-  for (const account of state.accounts) {
+  for (const account of state.accounts.filter((row) => row.role !== 'guest')) {
     const html = render('/dashboard', account.id);
     assert.ok(html.includes(account.name.split(' ')[0]!));
     assert.ok(html.includes(dashboardTitles[account.role]));
@@ -259,21 +279,18 @@ export async function checkPlatformRendering() {
   }
   assert.ok(!render('/dashboard', 'demo-guest').includes('/dashboard/cms'));
   const guestDashboard = render('/dashboard', 'demo-guest');
-  for (const link of [
-    '/dashboard/learning',
-    '/dashboard/events',
-    '/dashboard/marketplace',
-    '/dashboard/certificates',
-    '/dashboard/profile',
-  ])
-    assert.ok(guestDashboard.includes(`href="${link}"`));
-  assert.ok(!guestDashboard.includes('href="/dashboard/applications"'));
-  const guestProfile = render('/dashboard/profile', 'demo-guest');
+  assert.ok(!guestDashboard.includes('Dashboard navigation'));
+  const guestProfile = render('/account', 'demo-guest');
+  for (const link of ['/learn', '/events', '/account/certificates'])
+    assert.ok(guestProfile.includes(`href="${link}"`));
   assert.ok(guestProfile.includes('Submit application'));
-  assert.ok(!guestProfile.includes('Submit role change request'));
-  assert.ok(!guestProfile.includes('Save changes'));
+  assert.ok(guestProfile.includes('Affiliated university or hub'));
+  assert.ok(!guestProfile.includes('Lakeview Demo High School'));
+  const guestCourses = render('/learn', 'demo-guest');
+  assert.ok(guestCourses.includes('General Courses'));
+  assert.ok(guestCourses.includes('Apply for incubation'));
   assert.ok(render('/dashboard/profile', 'demo-founder').includes('Submit role change request'));
-  const coursesInDashboard = render('/dashboard/learning?category=Getting+started', 'demo-guest');
+  const coursesInDashboard = render('/dashboard/learning?category=Getting+started', 'demo-founder');
   assert.ok(
     coursesInDashboard.includes(
       '/dashboard/learning/business-foundations?category=Getting+started',
@@ -292,7 +309,7 @@ export async function checkPlatformRendering() {
   };
   const dashboardEvents = render(
     '/dashboard/events?category=Workshops',
-    'demo-guest',
+    'demo-founder',
     undefined,
     eventState,
   );
@@ -303,7 +320,7 @@ export async function checkPlatformRendering() {
   assert.ok(!dashboardEvents.includes('/dashboard/events/demo-digital-launch'));
   assert.ok(dashboardEvents.includes('Past events archive'));
   assert.ok(!dashboardEvents.includes('Innovation and Entrepreneurship Bootcamp'));
-  const archive = render('/dashboard/events?view=past', 'demo-guest');
+  const archive = render('/dashboard/events?view=past', 'demo-founder');
   assert.ok(archive.includes('Innovation and Entrepreneurship Bootcamp'));
   const myEvents = render('/dashboard/events?view=mine', 'demo-mentee', undefined, eventState);
   assert.ok(myEvents.includes('Upcoming &amp; ongoing'));
@@ -323,7 +340,7 @@ export async function checkPlatformRendering() {
     pastBookings.indexOf('Past events') < pastBookings.indexOf('Customer discovery studio'),
   );
   assert.ok(!pastBookings.includes('Attended'));
-  const dashboardMarket = render('/dashboard/marketplace?category=Agribusiness', 'demo-guest');
+  const dashboardMarket = render('/dashboard/marketplace?category=Agribusiness', 'demo-founder');
   assert.ok(
     dashboardMarket.includes(
       '/dashboard/marketplace/comfort-worms-and-insects?category=Agribusiness',
@@ -331,7 +348,7 @@ export async function checkPlatformRendering() {
   );
   assert.ok(!dashboardMarket.includes('/dashboard/marketplace/joyride-medical-center'));
   assert.ok(!dashboardMarket.includes('page-intro'));
-  const marketListing = render('/dashboard/marketplace/comfort-worms-and-insects', 'demo-guest');
+  const marketListing = render('/dashboard/marketplace/comfort-worms-and-insects', 'demo-founder');
   assert.ok(marketListing.includes('Back to Marketplace'));
   assert.ok(!marketListing.includes('discovery-sidebar'));
   assert.ok(!marketListing.includes('Keep exploring'));
@@ -349,21 +366,16 @@ export async function checkPlatformRendering() {
   const publicListing = render('/marketplace/joyride-medical-center');
   assert.ok(publicListing.includes('href="/marketplace?category=Healthcare"'));
   assert.ok(publicListing.includes('aria-label="Advertisements"'));
-  assert.ok(render('/dashboard/certificates', 'demo-guest').includes('No certificates yet'));
+  assert.ok(render('/account/certificates', 'demo-guest').includes('No certificates yet'));
   const course = catalog.courses[0]!;
   const completedGuest = structuredClone(state);
   completedGuest.platform.enrollments['demo-guest'] = [course.id];
   completedGuest.progress['demo-guest'] = [...course.lessonIds];
-  const completedCourse = render(
-    '/dashboard/learning/' + course.id,
-    'demo-guest',
-    undefined,
-    completedGuest,
-  );
+  const completedCourse = render('/learn/' + course.id, 'demo-guest', undefined, completedGuest);
   assert.ok(completedCourse.includes('Course completed'));
   assert.ok(completedCourse.includes('Track your certificate'));
   assert.ok(
-    render('/dashboard/certificates', 'demo-guest', undefined, completedGuest).includes(
+    render('/account/certificates', 'demo-guest', undefined, completedGuest).includes(
       'Awaiting issuance',
     ),
   );
@@ -388,7 +400,7 @@ export async function checkPlatformRendering() {
     },
   );
   assert.ok(
-    render('/dashboard/certificates', 'demo-guest', undefined, issuedGuest).includes(
+    render('/account/certificates', 'demo-guest', undefined, issuedGuest).includes(
       '/certificates/guest-course-render-certificate',
     ),
   );
@@ -448,11 +460,152 @@ export async function checkPlatformRendering() {
     expertise: 'Business operations',
     now,
   });
-  const pendingOverview = render('/dashboard', memberId, undefined, pending);
-  assert.ok(pendingOverview.includes('Requested role'));
+  const pendingOverview = render('/account', memberId, undefined, pending);
+  assert.ok(pendingOverview.includes('pending review'));
   assert.ok(!pendingOverview.includes('tab=mentees'));
   const admin = applyDemoAction(pending, { type: 'login', accountId: 'demo-admin' });
   const adminDashboard = render('/dashboard', 'demo-admin', undefined, admin);
+  assert.ok(
+    render('/dashboard/workspace?tab=institutions', 'demo-admin').includes('Add institution'),
+  );
+  const hub = 'activation-test-hub';
+  const agreementsPage = `/dashboard/workspace?tab=institutions&record=${hub}&area=agreements`;
+  let onboarding = applyDemoAction(admin, {
+    type: 'institution-create',
+    id: hub,
+    kind: 'hub',
+    name: 'Activation Test Hub',
+    adminId: '',
+    amount: 0,
+    now,
+  });
+  const missingAgreement = render(agreementsPage, 'demo-admin', undefined, onboarding);
+  assert.match(missingAgreement, /Portal activation/);
+  assert.match(missingAgreement, /Upload the signed PDF/);
+  assert.doesNotMatch(missingAgreement, /Activate institution/);
+  onboarding = applyDemoAction(onboarding, {
+    type: 'institution-proof',
+    id: hub,
+    name: 'test-agreement.pdf',
+    data: 'data:application/pdf;base64,JVBERi0xLjQK',
+    now,
+  });
+  const uploaded = render(agreementsPage, 'demo-admin', undefined, onboarding);
+  assert.match(uploaded, /Signed agreement uploaded/);
+  assert.match(uploaded, /Give an unassigned account the/);
+  assert.doesNotMatch(uploaded, /Activate institution/);
+  onboarding = applyDemoAction(onboarding, {
+    type: 'account-admin',
+    accountId: memberId,
+    role: 'school_admin',
+    now,
+  });
+  assert.match(render(agreementsPage, 'demo-admin', undefined, onboarding), /Assign administrator/);
+  onboarding = applyDemoAction(onboarding, {
+    type: 'institution-assign-admin',
+    id: hub,
+    adminId: memberId,
+    now,
+  });
+  assert.match(render(agreementsPage, 'demo-admin', undefined, onboarding), /Activate institution/);
+  onboarding = applyDemoAction(onboarding, { type: 'institution-activate', id: hub, now });
+  onboarding = applyDemoAction(
+    { ...onboarding, activeAccountId: memberId },
+    {
+      type: 'institution-invite',
+      id: 'hub-progress-test-invitation',
+      institutionId: hub,
+      name: 'Hub Progress Learner',
+      email: 'hub-progress-learner@example.test',
+      now,
+    },
+  );
+  onboarding = applyDemoAction(
+    { ...onboarding, activeAccountId: null },
+    {
+      type: 'institution-invite-accept',
+      id: 'hub-progress-test-invitation',
+      accountId: 'hub-progress-learner',
+      location: 'Nairobi',
+      consent: true,
+      now,
+    },
+  );
+  const progressPage = '/dashboard/workspace?tab=school&view=progress';
+  const hubProgress = render(progressPage, memberId, undefined, onboarding);
+  assert.match(
+    render('/dashboard', memberId, undefined, onboarding),
+    /Institutional Administrator · Activation Test Hub/,
+  );
+  assert.match(
+    render('/dashboard', 'demo-university-staff'),
+    /Institutional Administrator · Lakeside Demo University/,
+  );
+  assert.match(hubProgress, /<h2>Activation Test Hub<\/h2>/);
+  assert.match(
+    render('/dashboard/workspace?tab=school', memberId, undefined, onboarding),
+    /Invite members/,
+  );
+  assert.match(hubProgress, /Member Progress/);
+  assert.match(hubProgress, /Hub Progress Learner/);
+  assert.match(hubProgress, /Create a venture/);
+  assert.match(hubProgress, /Export CSV/);
+  assert.doesNotMatch(hubProgress, /Demo Green Basket/);
+  const beneficiaryDashboard = render('/dashboard', 'hub-progress-learner', undefined, onboarding);
+  assert.match(
+    beneficiaryDashboard,
+    /Launch or continue a venture pathway with Activation Test Hub/,
+  );
+  const universityProgress = render(progressPage, 'demo-university-staff', undefined, onboarding);
+  assert.match(universityProgress, /Demo Green Basket/);
+  assert.doesNotMatch(universityProgress, /Hub Progress Learner/);
+  const universityVenture = render(
+    progressPage + '&member=demo-founder&venture=demo-venture-green',
+    'demo-university-staff',
+    undefined,
+    onboarding,
+  );
+  assert.match(universityVenture, /aria-label="pathway stages"/);
+  assert.match(
+    universityVenture,
+    /Getting Started[\s\S]*Intermediate \/ Advanced[\s\S]*Funding \(Aid\)/,
+  );
+  assert.doesNotMatch(
+    render(
+      progressPage + '&member=hub-progress-learner',
+      'demo-university-staff',
+      undefined,
+      onboarding,
+    ),
+    /Hub Progress Learner/,
+  );
+  const contactState = applyDemoAction(
+    { ...onboarding, activeAccountId: 'demo-admin' },
+    {
+      type: 'institution-access',
+      id: hub,
+      accountId: 'demo-guest',
+      access: 'view',
+      now,
+    },
+  );
+  const contactReport = render(
+    `/dashboard/workspace?tab=school&institution=${hub}&view=programme-payments`,
+    'demo-guest',
+    undefined,
+    contactState,
+  );
+  assert.match(contactReport, /Hub Progress Learner/);
+  assert.doesNotMatch(contactReport, /certificate fees appear|Invite member/i);
+  assert.match(
+    render(
+      `/dashboard/workspace?tab=institutions&record=${hub}&area=progress`,
+      'demo-admin',
+      undefined,
+      onboarding,
+    ),
+    /Hub Progress Learner/,
+  );
   assert.ok(adminDashboard.includes('Role requests to review'));
   assert.match(adminDashboard, /Approval queue<span class="dashboard-nav-badge"/);
   assert.ok(!adminDashboard.includes('href="/dashboard/certificates"'));
@@ -699,7 +852,7 @@ export async function checkPlatformRendering() {
   assert.ok(
     !render('/dashboard/workspace?tab=school', 'demo-university-staff').includes('Robin Kimani'),
   );
-  assert.ok(render('/dashboard/profile', 'demo-guest').includes('Lakeside Demo University'));
+  assert.ok(render('/account', 'demo-guest').includes('Lakeside Demo University'));
   const teamPreview = structuredClone(trainingPreview);
   teamPreview.platform.ventures.push({
     ...teamPreview.platform.ventures[0]!,

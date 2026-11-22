@@ -140,6 +140,15 @@
   padding: 11px 14px;
 }
 
+.institution-activation h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.institution-activation p {
+  margin: 4px 0 0;
+}
+
 .workspace-search {
   display: flex;
   gap: 8px;

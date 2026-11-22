@@ -195,9 +195,11 @@ export function SessionPage({ dashboard = false }: { dashboard?: boolean }) {
                 <Link
                   className="profile-sidebar-link"
                   to={
-                    canAttend
-                      ? `${dashboardCataloguePaths.events}?view=mine`
-                      : `${memberPath(account.id)}?tab=events`
+                    account.role === 'guest'
+                      ? '/account#reservations'
+                      : canAttend
+                        ? `${dashboardCataloguePaths.events}?view=mine`
+                        : `${memberPath(account.id)}?tab=events`
                   }
                 >
                   {canAttend ? 'My events →' : 'My sessions & registrations →'}
