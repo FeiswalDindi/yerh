@@ -66,7 +66,7 @@ On a phone, use the hamburger to open the same role links shown in the desktop d
 3. In **My opportunities**, create an internal opportunity. Supply title, summary, description, category, sectors, stages, eligibility, benefits, preparation documents, delivery/location and a future deadline or rolling deadline. Save the draft, then **Submit for review**.
 4. Switch to Content Manager, open `/dashboard/cms`, select **Opportunities**, and review the submitted opportunity. Use **Publish opportunity**. Reload the latest published site in the studio before making another full-site change.
 5. Confirm it appears under `/opportunities`. Drafts and review submissions are absent publicly.
-6. Use the seeded founder and open `/opportunities/demo-seed-grant`. Apply using its approved venture and at least 30 characters of motivation. The status appears and the application also appears in **My applications**. A duplicate active application is refused.
+6. Use the seeded founder and open **Opportunities → Browse** in the dashboard. Open the seed grant and apply using its approved venture and at least 30 characters of motivation. The status appears and the application also appears in **Opportunities → Applications**. A duplicate active application is refused.
 7. Use the Investor → **Applicants**. The seed-grant application is visible. Shortlist, then accept or reject it. The Partner cannot review this Investor-owned opportunity's applicants. Terminal decisions cannot be changed by the review buttons.
 8. Return to the founder. Confirm the status is updated. Test withdrawal on a separate application.
 9. Edit an owned opportunity. Saving returns it to draft and removes its public listing until review/publication again.

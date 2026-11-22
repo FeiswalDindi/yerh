@@ -5,6 +5,9 @@ export const dashboardCataloguePaths = {
   marketplace: '/dashboard/marketplace',
 } as const;
 
+export const dashboardOpportunityApplicationsPath =
+  dashboardCataloguePaths.opportunities + '?view=applications';
+
 export type DashboardCatalogueKind = keyof typeof dashboardCataloguePaths;
 
 export function dashboardCatalogueItemPath(kind: DashboardCatalogueKind, id: string, search = '') {

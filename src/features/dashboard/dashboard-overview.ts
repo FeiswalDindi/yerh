@@ -2,6 +2,7 @@ import type { DemoAccount, DemoState } from '../../domain/demo';
 import { institutionProgramme } from '../../domain/institution-programme';
 import type { Role } from '../../domain/roles';
 import { workspaceHref } from './dashboard-navigation';
+import { dashboardOpportunityApplicationsPath } from './catalogue-paths';
 import { roleAccessPath } from '../accounts/role-requests';
 
 export const dashboardTitles: Record<Role, string> = {
@@ -87,7 +88,7 @@ export function dashboardMetrics(state: DemoState, account: DemoAccount): Metric
         {
           label: 'Opportunity applications',
           value: p.opportunityApplications.filter((a) => a.accountId === id).length,
-          to: workspaceHref('applications'),
+          to: dashboardOpportunityApplicationsPath,
         },
       ];
     case 'mentor':

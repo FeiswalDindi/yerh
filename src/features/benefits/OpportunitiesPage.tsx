@@ -12,6 +12,8 @@ import { DemoNotice } from '../demo/DemoNotice';
 import { NotFoundPage } from '../info/NotFoundPage';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { dashboardCataloguePaths } from '../dashboard/catalogue-paths';
+import { WorkspaceTabs } from '../platform/WorkspaceControls';
+import { OpportunityApplications } from './OpportunityApplications';
 
 export function OpportunityCard({
   opportunity: o,
@@ -73,7 +75,6 @@ export function OpportunityCard({
 export function OpportunitiesPage({ dashboard = false }: { dashboard?: boolean }) {
   const { state } = useDemo();
   const [params, setParams] = useSearchParams();
-  const { search } = useLocation();
   usePageTitle('Opportunities');
   const q = params.get('q') ?? '';
   const category = params.get('category') ?? 'all';
@@ -112,11 +113,101 @@ export function OpportunitiesPage({ dashboard = false }: { dashboard?: boolean }
 
   const featured = results.filter((o) => o.featured);
   const remaining = results.filter((o) => !o.featured);
+  const listingParams = new URLSearchParams(params);
+  listingParams.delete('application');
+  listingParams.delete('view');
+  const search = listingParams.size ? `?${listingParams}` : '';
   function filter(key: string, value: string) {
     const next = new URLSearchParams(params);
     next.set(key, value);
     setParams(next, { replace: true });
   }
+  const catalogue = (
+    <>
+      <div className="benefit-toolbar">
+        <label>
+          Search
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => filter('q', e.target.value)}
+            placeholder="Search opportunities, organisers, sectors…"
+          />
+        </label>
+        <label>
+          Category
+          <select value={category} onChange={(e) => filter('category', e.target.value)}>
+            <option value="all">All categories</option>
+            {categories.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Status
+          <select value={status} onChange={(e) => filter('status', e.target.value)}>
+            <option value="open">Open</option>
+            <option value="closed">Closed</option>
+            <option value="upcoming">Opening soon</option>
+            <option value="all">All opportunities</option>
+          </select>
+        </label>
+        <label>
+          Deadline on or before
+          <input
+            type="date"
+            value={deadline}
+            onChange={(e) => filter('deadline', e.target.value)}
+          />
+        </label>
+        <label>
+          Sort by
+          <select value={sort} onChange={(e) => filter('sort', e.target.value)}>
+            <option value="deadline">Nearest deadline</option>
+            <option value="newest">Recently published</option>
+            <option value="title">Title</option>
+          </select>
+        </label>
+        <button className="text-link" onClick={() => setParams({})}>
+          Reset
+        </button>
+      </div>
+      <p className="result-count" role="status">
+        {results.length} opportunities
+      </p>
+      {featured.length > 0 && (
+        <section className="opportunity-section" aria-labelledby="featured-opportunities">
+          <div className="opportunity-section-heading">
+            <h2 id="featured-opportunities">
+              <Star size={20} aria-hidden="true" /> Featured opportunities
+            </h2>
+            <span>{featured.length} featured</span>
+          </div>
+          <div className="benefit-grid">
+            {featured.map((o) => (
+              <OpportunityCard key={o.id} opportunity={o} listing={listing} search={search} />
+            ))}
+          </div>
+        </section>
+      )}
+      {remaining.length > 0 && (
+        <section className="opportunity-section" aria-labelledby="more-opportunities">
+          <div className="opportunity-section-heading">
+            <h2 id="more-opportunities">
+              {featured.length ? 'More opportunities' : 'All opportunities'}
+            </h2>
+          </div>
+          <div className="benefit-grid">
+            {remaining.map((o) => (
+              <OpportunityCard key={o.id} opportunity={o} listing={listing} search={search} />
+            ))}
+          </div>
+        </section>
+      )}
+      {!results.length && <p className="empty-state">No opportunities match these filters.</p>}
+    </>
+  );
+
   return (
     <>
       <PageIntro
@@ -126,87 +217,17 @@ export function OpportunitiesPage({ dashboard = false }: { dashboard?: boolean }
       />
       <section className="container section">
         <DemoNotice />
-        <div className="benefit-toolbar">
-          <label>
-            Search
-            <input
-              type="search"
-              value={q}
-              onChange={(e) => filter('q', e.target.value)}
-              placeholder="Search opportunities, organisers, sectors…"
-            />
-          </label>
-          <label>
-            Category
-            <select value={category} onChange={(e) => filter('category', e.target.value)}>
-              <option value="all">All categories</option>
-              {categories.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Status
-            <select value={status} onChange={(e) => filter('status', e.target.value)}>
-              <option value="open">Open</option>
-              <option value="closed">Closed</option>
-              <option value="upcoming">Opening soon</option>
-              <option value="all">All opportunities</option>
-            </select>
-          </label>
-          <label>
-            Deadline on or before
-            <input
-              type="date"
-              value={deadline}
-              onChange={(e) => filter('deadline', e.target.value)}
-            />
-          </label>
-          <label>
-            Sort by
-            <select value={sort} onChange={(e) => filter('sort', e.target.value)}>
-              <option value="deadline">Nearest deadline</option>
-              <option value="newest">Recently published</option>
-              <option value="title">Title</option>
-            </select>
-          </label>
-          <button className="text-link" onClick={() => setParams({})}>
-            Reset
-          </button>
-        </div>
-        <p className="result-count" role="status">
-          {results.length} opportunities
-        </p>
-        {featured.length > 0 && (
-          <section className="opportunity-section" aria-labelledby="featured-opportunities">
-            <div className="opportunity-section-heading">
-              <h2 id="featured-opportunities">
-                <Star size={20} aria-hidden="true" /> Featured opportunities
-              </h2>
-              <span>{featured.length} featured</span>
-            </div>
-            <div className="benefit-grid">
-              {featured.map((o) => (
-                <OpportunityCard key={o.id} opportunity={o} listing={listing} search={search} />
-              ))}
-            </div>
-          </section>
+        {dashboard ? (
+          <WorkspaceTabs
+            label="Opportunity views"
+            views={[
+              { id: 'browse', label: 'Browse', content: catalogue },
+              { id: 'applications', label: 'Applications', content: <OpportunityApplications /> },
+            ]}
+          />
+        ) : (
+          catalogue
         )}
-        {remaining.length > 0 && (
-          <section className="opportunity-section" aria-labelledby="more-opportunities">
-            <div className="opportunity-section-heading">
-              <h2 id="more-opportunities">
-                {featured.length ? 'More opportunities' : 'All opportunities'}
-              </h2>
-            </div>
-            <div className="benefit-grid">
-              {remaining.map((o) => (
-                <OpportunityCard key={o.id} opportunity={o} listing={listing} search={search} />
-              ))}
-            </div>
-          </section>
-        )}
-        {!results.length && <p className="empty-state">No opportunities match these filters.</p>}
       </section>
     </>
   );

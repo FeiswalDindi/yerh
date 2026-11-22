@@ -6,7 +6,6 @@ import { memberPath } from '../../domain/community';
 import type { DemoAccount } from '../../domain/demo';
 import { accountInstitution } from '../../domain/incubation';
 import { roleLabels } from '../../domain/roles';
-import { PageIntro } from '../../shared/PageIntro';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { RoleRequestForm, RoleRequestHistory } from '../accounts/RoleRequestForm';
 import { accountRoleRequests, roleAccessSectionId } from '../accounts/role-requests';
@@ -153,13 +152,8 @@ export function ProfilePage() {
 
   return (
     <>
-      <PageIntro
-        eyebrow="Profile"
-        title="Profile"
-        description="Manage your personal details, community profile, and role."
-        className="dashboard-pane-intro"
-      />
       <div className="container section dashboard-profile">
+        <h1 className="sr-only">Profile</h1>
         <DemoNotice />
         <div className="dashboard-profile-grid">
           <aside className="dashboard-profile-settings" aria-label="Account summary">

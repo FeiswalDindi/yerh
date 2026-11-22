@@ -21,6 +21,7 @@ import {
 } from '../../domain/courses';
 import { WorkspaceDialog } from '../platform/WorkspaceControls';
 import { amount } from '../platform/TrainingForms';
+import { CourseEntryLink } from './CourseEntryLink';
 export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
   const { courseId } = useParams();
   const { search } = useLocation();
@@ -298,9 +299,11 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
               <h2 id="general-courses-title">General Courses</h2>
               <div className="collection-grid">
                 {courses.map((c) => (
-                  <Link
+                  <CourseEntryLink
                     className="collection-card"
                     key={c.id}
+                    courseId={c.id}
+                    courseName={c.title}
                     to={
                       dashboard
                         ? dashboardCatalogueItemPath('learning', c.id)
@@ -320,7 +323,7 @@ export function LearningPage({ dashboard = false }: { dashboard?: boolean }) {
                         : ''}
                     </small>
                     <ArrowRight />
-                  </Link>
+                  </CourseEntryLink>
                 ))}
               </div>
             </section>

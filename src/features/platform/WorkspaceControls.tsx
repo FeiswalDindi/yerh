@@ -12,6 +12,7 @@ export function WorkspaceDialog({
   create = false,
   initialOpen = false,
   trigger,
+  renderTrigger,
   icon,
   children,
 }: {
@@ -20,6 +21,7 @@ export function WorkspaceDialog({
   create?: boolean;
   initialOpen?: boolean;
   trigger?: ReactNode;
+  renderTrigger?: (open: () => void) => ReactNode;
   icon?: ReactNode;
   children: (finish: (saved: boolean) => void) => ReactNode;
 }) {
@@ -39,34 +41,40 @@ export function WorkspaceDialog({
     setOpen(false);
   }
 
+  function show() {
+    setFailed(false);
+    setOpen(true);
+  }
+
   return (
     <>
-      <button
-        type="button"
-        className={
-          icon
-            ? 'button button-outline workspace-action workspace-icon-action'
-            : trigger
-              ? 'dashboard-pathway-card'
-              : `button workspace-action${create ? '' : ' button-outline'}`
-        }
-        aria-haspopup="dialog"
-        aria-label={
-          title !== action && !icon
-            ? `${action}: ${title}`
-            : icon || action !== actionLabel
-              ? action
-              : undefined
-        }
-        title={icon || action !== actionLabel ? action : undefined}
-        onClick={() => {
-          setFailed(false);
-          setOpen(true);
-        }}
-      >
-        {create && <Plus size={16} aria-hidden="true" />}
-        {icon ?? trigger ?? actionLabel}
-      </button>
+      {renderTrigger ? (
+        renderTrigger(show)
+      ) : (
+        <button
+          type="button"
+          className={
+            icon
+              ? 'button button-outline workspace-action workspace-icon-action'
+              : trigger
+                ? 'dashboard-pathway-card'
+                : `button workspace-action${create ? '' : ' button-outline'}`
+          }
+          aria-haspopup="dialog"
+          aria-label={
+            title !== action && !icon
+              ? `${action}: ${title}`
+              : icon || action !== actionLabel
+                ? action
+                : undefined
+          }
+          title={icon || action !== actionLabel ? action : undefined}
+          onClick={show}
+        >
+          {create && <Plus size={16} aria-hidden="true" />}
+          {icon ?? trigger ?? actionLabel}
+        </button>
+      )}
       {open && (
         <dialog
           ref={ref}

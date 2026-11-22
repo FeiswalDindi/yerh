@@ -15,6 +15,7 @@ import { useDemo } from '../../app/useDemo';
 import { contentPath, type ContentItem, type ContentKind } from '../../domain/content';
 import { popularContent, readingRecommendations, recentComments } from '../../domain/sidebar';
 import { MemberAvatar, MemberLink } from '../community/CommunityCards';
+import { CourseEntryLink } from '../resources/CourseEntryLink';
 import { AdvertisementsWidget } from './AdvertisementsWidget';
 
 function Widget({
@@ -192,8 +193,10 @@ export function DiscoverySidebar({
                 .flatMap((id) => courses.filter((c) => c.id === id))
                 .map((course, index) => (
                   <li key={course.id}>
-                    <Link
+                    <CourseEntryLink
                       className="discovery-course"
+                      courseId={course.id}
+                      courseName={course.title}
                       to={`/learn/${encodeURIComponent(course.id)}`}
                     >
                       <span className="discovery-course-number">0{index + 1}</span>
@@ -203,7 +206,7 @@ export function DiscoverySidebar({
                         <small>{course.lessonIds.length} lessons · Learn at your pace</small>
                       </span>
                       <ArrowUpRight size={16} />
-                    </Link>
+                    </CourseEntryLink>
                   </li>
                 ))}
             </ul>

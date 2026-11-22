@@ -19,11 +19,6 @@ const workspaceGroups = {
       label: 'Incubation',
       description: 'Launch a venture and complete its three incubation stages.',
     },
-    {
-      id: 'applications',
-      label: 'Opportunity applications',
-      description: 'Track the opportunities you applied for.',
-    },
   ],
   mentor: [
     { id: 'mentor', label: 'Mentor profile', description: 'Set your expertise and availability.' },
@@ -173,7 +168,7 @@ export function institutionModule(
       : manage
         ? [
             ...workspaceGroups.school.filter((module) => module.id !== 'programme-payments'),
-            ...workspaceGroups.venture.filter((module) => module.id !== 'applications'),
+            ...workspaceGroups.venture,
           ]
         : workspaceGroups.school.filter((module) => module.id === 'member-results');
   return requested ? group.find((module) => module.id === requested) : group[0];
@@ -184,13 +179,11 @@ export const cmsHref = (id: string) =>
 function modulesFor(account: AccountAccess, group: WorkspaceGroup) {
   const modules = workspaceGroups[group];
   if (account.role === 'school_admin' && group === 'venture')
-    return modules
-      .filter((module) => module.id !== 'applications')
-      .map((module) =>
-        module.id === 'ventures'
-          ? { ...module, description: 'Manage team ventures and their cohorts.' }
-          : module,
-      );
+    return modules.map((module) =>
+      module.id === 'ventures'
+        ? { ...module, description: 'Manage team ventures and their cohorts.' }
+        : module,
+    );
   if (account.role === 'investor' && group === 'organisation')
     return [
       ...modules.filter((module) => module.id === 'discovery'),
@@ -300,7 +293,7 @@ export function dashboardGroups(
       links.push({
         label: 'Opportunities',
         to: dashboardCataloguePaths.opportunities,
-        description: 'Browse funding, market access, and business support.',
+        description: 'Browse opportunities and track your applications.',
       });
     if (group === 'venture' && can(account, 'learn')) links.push(learningLink);
     if (group === 'mentor') links.unshift(mentorshipLink);

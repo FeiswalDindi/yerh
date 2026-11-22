@@ -316,7 +316,10 @@ export async function checkPlatformRendering() {
   const guestCourses = render('/learn', 'demo-guest');
   assert.ok(guestCourses.includes('General Courses'));
   assert.ok(guestCourses.includes('Apply for incubation'));
-  assert.ok(render('/dashboard/profile', 'demo-founder').includes('Submit role change request'));
+  const founderProfile = render('/dashboard/profile', 'demo-founder');
+  assert.ok(founderProfile.includes('Submit role change request'));
+  assert.ok(!founderProfile.includes('Manage your personal details, community profile, and role.'));
+  assert.ok(!founderProfile.includes('<h1>Profile</h1>'));
   const coursesInDashboard = render('/dashboard/learning?category=Getting+started', 'demo-founder');
   assert.ok(
     coursesInDashboard.includes(
@@ -324,6 +327,18 @@ export async function checkPlatformRendering() {
     ),
   );
   assert.ok(!coursesInDashboard.includes('/dashboard/learning/growing-your-business'));
+  assert.ok(
+    /href="\/dashboard\/learning\/business-foundations[^"]*"[^>]*aria-haspopup="dialog"|aria-haspopup="dialog"[^>]*href="\/dashboard\/learning\/business-foundations/.test(
+      coursesInDashboard,
+    ),
+    'Dashboard course opens a confirmation',
+  );
+  assert.ok(
+    /aria-haspopup="dialog"[^>]*href="\/learn\/business-foundations|href="\/learn\/business-foundations"[^>]*aria-haspopup="dialog"/.test(
+      guestCourses,
+    ),
+    'Public course opens a confirmation',
+  );
   const coursePath = '/dashboard/learning/business-foundations';
   const matchedCourse = matchRoutes(createYerhRoutes(), coursePath);
   assert.equal(matchedCourse?.at(-1)?.route.path, 'dashboard/learning/:courseId');
@@ -338,6 +353,37 @@ export async function checkPlatformRendering() {
   const founderOpportunities = render('/dashboard/opportunities', 'demo-founder');
   assert.match(founderOpportunities, /href="\/dashboard\/opportunities\/demo-seed-grant"/);
   assert.match(founderOpportunities, /<a href="\/dashboard"[^>]*>Home<\/a>/);
+  assert.ok(!founderOpportunities.includes('tab=applications'));
+  assert.ok(founderOpportunities.includes('view=applications'));
+  const opportunitiesState = structuredClone(state);
+  const applicationsPath = '/dashboard/opportunities?view=applications';
+  const motivation = 'Our retail venture can use this opportunity to reach new customers.';
+  opportunitiesState.platform.opportunityApplications.push({
+    id: 'test-founder-opportunity-application',
+    opportunityId: 'demo-seed-grant',
+    accountId: 'demo-founder',
+    ventureId: 'demo-venture-green',
+    motivation,
+    status: 'submitted',
+    createdAt: '2026-11-20T09:00:00Z',
+  });
+  assert.ok(
+    render(applicationsPath, 'demo-founder', undefined, opportunitiesState).includes(
+      'View application for Youth venture seed grant',
+    ),
+  );
+  const applicationPath = applicationsPath + '&application=test-founder-opportunity-application';
+  assert.ok(
+    render(applicationPath, 'demo-founder', undefined, opportunitiesState).includes(motivation),
+  );
+  const otherLearnerApplication = render(
+    applicationPath,
+    'demo-mentee',
+    undefined,
+    opportunitiesState,
+  );
+  assert.ok(otherLearnerApplication.includes('This application is unavailable.'));
+  assert.ok(!otherLearnerApplication.includes(motivation));
   assert.match(
     render('/dashboard/opportunities/demo-seed-grant', 'demo-founder'),
     /href="\/dashboard\/opportunities"[^>]*>[^<]*All opportunities/,
@@ -732,7 +778,7 @@ export async function checkPlatformRendering() {
     count++;
   }
   for (const [id, tabs] of [
-    ['demo-founder', ['ventures', 'products', 'incubation', 'applications']],
+    ['demo-founder', ['ventures', 'products', 'incubation']],
     ['demo-mentor', ['mentor', 'mentees']],
     ['demo-partner', ['organisation', 'opportunities', 'applicants', 'discovery']],
     ['demo-investor', ['organisation', 'opportunities']],

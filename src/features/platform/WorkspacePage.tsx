@@ -14,7 +14,7 @@ import {
   institutionModule,
   workspaceHref,
 } from '../dashboard/dashboard-navigation';
-import { dashboardCataloguePaths } from '../dashboard/catalogue-paths';
+import { dashboardOpportunityApplicationsPath } from '../dashboard/catalogue-paths';
 import { canPublishProduct, institutionAccess } from '../../domain/incubation';
 import { amount, field } from './TrainingForms';
 import { MentorWorkspace } from './MentorWorkspace';
@@ -122,6 +122,18 @@ export function WorkspacePage() {
   useEffect(() => setSuccess(''), [tab, account?.id, contextId]);
   usePageTitle(activeModule?.label ?? 'Workspace');
   if (!account) return null;
+  if (!contextId && params.get('tab') === 'applications' && can(account, 'apply')) {
+    const application = params.get('application');
+    return (
+      <Navigate
+        to={
+          dashboardOpportunityApplicationsPath +
+          (application ? '&application=' + encodeURIComponent(application) : '')
+        }
+        replace
+      />
+    );
+  }
   const programmeAccess =
     !!school && school.status === 'active' && school.kind !== 'high-school' && access === 'manage';
   if (tab === 'school' && programmeAccess && params.get('view') === 'programme-payments')
@@ -157,14 +169,12 @@ export function WorkspacePage() {
   const mentor = p.mentors.find((m) => m.accountId === account.id);
   const displayedApplication = p.opportunityApplications.find(
     (application) =>
+      tab === 'applicants' &&
       application.id === params.get('application') &&
-      (tab === 'applications'
-        ? application.accountId === account.id
-        : tab === 'applicants' &&
-          p.opportunities.some(
-            (opportunity) =>
-              opportunity.id === application.opportunityId && opportunity.ownerId === account.id,
-          )),
+      p.opportunities.some(
+        (opportunity) =>
+          opportunity.id === application.opportunityId && opportunity.ownerId === account.id,
+      ),
   );
   function run(action: PlatformAction) {
     const ok = execute(contextId ? { ...action, institutionContextId: contextId } : action);
@@ -416,58 +426,6 @@ export function WorkspacePage() {
                 selectedVenture={params.get('venture')}
                 portalHref={schoolLink}
               />
-            </Panel>
-          )}
-          {tab === 'applications' && (
-            <Panel title="Opportunity applications">
-              {displayedApplication ? (
-                <section className="workspace-record">
-                  <Link to={workspaceHref('applications')}>← Opportunity applications</Link>
-                  <h3>
-                    {p.opportunities.find(
-                      (entry) => entry.id === displayedApplication.opportunityId,
-                    )?.title ?? 'Opportunity'}
-                  </h3>
-                  <p className="workspace-detail-copy">{displayedApplication.motivation}</p>
-                </section>
-              ) : (
-                <WorkspaceTable
-                  label="opportunity applications"
-                  columns={['Opportunity', 'Action']}
-                  actions={
-                    <Link
-                      to={dashboardCataloguePaths.opportunities}
-                      className="button button-outline workspace-action"
-                    >
-                      Find opportunities
-                    </Link>
-                  }
-                  rows={p.opportunityApplications
-                    .filter((a) => a.accountId === account.id)
-                    .map((application) => {
-                      const title =
-                        p.opportunities.find((o) => o.id === application.opportunityId)?.title ??
-                        'Opportunity';
-                      return {
-                        id: application.id,
-                        search: title,
-                        cells: [
-                          title,
-                          <Link
-                            to={
-                              workspaceHref('applications') +
-                              '&application=' +
-                              encodeURIComponent(application.id)
-                            }
-                            aria-label="View application"
-                          >
-                            View
-                          </Link>,
-                        ],
-                      };
-                    })}
-                />
-              )}
             </Panel>
           )}
           {tab === 'mentor' && (
