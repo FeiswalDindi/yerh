@@ -211,7 +211,15 @@ export function Header({
             </div>
           </div>
         </header>
-        {!dashboardMenu && <BreadcrumbBar />}
+        {!dashboardMenu && (
+          <BreadcrumbBar
+            home={
+              location.pathname.startsWith('/learn/') && account?.role === 'entrepreneur'
+                ? '/dashboard'
+                : undefined
+            }
+          />
+        )}
       </div>
 
       <MobileNavigationDrawer open={open} setOpen={setOpen} toggle={toggle} />

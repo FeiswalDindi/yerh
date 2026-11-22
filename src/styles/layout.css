@@ -322,8 +322,8 @@ html:has(.site-navigation-frame .breadcrumb) {
   text-decoration: underline;
   text-underline-offset: 0.18em;
 }
-.breadcrumb a:hover {
-  color: var(--yerh-navy-dark);
+.breadcrumb a:is(:hover, :focus-visible) {
+  color: var(--breadcrumb-hover-ink, var(--yerh-navy-dark));
   text-decoration-thickness: 2px;
 }
 .breadcrumb svg {

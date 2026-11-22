@@ -81,34 +81,30 @@ function DashboardNavigation({
   return (
     <nav className="role-nav" aria-label="Dashboard navigation">
       {[
-        ...(account.role === 'guest'
-          ? []
-          : dashboardGroups(
-              account,
-              primary?.kind === 'high-school' && primary.status === 'active',
-            )),
-        ...linked.map((school) => ({
-          label: school.name,
-          links: (school.kind !== 'high-school'
-            ? [
-                [
-                  'school',
-                  institutionAccess(school, account) === 'manage'
-                    ? 'Institution portal'
-                    : 'Member Progress',
-                ],
-              ]
-            : institutionAccess(school, account) === 'manage'
-              ? [
-                  ['school', 'Institution portal'],
-                  ['member-results', 'Results & Certificates'],
-                  ['ventures', 'Ventures'],
-                  ['products', 'Products'],
-                  ['incubation', 'Incubation'],
-                ]
-              : [['member-results', 'Results & Certificates']]
-          ).map(([tab, label]) => ({ label: label!, to: institutionHref(tab!, school.id) })),
-        })),
+        ...(account.role === 'guest' ? [] : dashboardGroups(account, primary)),
+        ...linked.map((school) => {
+          const manage = institutionAccess(school, account) === 'manage';
+          return {
+            label: school.name,
+            links: (school.kind !== 'high-school'
+              ? manage
+                ? [
+                    ['school', 'Portal'],
+                    ['programme-payments', 'Payments & Certificates'],
+                  ]
+                : [['school', 'Member Progress']]
+              : manage
+                ? [
+                    ['school', 'Portal'],
+                    ['member-results', 'Results & Certificates'],
+                    ['ventures', 'Ventures'],
+                    ['products', 'Products'],
+                    ['incubation', 'Incubation'],
+                  ]
+                : [['member-results', 'Results & Certificates']]
+            ).map(([tab, label]) => ({ label: label!, to: institutionHref(tab!, school.id) })),
+          };
+        }),
       ].map((group) => (
         <div className="role-nav-group" key={group.label}>
           <p>{group.label}</p>

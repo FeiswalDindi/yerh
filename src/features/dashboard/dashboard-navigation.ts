@@ -107,13 +107,18 @@ const workspaceGroups = {
   school: [
     {
       id: 'school',
-      label: 'Institution portal',
+      label: 'Portal',
       description: 'Manage programme participants and agreements.',
     },
     {
       id: 'member-results',
       label: 'Results & Certificates',
       description: 'Manage cohort marks and request or download certificates.',
+    },
+    {
+      id: 'programme-payments',
+      label: 'Payments & Certificates',
+      description: 'Track incubation certificate fees and issuance.',
     },
   ],
 } satisfies Record<WorkspaceGroup, WorkspaceModule[]>;
@@ -164,10 +169,10 @@ export function institutionModule(
 ) {
   const group =
     kind !== 'high-school'
-      ? workspaceGroups.school
+      ? workspaceGroups.school.filter((module) => manage || module.id !== 'programme-payments')
       : manage
         ? [
-            ...workspaceGroups.school,
+            ...workspaceGroups.school.filter((module) => module.id !== 'programme-payments'),
             ...workspaceGroups.venture.filter((module) => module.id !== 'applications'),
           ]
         : workspaceGroups.school.filter((module) => module.id === 'member-results');
@@ -270,8 +275,10 @@ const contentLinks = [
 
 export function dashboardGroups(
   account: AccountAccess,
-  schoolProgramme = true,
+  institution?: Institution,
 ): { label: string; links: DashboardLink[] }[] {
+  const activeInstitution = institution?.status === 'active';
+  const schoolProgramme = activeInstitution && institution.kind === 'high-school';
   const groups: { label: string; links: DashboardLink[] }[] = [
     { label: 'Dashboard', links: [{ label: 'Overview', to: '/dashboard' }] },
   ];
@@ -281,11 +288,20 @@ export function dashboardGroups(
     const links: DashboardLink[] = modulesFor(account, group)
       .filter((module) => module.id !== 'institutions')
       .filter((module) => schoolProgramme || module.id !== 'member-results')
+      .filter(
+        (module) => (activeInstitution && !schoolProgramme) || module.id !== 'programme-payments',
+      )
       .map(({ id, label, description }) => ({
         label,
         description,
         to: workspaceHref(id),
       }));
+    if (group === 'venture' && can(account, 'apply'))
+      links.push({
+        label: 'Opportunities',
+        to: dashboardCataloguePaths.opportunities,
+        description: 'Browse funding, market access, and business support.',
+      });
     if (group === 'venture' && can(account, 'learn')) links.push(learningLink);
     if (group === 'mentor') links.unshift(mentorshipLink);
     if (group === 'admin') links.push(eventsLink);
@@ -329,5 +345,6 @@ export const dashboardAccess = {
   cms: ['cms'],
   moderation: ['cms'],
   learning: ['learn'],
+  opportunities: ['apply'],
   events: ['attend', 'admin'],
 } satisfies Record<string, Capability[]>;

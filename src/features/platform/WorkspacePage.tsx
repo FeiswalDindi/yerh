@@ -1,5 +1,5 @@
 import { lazy, useEffect, useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useDemo } from '../../app/useDemo';
 import { useCatalog } from '../../app/useCatalog';
 import { can, roleLabels, type Role } from '../../domain/roles';
@@ -14,6 +14,7 @@ import {
   institutionModule,
   workspaceHref,
 } from '../dashboard/dashboard-navigation';
+import { dashboardCataloguePaths } from '../dashboard/catalogue-paths';
 import { canPublishProduct, institutionAccess } from '../../domain/incubation';
 import { amount, field } from './TrainingForms';
 import { MentorWorkspace } from './MentorWorkspace';
@@ -27,6 +28,7 @@ import { ApprovalWorkspace } from './ApprovalWorkspace';
 import { IncubationWorkspace } from './IncubationWorkspace';
 import { InstitutionPortal, InstitutionsAdmin } from './InstitutionWorkspace';
 import { InstitutionResults } from './InstitutionResults';
+import { InstitutionProgramme, programmeHref } from './InstitutionProgramme';
 import { TrainingCertificates, TrainingPayments } from './TrainingReview';
 import { AdminVentures } from './AdminVentures';
 
@@ -120,6 +122,21 @@ export function WorkspacePage() {
   useEffect(() => setSuccess(''), [tab, account?.id, contextId]);
   usePageTitle(activeModule?.label ?? 'Workspace');
   if (!account) return null;
+  const programmeAccess =
+    !!school && school.status === 'active' && school.kind !== 'high-school' && access === 'manage';
+  if (tab === 'school' && programmeAccess && params.get('view') === 'programme-payments')
+    return (
+      <Navigate
+        to={programmeHref(
+          params,
+          'view',
+          'programme-payments',
+          params.get('member') ?? undefined,
+          params.get('venture') ?? undefined,
+        )}
+        replace
+      />
+    );
   const schoolStaff = contextId ? access === 'manage' : can(account, 'school');
   const affiliation = p.training.institutions.find(
     (row) => row.id === p.training.affiliations[account.id],
@@ -134,7 +151,8 @@ export function WorkspacePage() {
     schoolStaff &&
     (school?.status !== 'active' || school.kind !== 'high-school') &&
     tab !== 'school' &&
-    tab !== 'member-results';
+    tab !== 'member-results' &&
+    tab !== 'programme-payments';
   const org = p.organisations.find((o) => o.accountId === account.id);
   const mentor = p.mentors.find((m) => m.accountId === account.id);
   const displayedApplication = p.opportunityApplications.find(
@@ -155,7 +173,7 @@ export function WorkspacePage() {
         'institution-certificates-request':
           'Certificate requests sent to the platform administrator.',
         'institution-invite':
-          'Invitation created. Open the invitation link from the member roster.',
+          'Invitation created. Open the invitation link from the invitations list.',
         'institution-invite-bulk': 'Invitations created. Open the links from the invitations list.',
         'institution-invite-revoke': 'Invitation revoked.',
         'institution-create':
@@ -227,11 +245,11 @@ export function WorkspacePage() {
           {schoolLocked && (
             <p>
               Contact the platform team for access to group venture tools.{' '}
-              <Link to={schoolLink('school')}>Open institution portal</Link>
+              <Link to={schoolLink('school')}>Open portal</Link>
             </p>
           )}
           {tab === 'school' && (
-            <Panel title={school?.name ?? 'Institution portal'} showTitle={!!school}>
+            <Panel title={school?.name ?? 'Portal'} showTitle={!!school}>
               <InstitutionPortal
                 p={p}
                 account={account}
@@ -240,6 +258,21 @@ export function WorkspacePage() {
                 save={run}
                 portalHref={schoolLink}
               />
+            </Panel>
+          )}
+          {tab === 'programme-payments' && (
+            <Panel title="Payments & Certificates">
+              {programmeAccess && school ? (
+                <InstitutionProgramme
+                  p={p}
+                  institution={school}
+                  accounts={state.accounts}
+                  operator={account}
+                  tab="programme-payments"
+                />
+              ) : (
+                <p>This report is available to authorized staff of an active university or hub.</p>
+              )}
             </Panel>
           )}
           {tab === 'member-results' && (
@@ -402,7 +435,10 @@ export function WorkspacePage() {
                   label="opportunity applications"
                   columns={['Opportunity', 'Action']}
                   actions={
-                    <Link to="/opportunities" className="button button-outline workspace-action">
+                    <Link
+                      to={dashboardCataloguePaths.opportunities}
+                      className="button button-outline workspace-action"
+                    >
                       Find opportunities
                     </Link>
                   }

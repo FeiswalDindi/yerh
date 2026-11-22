@@ -1,6 +1,7 @@
 export const dashboardCataloguePaths = {
   learning: '/dashboard/learning',
   events: '/dashboard/events',
+  opportunities: '/dashboard/opportunities',
   marketplace: '/dashboard/marketplace',
 } as const;
 

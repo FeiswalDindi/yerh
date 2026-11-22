@@ -12,7 +12,15 @@
   --workspace-subtle: #202d41;
   --workspace-hover: #25344b;
   --workspace-neutral: #2a3950;
+  --breadcrumb-hover-ink: #f2d77e;
+  --calendar-selected-ink: #142747;
+  --calendar-tooltip-ink: #f2f6ff;
   color: var(--yerh-ink);
+}
+
+[data-dashboard-theme='dark'] .calendar-month-nav button {
+  border: 1px solid var(--yerh-border);
+  background: var(--workspace-subtle);
 }
 
 [data-dashboard-theme='dark'] :is(.demo-session-strip, .event-date-tile) {

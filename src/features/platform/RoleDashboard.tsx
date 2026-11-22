@@ -42,7 +42,7 @@ export function RoleDashboard() {
     state.platform,
     state.platform.training.affiliations[account.id],
   );
-  const links = dashboardGroups(account, offlineProgramme)
+  const links = dashboardGroups(account, institution)
     .slice(1, -1)
     .flatMap((group) => group.links);
   const priority =

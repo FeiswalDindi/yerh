@@ -3,7 +3,7 @@ import { Settings } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { StudentDirectory } from './StudentDirectory';
 import { InstitutionResults } from './InstitutionResults';
-import { InstitutionMembers } from './InstitutionMembers';
+import { InstitutionInvitations, InstitutionMembers } from './InstitutionMembers';
 import { InstitutionProgramme } from './InstitutionProgramme';
 import type { DemoAccount } from '../../domain/demo';
 import type { Institution, TrainingState } from '../../domain/incubation';
@@ -281,24 +281,14 @@ export function InstitutionPortal({
           {
             id: 'members',
             label: 'Members',
-            content: (
-              <InstitutionMembers p={p} institution={school} accounts={accounts} save={save} />
-            ),
+            content: <InstitutionMembers p={p} institution={school} accounts={accounts} />,
+          },
+          {
+            id: 'invitations',
+            label: 'Invitations',
+            content: <InstitutionInvitations p={p} institution={school} save={save} />,
           },
           progress,
-          {
-            id: 'programme-payments',
-            label: 'Payments & Certificates',
-            content: (
-              <InstitutionProgramme
-                p={p}
-                institution={school}
-                accounts={accounts}
-                operator={account}
-                tab="programme-payments"
-              />
-            ),
-          },
           { id: 'agreements', label: 'Agreements', content: agreements },
         ]}
       />
@@ -1198,7 +1188,6 @@ function InstitutionAdminDetails({
                     p={p}
                     institution={school}
                     accounts={accounts}
-                    save={save}
                     tabParameter="area"
                   />
                 ),
@@ -1256,6 +1245,11 @@ function InstitutionAdminDetails({
                 },
               ]
             : [
+                {
+                  id: 'invitations',
+                  label: 'Invitations',
+                  content: <InstitutionInvitations p={p} institution={school} save={save} />,
+                },
                 {
                   id: 'progress',
                   label: 'Member Progress',

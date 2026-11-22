@@ -360,7 +360,7 @@
   min-height: 33px;
   border-radius: 3px;
   padding: 5px 1px 9px;
-  background: white;
+  background: var(--yerh-white);
   color: var(--yerh-ink);
   font-size: 12px;
 }
@@ -372,7 +372,7 @@
 }
 .forum-calendar td button[aria-pressed='true'] {
   background: var(--yerh-navy);
-  color: white;
+  color: var(--calendar-selected-ink, white);
 }
 .forum-calendar td button::after {
   content: 'Click to filter';
@@ -384,7 +384,7 @@
   translate: -50% 0;
   padding: 4px 8px;
   background: var(--yerh-navy-dark);
-  color: var(--yerh-white);
+  color: var(--calendar-tooltip-ink, var(--yerh-white));
   box-shadow: 0 2px 6px #11203e30;
   font-size: 11px;
   font-weight: 650;
@@ -423,6 +423,9 @@
   position: absolute;
   bottom: 4px;
   left: calc(50% - 2px);
+}
+.forum-calendar td button[aria-pressed='true'] .calendar-dot {
+  background: currentColor;
 }
 .calendar-legend {
   display: flex;

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { matchRoutes, MemoryRouter, Routes, Route } from 'react-router-dom';
+import { createYerhRoutes } from '../src/app/routes';
 import { ContentContext } from '../src/app/useCatalog';
 import { DemoContext } from '../src/app/useDemo';
 import { DemoCatalogOverlay } from '../src/app/DemoCatalogOverlay';
@@ -27,6 +28,7 @@ import { InstitutionInvitationPage } from '../src/features/accounts/InstitutionI
 import { useCatalog } from '../src/app/useCatalog';
 import { applyDemoAction, type DemoState } from '../src/domain/demo';
 import { DashboardLayout } from '../src/features/dashboard/DashboardLayout';
+import { SiteLayout } from '../src/layout/SiteLayout';
 import { DashboardCatalogue } from '../src/features/dashboard/DashboardCatalogue';
 import { DashboardEvents } from '../src/features/dashboard/DashboardEvents';
 import { ContentDetail } from '../src/features/content/ContentDetail';
@@ -88,6 +90,16 @@ export async function checkPlatformRendering() {
                   <Route path="/certificates/:id" element={<CertificatePage />} />
                   <Route path="/opportunities" element={<OpportunitiesPage />} />
                   <Route path="/opportunities/:slug" element={<OpportunityDetail />} />
+                  <Route element={<SiteLayout />}>
+                    <Route
+                      path="/dashboard/learning/:courseId"
+                      element={
+                        <RequireDemo workspace capabilities={dashboardAccess.learning}>
+                          <LearningPage dashboard />
+                        </RequireDemo>
+                      }
+                    />
+                  </Route>
                   <Route
                     path="/dashboard"
                     element={
@@ -99,7 +111,22 @@ export async function checkPlatformRendering() {
                     <Route index element={<RoleDashboard />} />
                     <Route path="profile" element={<ProfilePage />} />
                     <Route path="learning" element={<DashboardCatalogue kind="learning" />} />
-                    <Route path="learning/:courseId" element={<LearningPage dashboard />} />
+                    <Route
+                      path="opportunities"
+                      element={
+                        <RequireDemo capabilities={dashboardAccess.opportunities}>
+                          <OpportunitiesPage dashboard />
+                        </RequireDemo>
+                      }
+                    />
+                    <Route
+                      path="opportunities/:slug"
+                      element={
+                        <RequireDemo capabilities={dashboardAccess.opportunities}>
+                          <OpportunityDetail dashboard />
+                        </RequireDemo>
+                      }
+                    />
                     <Route path="events" element={<DashboardEvents />} />
                     <Route path="marketplace" element={<DashboardCatalogue kind="marketplace" />} />
                     <Route path="marketplace/:slug" element={<ContentDetail dashboard />} />
@@ -297,6 +324,28 @@ export async function checkPlatformRendering() {
     ),
   );
   assert.ok(!coursesInDashboard.includes('/dashboard/learning/growing-your-business'));
+  const coursePath = '/dashboard/learning/business-foundations';
+  const matchedCourse = matchRoutes(createYerhRoutes(), coursePath);
+  assert.equal(matchedCourse?.at(-1)?.route.path, 'dashboard/learning/:courseId');
+  assert.equal(
+    matchedCourse?.some(({ route }) => route.path === 'dashboard'),
+    false,
+  );
+  const courseFromDashboard = render(coursePath + '?category=Getting+started', 'demo-founder');
+  assert.match(courseFromDashboard, /<a href="\/dashboard"[^>]*>Home<\/a>/);
+  assert.doesNotMatch(courseFromDashboard, /aria-label="Dashboard navigation"/);
+  assert.match(courseFromDashboard, /\/dashboard\/learning\?category=Getting\+started/);
+  const founderOpportunities = render('/dashboard/opportunities', 'demo-founder');
+  assert.match(founderOpportunities, /href="\/dashboard\/opportunities\/demo-seed-grant"/);
+  assert.match(founderOpportunities, /<a href="\/dashboard"[^>]*>Home<\/a>/);
+  assert.match(
+    render('/dashboard/opportunities/demo-seed-grant', 'demo-founder'),
+    /href="\/dashboard\/opportunities"[^>]*>[^<]*All opportunities/,
+  );
+  assert.doesNotMatch(
+    render('/dashboard/opportunities', 'demo-mentor'),
+    /Youth venture seed grant/,
+  );
   const futureStart = new Date(Date.now() + 86_400_000).toISOString();
   const futureEnd = new Date(Date.now() + 90_000_000).toISOString();
   const eventState = {
@@ -542,10 +591,27 @@ export async function checkPlatformRendering() {
     /Institutional Administrator · Lakeside Demo University/,
   );
   assert.match(hubProgress, /<h2>Activation Test Hub<\/h2>/);
-  assert.match(
-    render('/dashboard/workspace?tab=school', memberId, undefined, onboarding),
-    /Invite members/,
+  const hubMembers = render('/dashboard/workspace?tab=school', memberId, undefined, onboarding);
+  assert.ok(/view=invitations[^"]*"[^>]*>Invitations/.test(hubMembers), 'Invitations tab');
+  assert.ok(/tab=programme-payments[^"]*"[^>]*>Payments/.test(hubMembers), 'Payments sidebar link');
+  assert.doesNotMatch(
+    hubMembers,
+    /view=programme-payments|aria-label="member invitations"|Invite members/,
   );
+  const invitations = render(
+    '/dashboard/workspace?tab=school&view=invitations',
+    memberId,
+    undefined,
+    onboarding,
+  );
+  assert.match(invitations, /Invite members/);
+  assert.match(invitations, /aria-label="member invitations"/);
+  assert.doesNotMatch(invitations, /aria-label="members"/);
+  assert.match(
+    render('/dashboard/workspace?tab=programme-payments', memberId, undefined, onboarding),
+    /aria-label="programme payments and certificates"/,
+  );
+  assert.doesNotMatch(render('/dashboard', 'demo-school'), /tab=programme-payments/);
   assert.match(hubProgress, /Member Progress/);
   assert.match(hubProgress, /Hub Progress Learner/);
   assert.match(hubProgress, /Create a venture/);
@@ -597,6 +663,15 @@ export async function checkPlatformRendering() {
   );
   assert.match(contactReport, /Hub Progress Learner/);
   assert.doesNotMatch(contactReport, /certificate fees appear|Invite member/i);
+  assert.doesNotMatch(
+    render(
+      `/dashboard/workspace?tab=programme-payments&institution=${hub}`,
+      'demo-guest',
+      undefined,
+      contactState,
+    ),
+    /aria-label="programme payments and certificates"/,
+  );
   assert.match(
     render(
       `/dashboard/workspace?tab=institutions&record=${hub}&area=progress`,

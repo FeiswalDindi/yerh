@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { AccountLink } from '../accounts/AccountLink';
 import { roleAccessPath } from '../accounts/role-requests';
 import { CalendarDays, ArrowUpRight, MapPin, Star } from 'lucide-react';
@@ -11,14 +11,25 @@ import { PageIntro } from '../../shared/PageIntro';
 import { DemoNotice } from '../demo/DemoNotice';
 import { NotFoundPage } from '../info/NotFoundPage';
 import { usePageTitle } from '../../shared/usePageTitle';
-export function OpportunityCard({ opportunity: o }: { opportunity: Opportunity }) {
+import { dashboardCataloguePaths } from '../dashboard/catalogue-paths';
+
+export function OpportunityCard({
+  opportunity: o,
+  listing = '/opportunities',
+  search = '',
+}: {
+  opportunity: Opportunity;
+  listing?: string;
+  search?: string;
+}) {
+  const detail = `${listing}/${encodeURIComponent(o.slug)}${search}`;
   const closed = !!opportunityProblem(o, new Date().toISOString());
   const scheduled = o.status === 'published' && !!o.opensAt && Date.parse(o.opensAt) > Date.now();
   return (
     <article
       className={`benefit-card ${o.featured ? 'benefit-featured' : ''} ${closed ? 'is-closed' : ''}`}
     >
-      <Link to={`/opportunities/${o.slug}`} tabIndex={-1} aria-hidden="true">
+      <Link to={detail} tabIndex={-1} aria-hidden="true">
         <img src={o.image || '/media/be-part-of-the-team-3382b8d1.jpg'} alt="" loading="lazy" />
       </Link>
       <div>
@@ -35,7 +46,7 @@ export function OpportunityCard({ opportunity: o }: { opportunity: Opportunity }
           {o.organiser} · {o.category}
         </p>
         <h3>
-          <Link to={`/opportunities/${o.slug}`}>{o.title}</Link>
+          <Link to={detail}>{o.title}</Link>
         </h3>
         <p className="opportunity-summary">{o.summary}</p>
         <div className="opportunity-meta">
@@ -52,20 +63,22 @@ export function OpportunityCard({ opportunity: o }: { opportunity: Opportunity }
             {o.mode === 'online' ? 'Online' : o.location}
           </span>
         </div>
-        <Link className="text-link" to={`/opportunities/${o.slug}`}>
+        <Link className="text-link" to={detail}>
           View opportunity <ArrowUpRight size={15} />
         </Link>
       </div>
     </article>
   );
 }
-export function OpportunitiesPage() {
+export function OpportunitiesPage({ dashboard = false }: { dashboard?: boolean }) {
   const { state } = useDemo();
   const [params, setParams] = useSearchParams();
+  const { search } = useLocation();
   usePageTitle('Opportunities');
   const q = params.get('q') ?? '';
   const category = params.get('category') ?? 'all';
-  const status = params.get('status') ?? 'open';
+  const status = params.get('status') ?? (dashboard ? 'all' : 'open');
+  const listing = dashboard ? dashboardCataloguePaths.opportunities : '/opportunities';
   const deadline = params.get('deadline') ?? '';
   const sort = params.get('sort') ?? 'deadline';
   const currentTime = new Date().toISOString();
@@ -107,8 +120,8 @@ export function OpportunitiesPage() {
   return (
     <>
       <PageIntro
-        eyebrow="Benefits · Opportunities"
-        title="Your next opportunity starts here."
+        eyebrow={dashboard ? 'Opportunities' : 'Benefits · Opportunities'}
+        title={dashboard ? 'Opportunities' : 'Your next opportunity starts here.'}
         description="Funding, market access and practical support for youth-led ventures."
       />
       <section className="container section">
@@ -174,7 +187,7 @@ export function OpportunitiesPage() {
             </div>
             <div className="benefit-grid">
               {featured.map((o) => (
-                <OpportunityCard key={o.id} opportunity={o} />
+                <OpportunityCard key={o.id} opportunity={o} listing={listing} search={search} />
               ))}
             </div>
           </section>
@@ -188,7 +201,7 @@ export function OpportunitiesPage() {
             </div>
             <div className="benefit-grid">
               {remaining.map((o) => (
-                <OpportunityCard key={o.id} opportunity={o} />
+                <OpportunityCard key={o.id} opportunity={o} listing={listing} search={search} />
               ))}
             </div>
           </section>
@@ -198,8 +211,9 @@ export function OpportunitiesPage() {
     </>
   );
 }
-export function OpportunityDetail() {
+export function OpportunityDetail({ dashboard = false }: { dashboard?: boolean }) {
   const { slug } = useParams();
+  const { search } = useLocation();
   const { state, account, execute } = useDemo();
   const [compose, setCompose] = useState(false);
   const opportunity = state.platform.opportunities.find(
@@ -235,7 +249,10 @@ export function OpportunityDetail() {
       <PageIntro eyebrow={`${o.category} · ${o.type}`} title={o.title} description={o.summary} />
       <section className="container section">
         <DemoNotice />
-        <Link className="text-link" to="/opportunities">
+        <Link
+          className="text-link"
+          to={(dashboard ? dashboardCataloguePaths.opportunities : '/opportunities') + search}
+        >
           ← All opportunities
         </Link>
         <div className="benefit-detail">

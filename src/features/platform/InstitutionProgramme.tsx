@@ -23,7 +23,14 @@ export function programmeHref(
   venture?: string,
 ) {
   const next = new URLSearchParams(params);
-  next.set(tabParameter, tab);
+  if (tabParameter === 'area') next.set('area', tab);
+  else if (tab === 'programme-payments') {
+    next.set('tab', tab);
+    next.delete('view');
+  } else {
+    next.set('tab', 'school');
+    next.set('view', tab);
+  }
   next.delete('member');
   next.delete('venture');
   if (member) next.set('member', member);

@@ -230,6 +230,14 @@ function siteRoutes(): RouteObject[] {
         { path: 'learn', element: <LearningPage /> },
         { path: 'learn/:courseId', element: <LearningPage /> },
         {
+          path: 'dashboard/learning/:courseId',
+          element: (
+            <RequireDemo workspace capabilities={dashboardAccess.learning}>
+              <LearningPage dashboard />
+            </RequireDemo>
+          ),
+        },
+        {
           path: 'account',
           element: (
             <RequireDemo>
@@ -338,10 +346,18 @@ function siteRoutes(): RouteObject[] {
           ),
         },
         {
-          path: 'learning/:courseId',
+          path: 'opportunities',
           element: (
-            <RequireDemo capabilities={dashboardAccess.learning}>
-              <LearningPage dashboard />
+            <RequireDemo capabilities={dashboardAccess.opportunities}>
+              <OpportunitiesPage dashboard />
+            </RequireDemo>
+          ),
+        },
+        {
+          path: 'opportunities/:slug',
+          element: (
+            <RequireDemo capabilities={dashboardAccess.opportunities}>
+              <OpportunityDetail dashboard />
             </RequireDemo>
           ),
         },
