@@ -1,64 +1,58 @@
-# YERH frontend
+# YERH
 
-React + strict TypeScript frontend in `C:\Users\user\Desktop\yerh`. Feiso navy/gold tokens are retained, with the original YERH navigation hierarchy and wordmark.
+The `yerh-laravel` branch is the local development branch for the Laravel migration. The React application is in `frontend/` and the Laravel application is in `backend/`.
 
-## Run locally
+## Run locally with XAMPP
+
+Use Node 22.12+, Composer 2 and PHP 8.2+. From the repository root, run:
 
 ```powershell
-cd C:\Users\user\Desktop\yerh
-npm ci
-npm run dev
+npm.cmd --prefix frontend ci
+composer --working-dir=backend install
+if (!(Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
 ```
 
-Open http://127.0.0.1:5173. Node 22.12+ is required. `npm run check` runs domain/fixture tests, TypeScript, and the production build. `npm run format:check` checks formatting.
+For a fresh `backend/.env`, generate the Laravel application key once:
 
-## Where to change things
+```powershell
+php backend/artisan key:generate
+```
 
-| Change                                                     | Location                                                                             |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Desktop and mobile navigation                              | `src/mocks/data/site.json` (seed), CMS site settings (demo publication)              |
-| Route definitions and compatibility redirects              | `src/app/routes.tsx`, `src/content/legacy-routes.json`                               |
-| Blogs, stories, businesses, reports, events                | `src/mocks/data/*.json`                                                              |
-| First hero card, slides, featured content, important links | `src/mocks/data/homepage.json`                                                       |
-| Fictional accounts and community activity                  | `src/mocks/data/accounts.json`, `community.json`                                     |
-| Learning, entrepreneurship, FAQs                           | `src/mocks/data/learning.json`, `lessons.json`, `entrepreneurship.json`, `faqs.json` |
-| Brand colors                                               | `src/styles/tokens.css`                                                              |
-| UI features                                                | `src/features/`                                                                      |
-| Content fetching boundary                                  | `src/services/content-repository.ts`, `mock-content-repository.ts`                   |
-| Demo persistence                                           | `src/services/demo-repository.ts`                                                    |
-| Demo permissions and state transitions                     | `src/domain/demo.ts`                                                                 |
-| Browser-data validation                                    | `src/domain/demo-validation.ts`                                                      |
+1. Start **MySQL** in the XAMPP Control Panel. XAMPP provides MariaDB under that label. Use its database client to create a `yerh` database with `utf8mb4`.
+2. Create a local database user for YERH with schema privileges on `yerh`. Enter its credentials and the XAMPP port in `backend/.env`. The template uses the Laravel `mysql` connection on port 3306.
+3. Run the migrations and start Laravel:
 
-## Try the demo
+```powershell
+php backend/artisan migrate
+php backend/artisan serve --host=127.0.0.1 --port=8000
+```
 
-Select **Login** or **Register** in the site navigation to open the account dialog. In development, sign in with a test email, create a test account, or follow **Demo accounts** in the dialog to try the ready-made roles. Existing `/login` and `/register` links open the corresponding dialog over the homepage. `/join` offers pathway advice and `/apply` handles role applications. Production account dialogs link to `VITE_PLATFORM_URL` when configured.
+4. In another PowerShell window at the repository root, run `npm.cmd run dev` and open [YERH development](http://127.0.0.1:5173). Vite proxies `/api` to Laravel. Check [the API status through Vite](http://127.0.0.1:5173/api/v1/status) before opening [Demo accounts](http://127.0.0.1:5173/demo).
+5. To test the compiled React app through Laravel, run `npm.cmd run build:laravel` and open [YERH served by Laravel](http://127.0.0.1:8000). The generated UI is written to `backend/public/ui`. The two ports have separate browser demo records.
 
-- Entrepreneur/Learner: ventures/products, learning enrollment, community, mentorship, opportunities and incubation.
-- Mentor: profile/expertise/availability, guidance requests, assigned incubation notes and validated milestones.
-- Partner/Investor: approved organisation, own opportunities/applicants and venture discovery.
-- Content Manager: full editorial studio, draft/publish/restore, contribution review and discussion moderation.
-- Institutional Administrator: agreements, offline classes, student profiles, group ventures and individual exam marks.
-- Administrator: staff assignment, institution onboarding, venture and certificate approvals, payment settings and reporting.
+The frontend can run by itself for fixture-based UI work. Start Laravel and the database when testing server features. The current demo sign-ins and dashboard activity still use browser storage. Only use fictional demo data.
 
-Use the [general acceptance walkthrough](docs/TESTING_SPRINT.md) or the [incubation and payments walkthrough](docs/INCUBATION_TESTING.md). The default development command uses port 5173.
+## Checks
 
-Only published demo contributions appear in public listings. Use Reset demo data on `/demo` to restore fixtures. Bookmarks use a separate browser key and are retained by the demo reset. Demo accounts work in local development and on the Vercel deployment domain. See [deployment settings](docs/DEPLOYMENT.md) for the disable switch and custom-domain behavior. The backend must supply real authorization; frontend role checks are only a development simulation.
+```powershell
+npm.cmd run check
+npm.cmd run format:check
+php backend/artisan test
+```
 
-The hero begins with **Idea to Business**, then rotates every 5 seconds. Hover, keyboard focus, hidden tabs, and reduced-motion preferences pause rotation. Manual arrows pause it until Play is chosen. The user-added slide bullets are retained.
+Laravel tests use in-memory SQLite and fake the Moodle HTTP service and email delivery. The local app uses the database configured in `backend/.env`.
 
-## Maintenance
+## Where to work
 
-See `docs/MAINTENANCE_REVIEW.md` for the latest change review, component removal guide, preserved snapshot and remaining backend work.
+| Area | Location |
+| --- | --- |
+| Routes and feature UI | `frontend/src/app/routes.tsx`, `frontend/src/features/` |
+| Role-specific dashboards | `frontend/src/features/platform/`, grouped by feature |
+| Frontend business rules and data access | `frontend/src/domain/`, `frontend/src/services/` |
+| Demo and future database seed source content | `frontend/src/mocks/data/` |
+| Laravel endpoints and migrations | `backend/routes/`, `backend/database/migrations/` |
+| Moodle adapter and queued notifications | `backend/app/Integrations/Moodle/`, `backend/app/Notifications/` |
 
-## Documentation and originals
+See the [architecture and integration plan](docs/LARAVEL_WORKSPACE.md), [general acceptance walkthrough](docs/TESTING_SPRINT.md), and [incubation walkthrough](docs/INCUBATION_TESTING.md). Earlier architecture and validation notes record the original frontend layout.
 
-- `docs/ROLE_CMS_SPRINT.md`: Feiso audit, role workflows, CMS coverage and backend handoff.
-- `docs/TESTING_SPRINT.md`: role accounts and end-to-end testing guide.
-- `docs/FEATURE_AUDIT.md`: recovered features, source gaps, and implementation decisions.
-- `docs/ARCHITECTURE.md`: code organization and extension points.
-- `docs/INTEGRATION.md`: wiring into Feiso or another host.
-- `docs/VALIDATION.md`: verification record.
-- `docs/source-inventory.json`, `asset-manifest.json`, `route-migration.json`: traceability.
-- `archive/yerh-original-archive.zip`: local backup of the unchanged original mirror, including raw HTML/CSS; excluded from Git.
-
-The original Downloads mirror and Feiso project are not modified. `scripts/import-legacy.py` is a source extraction tool: run it into an empty staging folder, review output, and merge records into the mock fixtures. It refuses to overwrite an application root.
+The import tool in `scripts/import-legacy.py` writes its own staging layout. Merge reviewed output into the corresponding paths under `frontend/`. The local original-site archive remains outside Git.

@@ -16,7 +16,7 @@ All test changes are saved in this browser's local storage. They survive refresh
 
 ## Demo accounts
 
-On localhost or the Vercel development URL, open `/demo` and select **Login as …** on a demo account card, or enter one of the test emails below on `/login`.
+On the local Vite or Laravel URL, open `/demo` and select **Login as …** on a demo account card, or enter one of the test emails below on `/login`.
 
 | Account email                | Initial role                 | Useful test                                      |
 | ---------------------------- | ---------------------------- | ------------------------------------------------ |

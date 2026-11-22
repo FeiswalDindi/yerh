@@ -1,0 +1,607 @@
+import { useState } from 'react';
+import { WorkspaceFormDialog, WorkspaceTable } from '../workspace/WorkspaceControls';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ventureResultsHref, workspaceHref } from '../../dashboard/dashboard-navigation';
+import { MilestoneEditor } from '../workspace/WorkspaceEditors';
+import type { DemoAccount } from '../../../domain/demo';
+import {
+  canPublishProduct,
+  cohortForVenture,
+  certificateFee,
+  credentialReady,
+  getStage,
+  incubationLearners,
+  managesVenture,
+  passMark,
+  completedStage,
+  paymentFor,
+  productClearedByIncubation,
+  stageUnlocked,
+  type CredentialKind,
+  type StageDefinition,
+} from '../../../domain/incubation';
+import type { Incubation, PlatformState, Product, Venture } from '../../../domain/platform';
+import {
+  amount,
+  credentialTitle,
+  field,
+  submitTraining,
+  TrainingForm,
+  type Save,
+} from './TrainingForms';
+
+const shortDate = new Intl.DateTimeFormat('en-KE', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+  timeZone: 'Africa/Nairobi',
+});
+
+export function IncubationWorkspace({
+  p,
+  account,
+  save,
+  accountName,
+  selectedVenture,
+  portalHref = workspaceHref,
+}: {
+  p: PlatformState;
+  account: DemoAccount;
+  save: Save;
+  accountName: (id: string) => string;
+  selectedVenture?: string | null;
+  portalHref?: (tab: string) => string;
+}) {
+  const ventures = p.ventures.filter(
+    (v) =>
+      managesVenture(p, account, v) &&
+      (v.groupId || v.status === 'approved') &&
+      !p.incubations.some((path) => path.ventureId === v.id && path.status !== 'rejected'),
+  );
+  const [selected, select] = useState(selectedVenture ?? '');
+  const selectedPath = selectedVenture
+    ? [...p.incubations]
+        .reverse()
+        .find(
+          (path) =>
+            path.ventureId === selectedVenture &&
+            path.ownerId === account.id &&
+            path.status !== 'rejected',
+        )
+    : undefined;
+  const ventureId = ventures.some((v) => v.id === selected) ? selected : (ventures[0]?.id ?? '');
+  const school = account.role === 'school_admin';
+  const [params] = useSearchParams();
+  const selectedRecord = params.get('path') ?? (!school ? selectedPath?.id : undefined);
+  const path = p.incubations.find(
+    (entry) => entry.id === selectedRecord && entry.ownerId === account.id,
+  );
+  const venture = p.ventures.find((entry) => entry.id === path?.ventureId);
+  if (path && managesVenture(p, account, venture)) {
+    return (
+      <section className="workspace-record">
+        <Link to={portalHref('incubation')}>← All pathways</Link>
+        <h3>{venture.name}</h3>
+        {venture.groupId && (
+          <Link
+            to={ventureResultsHref(
+              portalHref('member-results'),
+              venture.id,
+              cohortForVenture(p, venture)?.id,
+            )}
+          >
+            Record marks
+          </Link>
+        )}
+        <p>{path.goal}</p>
+        {path.productIds?.length ? (
+          <p>
+            Products in scope:{' '}
+            {path.productIds
+              .map((id) => p.products.find((product) => product.id === id)?.name)
+              .join(', ')}
+          </p>
+        ) : null}
+        {path.status === 'pending' && <p>Waiting for an administrator to assign a mentor.</p>}
+        {path.status === 'rejected' && (
+          <p>You can submit a new incubation application for this venture.</p>
+        )}
+        {(path.status === 'active' || path.status === 'completed') &&
+          p.training.curriculum.map((stage) => (
+            <LearnerStage
+              key={stage.id}
+              p={p}
+              path={path}
+              stage={stage}
+              venture={venture}
+              save={save}
+            />
+          ))}
+        {!venture.groupId &&
+          incubationLearners(p, path).some((id) => credentialReady(p, path, id, 'venture')) && (
+            <div className="training-status">
+              <CredentialStatus p={p} path={path} kind="venture" save={save} />
+            </div>
+          )}
+        {path.milestones.map((milestone) => (
+          <div className="training-step" key={milestone.id}>
+            <p>
+              <strong>{milestone.title}</strong> · {milestone.note}
+            </p>
+            {!!venture.groupId && path.status === 'active' && (
+              <MilestoneEditor incubationId={path.id} milestone={milestone} onSave={save} />
+            )}
+          </div>
+        ))}
+        {!!venture.groupId && path.status === 'active' && (
+          <WorkspaceFormDialog
+            action="Add milestone"
+            create
+            submit="Save milestone"
+            onSave={(data) =>
+              save({
+                type: 'milestone',
+                id: path.id,
+                milestoneId: crypto.randomUUID(),
+                title: field(data, 'title'),
+                note: field(data, 'note'),
+                validated: data.get('validated') === 'on',
+                now: new Date().toISOString(),
+              })
+            }
+          >
+            <label>
+              Milestone title
+              <input name="title" required minLength={3} maxLength={120} />
+            </label>
+            <label>
+              Observation or feedback
+              <textarea name="note" required minLength={10} maxLength={2000} />
+            </label>
+            <label className="inline-checkbox">
+              <input type="checkbox" name="validated" />
+              Mark reviewed
+            </label>
+          </WorkspaceFormDialog>
+        )}
+      </section>
+    );
+  }
+  return (
+    <WorkspaceTable
+      label="incubations"
+      columns={school ? ['Venture', 'Action'] : ['Venture', 'Mentor', 'Action']}
+      empty="No ventures have been launched into incubation."
+      actions={
+        ventures.length > 0 ? (
+          <WorkspaceFormDialog
+            action="Launch venture"
+            create
+            initialOpen={
+              !selectedPath &&
+              !!selectedVenture &&
+              ventures.some((venture) => venture.id === selectedVenture)
+            }
+            submit="Launch into incubation"
+            onSave={(data) =>
+              save({
+                type: 'incubation-apply',
+                now: new Date().toISOString(),
+                id: crypto.randomUUID(),
+                ventureId,
+                productIds: data.getAll('product').map(String),
+                goal: field(data, 'goal'),
+              })
+            }
+          >
+            <label>
+              Venture
+              <select value={ventureId} onChange={(event) => select(event.target.value)}>
+                {ventures.map((venture) => (
+                  <option key={venture.id} value={venture.id}>
+                    {venture.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <fieldset key={ventureId}>
+              <legend>Products in scope</legend>
+              {p.products
+                .filter((product) => product.ventureId === ventureId)
+                .map((product) => (
+                  <label key={product.id} className="inline-checkbox">
+                    <input type="checkbox" name="product" value={product.id} /> {product.name}
+                  </label>
+                ))}
+              <small>You can also launch a venture before it has a product.</small>
+            </fieldset>
+            <label>
+              Incubation goals <textarea name="goal" required minLength={30} maxLength={2000} />
+            </label>
+            <p>
+              {account.role === 'school_admin'
+                ? 'The pathway opens immediately so school staff can guide and assess the team.'
+                : 'The platform administrator assigns a mentor from the incubation application.'}
+            </p>
+          </WorkspaceFormDialog>
+        ) : (
+          <Link to={portalHref('ventures')}>
+            {school ? 'Find a team venture' : 'Find an approved venture'}
+          </Link>
+        )
+      }
+      rows={p.incubations.flatMap((path) => {
+        const venture = p.ventures.find((entry) => entry.id === path.ventureId);
+        if (path.ownerId !== account.id || !managesVenture(p, account, venture)) return [];
+        const mentor = !school && path.mentorId ? accountName(path.mentorId) : '—';
+        return [
+          {
+            id: path.id,
+            search: [venture.name, mentor].join(' '),
+            cells: [
+              venture.name,
+              ...(!school ? [mentor] : []),
+              <div className="workspace-row-actions">
+                <Link to={portalHref('incubation') + '&path=' + encodeURIComponent(path.id)}>
+                  Open pathway
+                </Link>
+                {school && path.status !== 'rejected' && (
+                  <Link
+                    to={ventureResultsHref(
+                      portalHref('member-results'),
+                      venture.id,
+                      cohortForVenture(p, venture)?.id,
+                    )}
+                  >
+                    Record marks
+                  </Link>
+                )}
+              </div>,
+            ],
+          },
+        ];
+      })}
+    />
+  );
+}
+
+function LearnerStage({
+  p,
+  path,
+  stage,
+  venture,
+  save,
+}: {
+  p: PlatformState;
+  path: Incubation;
+  stage: StageDefinition;
+  venture: Venture;
+  save: Save;
+}) {
+  const key = { incubationId: path.id, stage: stage.id };
+  const work = getStage(p.training, path.id, stage.id);
+  const missingSteps = stage.steps.filter(
+    (step) => !work?.steps.some((item) => item.id === step.id),
+  );
+  if (!stageUnlocked(p, path, stage.id))
+    return (
+      <div className="training-stage">
+        <h4>{stage.title}</h4>
+        <p>Locked until the previous stage assessment is recorded.</p>
+      </div>
+    );
+  const learners = incubationLearners(p, path);
+  const studentName = (id: string) =>
+    p.training.students.find((student) => student.id === id)?.name ?? 'You';
+  const available = learners.filter(
+    (id) =>
+      stageUnlocked(p, path, stage.id, id) &&
+      !completedStage(p.training, path.id, stage.id, id) &&
+      !work?.attempts.some((attempt) => attempt.learnerId === id && attempt.score === null),
+  );
+  return (
+    <details className="training-stage">
+      <summary>{stage.title}</summary>
+      <Link to={`/entrepreneurship/${stage.resourceTopic}`}>Browse stage learning materials →</Link>
+      {stage.steps.map((step) => {
+        const entry = work?.steps.find((item) => item.id === step.id);
+        return (
+          <div key={step.id} className="training-step">
+            <h4>{step.title}</h4>
+            <p>{step.instruction}</p>
+            {(!venture.groupId && work?.reviewRequestedAt) || work?.examOpenedAt ? (
+              <p>{entry?.evidence}</p>
+            ) : (
+              <TrainingForm
+                save={save}
+                build={(data) => ({
+                  ...key,
+                  type: 'stage-evidence',
+                  stepId: step.id,
+                  evidence: field(data, 'evidence'),
+                  requestFeedback: data.get('feedback') === 'on',
+                })}
+                label="Save step"
+                dialog={{
+                  action: entry ? 'Edit evidence' : 'Add evidence',
+                  title: step.title,
+                  create: !entry,
+                }}
+              >
+                <label>
+                  Your evidence{' '}
+                  <textarea
+                    name="evidence"
+                    required
+                    minLength={10}
+                    maxLength={3000}
+                    defaultValue={entry?.evidence}
+                  />
+                </label>
+                {!venture.groupId && (
+                  <label className="inline-checkbox">
+                    <input type="checkbox" name="feedback" defaultChecked={entry?.requested} />{' '}
+                    Request mentor feedback
+                  </label>
+                )}
+              </TrainingForm>
+            )}
+            {entry && (venture.groupId || !work?.reviewRequestedAt) && !work?.examOpenedAt && (
+              <p>Evidence saved</p>
+            )}
+            {!venture.groupId && entry?.feedback && (
+              <p>
+                <strong>Mentor feedback</strong> {entry.feedback}
+              </p>
+            )}
+            {!venture.groupId && entry?.requested && <p>Feedback requested.</p>}
+          </div>
+        );
+      })}
+      {(venture.groupId || !work?.reviewRequestedAt) && !work?.examOpenedAt && (
+        <>
+          <p role="status">
+            {missingSteps.length
+              ? `Save evidence for: ${missingSteps.map((step) => step.title).join(', ')}.`
+              : venture.groupId
+                ? 'All stage evidence is saved. Open the assessment to record marks.'
+                : 'All stage evidence is saved. You can request the mentor review.'}
+          </p>
+          <button
+            type="button"
+            className="button"
+            disabled={missingSteps.length > 0}
+            onClick={() =>
+              submitTraining(save, {
+                ...key,
+                type: venture.groupId ? 'school-stage-open' : 'stage-request',
+              })
+            }
+          >
+            {venture.groupId ? 'Open assessment' : 'Request stage review'}
+          </button>
+        </>
+      )}
+      {!venture.groupId && work?.meetingAt && (
+        <p>Mentor meeting · {shortDate.format(new Date(work.meetingAt))} EAT</p>
+      )}
+      {!venture.groupId && work?.meetingLocation && <p>{work.meetingLocation}</p>}
+      {!venture.groupId && work?.meetingNote && <p>{work.meetingNote}</p>}
+      {work?.examOpenedAt && (
+        <>
+          <h4>Stage exam</h4>
+          <p>{stage.examPrompt}</p>
+          <p>Pass benchmark {passMark}%. A recorded result completes the stage.</p>
+          {work.attempts.map((attempt) => (
+            <p key={attempt.id}>
+              {studentName(attempt.learnerId)} ·{' '}
+              {attempt.score === null ? '—' : `${attempt.score}%`}
+              {attempt.note && ` · ${attempt.note}`}
+            </p>
+          ))}
+          {available.length > 0 &&
+            (venture.groupId ? (
+              <TrainingForm
+                save={save}
+                reset
+                label="Save offline exam result"
+                dialog={{ action: 'Record offline exam result', create: true }}
+                build={(data) => ({
+                  ...key,
+                  type: 'stage-offline-result',
+                  attemptId: crypto.randomUUID(),
+                  learnerId: field(data, 'student'),
+                  score: Number(field(data, 'score')),
+                  note: field(data, 'note'),
+                })}
+              >
+                <label>
+                  Student
+                  <select name="student" required>
+                    {available.map((id) => (
+                      <option key={id} value={id}>
+                        {studentName(id)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Offline exam score (%){' '}
+                  <input name="score" type="number" min="0" max="100" step="1" required />
+                </label>
+                <label>
+                  Assessment notes <textarea name="note" required minLength={5} maxLength={3000} />
+                </label>
+              </TrainingForm>
+            ) : (
+              <TrainingForm
+                save={save}
+                label="Submit exam"
+                dialog={{ action: 'Enter exam answer' }}
+                build={(data) => ({
+                  ...key,
+                  type: 'stage-take-exam',
+                  attemptId: crypto.randomUUID(),
+                  answer: field(data, 'answer'),
+                })}
+              >
+                <label>
+                  Your answer <textarea name="answer" required minLength={10} maxLength={3000} />
+                </label>
+              </TrainingForm>
+            ))}
+          {!venture.groupId && <CredentialStatus p={p} path={path} kind={stage.id} save={save} />}
+        </>
+      )}
+    </details>
+  );
+}
+
+function CredentialStatus({
+  p,
+  path,
+  kind,
+  save,
+}: {
+  p: PlatformState;
+  path: Incubation;
+  kind: CredentialKind;
+  save: Save;
+}) {
+  const title = credentialTitle(p.training, kind);
+  return incubationLearners(p, path)
+    .filter((id) => credentialReady(p, path, id, kind))
+    .map((id) => {
+      const student = p.training.students.find((item) => item.id === id);
+      const issued = p.training.credentials.find(
+        (c) => c.incubationId === path.id && c.learnerId === id && c.kind === kind,
+      );
+      const fee = certificateFee(p, path, kind);
+      const payment =
+        kind === 'funding' || kind === 'venture'
+          ? undefined
+          : paymentFor(p.training, kind, path.id);
+      return (
+        <div key={id} className="training-status">
+          <p>
+            <strong>
+              {student ? `${student.name} · ` : ''}
+              {title}
+            </strong>{' '}
+          </p>
+          {issued && (
+            <Link to={`/certificates/${issued.id}`} aria-label="View certificate">
+              View
+            </Link>
+          )}
+          {!issued &&
+            fee > 0 &&
+            kind !== 'funding' &&
+            kind !== 'venture' &&
+            (!payment || payment.status === 'declined') && (
+              <button
+                type="button"
+                className="button button-outline"
+                onClick={() =>
+                  submitTraining(save, {
+                    type: 'training-payment-request',
+                    id: crypto.randomUUID(),
+                    purpose: kind,
+                    targetId: path.id,
+                  })
+                }
+              >
+                Record demo payment · {amount(fee)}
+              </button>
+            )}
+        </div>
+      );
+    });
+}
+
+export function ProductPathways({
+  p,
+  product,
+  save,
+}: {
+  p: PlatformState;
+  product: Product;
+  save: Save;
+}) {
+  const path = p.incubations.find(
+    (item) =>
+      item.ventureId === product.ventureId &&
+      (item.status === 'completed' ||
+        (item.status === 'active' && item.productIds?.includes(product.id))),
+  );
+  const review = p.training.productReviews.find((row) => row.productId === product.id);
+  const payment = paymentFor(p.training, 'marketplace', product.id);
+  const visible = canPublishProduct(p, product);
+  return (
+    <div className="training-status">
+      {visible && (
+        <Link to={`/marketplace/product-${product.id}`} aria-label="View public listing">
+          View
+        </Link>
+      )}
+      {review?.feedback && <p>{review.feedback}</p>}
+      {path && (!review || review.status === 'rejected') && (
+        <div>
+          <TrainingForm
+            save={save}
+            label="Send product for review"
+            dialog={{
+              action: path.productIds?.includes(product.id)
+                ? 'Submit product evidence'
+                : 'Request targeted product review',
+            }}
+            build={(data) => ({
+              type: 'product-evidence',
+              productId: product.id,
+              evidence: field(data, 'evidence'),
+            })}
+          >
+            <label>
+              Customer test or product evidence{' '}
+              <textarea
+                name="evidence"
+                minLength={10}
+                maxLength={3000}
+                required
+                defaultValue={review?.evidence}
+              />
+            </label>
+          </TrainingForm>
+        </div>
+      )}
+      {!path && !visible && (
+        <p>
+          Include this product when launching the venture or submit it for review after graduation.
+        </p>
+      )}
+      {!visible &&
+        !productClearedByIncubation(p, product) &&
+        product.status !== 'rejected' &&
+        p.ventures.some((v) => v.id === product.ventureId && v.status === 'approved') &&
+        p.training.bypassEnabled &&
+        (!payment || payment.status === 'declined') && (
+          <button
+            type="button"
+            className="button button-outline"
+            onClick={() =>
+              submitTraining(save, {
+                type: 'training-payment-request',
+                id: crypto.randomUUID(),
+                purpose: 'marketplace',
+                targetId: product.id,
+              })
+            }
+          >
+            Record paid listing · {amount(p.training.fees.marketplace)}
+          </button>
+        )}
+      {!visible && payment?.status === 'confirmed' && (
+        <p>Payment is confirmed. The listing goes live when moderation is approved.</p>
+      )}
+    </div>
+  );
+}
