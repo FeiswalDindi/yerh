@@ -214,6 +214,14 @@
   color: var(--yerh-muted);
 }
 
+.agreement-assessment-terms {
+  display: grid;
+  gap: 12px;
+  margin-block-start: 20px;
+  padding-block-start: 18px;
+  border-block-start: 1px solid var(--yerh-border);
+}
+
 .workspace-data-count {
   margin: 0;
   padding: 9px 14px;

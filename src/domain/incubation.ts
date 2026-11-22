@@ -12,6 +12,12 @@ export const feeLabels: Record<FeePurpose, string> = {
   marketplace: 'Marketplace listing without incubation',
 };
 export const passMark = 50;
+export const schoolCertificateClassifications = [
+  { minimum: 70, label: 'First Class' },
+  { minimum: 60, label: 'Second Class Upper' },
+  { minimum: passMark, label: 'Second Class Lower' },
+  { minimum: 0, label: 'Completion' },
+] as const;
 
 export interface StageDefinition {
   id: StageId;
@@ -479,10 +485,10 @@ export function schoolCertificateScore(t: TrainingState, entry: CertificateSelec
 }
 
 export function schoolDivision(score: number) {
-  if (score >= 70) return 'First Class';
-  if (score >= 60) return 'Second Class Upper';
-  if (score >= passMark) return 'Second Class Lower';
-  return 'Completion';
+  return (
+    schoolCertificateClassifications.find(({ minimum }) => score >= minimum)?.label ??
+    schoolCertificateClassifications.at(-1)!.label
+  );
 }
 
 export function incubationCertificateQueue(p: PlatformState) {
