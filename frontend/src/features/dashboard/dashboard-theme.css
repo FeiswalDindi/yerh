@@ -1,4 +1,4 @@
-.dashboard-shell[data-dashboard-theme='dark'] {
+:root[data-dashboard-theme='dark'] {
   color-scheme: dark;
   --yerh-surface: #111827;
   --yerh-nav-surface: #172132;
@@ -94,4 +94,95 @@
 
 [data-dashboard-theme='dark'] :focus-visible {
   outline-color: #e7c85b;
+}
+
+[data-dashboard-theme='dark'] .role-nav-group > p {
+  background: var(--yerh-navy);
+  color: var(--yerh-surface);
+}
+
+[data-dashboard-theme='dark']
+  :is(
+    .sidebar-widget:not(.widget-news-feed),
+    .business-item-card,
+    .update-item-card,
+    .blog-feed,
+    .social-card-pane,
+    .filter-chips button.active,
+    .contact-form input,
+    .contact-form select,
+    .contact-form textarea,
+    .pathway-check
+  ) {
+  background: var(--yerh-white);
+  color: var(--yerh-ink);
+}
+[data-dashboard-theme='dark'] :is(.news-feed-item, .important-link-item) {
+  background: var(--workspace-subtle);
+  color: var(--yerh-ink);
+}
+[data-dashboard-theme='dark'] :is(.news-feed-item, .important-link-item):hover {
+  background: var(--workspace-hover);
+}
+[data-dashboard-theme='dark']
+  :is(
+    .feed-title,
+    .number-val,
+    .business-contact-line,
+    .news-feed-item:hover .feed-title,
+    .headline-news-feed .highlight-text
+  ) {
+  color: var(--yerh-navy);
+}
+[data-dashboard-theme='dark']
+  :is(
+    .business-excerpt,
+    .business-social-tags,
+    .number-lbl,
+    .embed-caption,
+    .business-contact-line a,
+    .watch-link
+  ) {
+  color: var(--yerh-muted);
+}
+[data-dashboard-theme='dark'] .homepage-wrapper {
+  background: var(--yerh-surface);
+}
+.site-theme-toggle {
+  flex: none;
+  min-width: 32px;
+  color: var(--yerh-navy);
+}
+
+:root[data-dashboard-theme='dark'] .site-footer {
+  background: var(--yerh-nav-surface);
+  color: var(--yerh-ink);
+  border-top: 1px solid var(--yerh-border);
+}
+:root[data-dashboard-theme='dark'] .footer-links-list :is(a, .footer-link-button) {
+  color: var(--yerh-muted);
+}
+:root[data-dashboard-theme='dark']
+  .footer-links-list
+  :is(a, .footer-link-button):is(:hover, :focus-visible) {
+  color: var(--yerh-ink);
+}
+:root[data-dashboard-theme='dark'] .search-input {
+  background: var(--yerh-white);
+}
+.dashboard-content a[href]:not(.button, .icon-button, .workspace-quick-link, [role='button']) {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+.institution-active-mark {
+  color: #197148;
+  display: inline-flex;
+  vertical-align: middle;
+}
+:root[data-dashboard-theme='dark'] .institution-active-mark {
+  color: #77dda0;
+}
+.sector-thumbnail {
+  object-fit: cover;
+  vertical-align: middle;
 }

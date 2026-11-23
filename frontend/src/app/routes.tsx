@@ -15,6 +15,31 @@ import { roleAccessPath } from '../features/accounts/role-requests';
 import { BreadcrumbProvider } from '../shared/BreadcrumbProvider';
 import { SiteLoader } from '../shared/SiteLoader';
 import { RouteLoadError } from './RouteLoadError';
+import { laravelModeEnabled } from '../config/laravel';
+import {
+  MarketplaceListings,
+  MarketplaceProduct,
+} from '../features/platform/server/ProductsWorkspace';
+const LaravelNotifications = lazy(() =>
+  import('../features/accounts/LaravelNotifications').then((m) => ({
+    default: m.LaravelNotifications,
+  })),
+);
+const LaravelAccountPage = lazy(() =>
+  import('../features/platform/server/LaravelWorkspacePage').then((m) => ({
+    default: m.LaravelAccountPage,
+  })),
+);
+const LaravelDashboard = lazy(() =>
+  import('../features/platform/server/LaravelWorkspacePage').then((m) => ({
+    default: m.LaravelDashboard,
+  })),
+);
+const LocalLaravelAccountPage = lazy(() =>
+  import('../features/accounts/LocalLaravelAccountPage').then((m) => ({
+    default: m.LocalLaravelAccountPage,
+  })),
+);
 const DashboardLayout = lazy(() =>
   import('../features/dashboard/DashboardLayout').then((m) => ({ default: m.DashboardLayout })),
 );
@@ -49,6 +74,24 @@ const ResourcesPage = lazy(() =>
 const EntrepreneurshipPage = lazy(() =>
   import('../features/resources/EntrepreneurshipPage').then((m) => ({
     default: m.EntrepreneurshipPage,
+  })),
+);
+const EventCatalogue = lazy(() =>
+  import('../features/platform/server/EventCatalogue').then((m) => ({ default: m.EventCatalogue })),
+);
+const LaravelEventPage = lazy(() =>
+  import('../features/platform/server/EventCatalogue').then((m) => ({
+    default: m.LaravelEventPage,
+  })),
+);
+const LaravelOpportunitiesPage = lazy(() =>
+  import('../features/platform/server/OpportunityWorkspace').then((m) => ({
+    default: m.LaravelOpportunitiesPage,
+  })),
+);
+const LearningWorkspace = lazy(() =>
+  import('../features/platform/server/LearningWorkspace').then((m) => ({
+    default: m.LearningWorkspace,
   })),
 );
 const LearningPage = lazy(() =>
@@ -216,28 +259,59 @@ function siteRoutes(): RouteObject[] {
         { path: 'publications/stories', element: <ContentDirectory kind="story" /> },
         { path: 'publications/blogs', element: <ContentDirectory kind="article" /> },
         { path: 'publications/reports', element: <ContentDirectory kind="publication" /> },
-        { path: 'marketplace', element: <MarketplacePage /> },
-        { path: 'events', element: <EventsPage /> },
+        {
+          path: 'marketplace',
+          element: laravelModeEnabled ? <MarketplaceListings /> : <MarketplacePage />,
+        },
+        {
+          path: 'marketplace/:slug',
+          element: laravelModeEnabled ? <MarketplaceProduct /> : <ContentDetail />,
+        },
+        { path: 'events', element: laravelModeEnabled ? <EventCatalogue /> : <EventsPage /> },
         { path: 'events/archive', element: <ContentDirectory kind="event" /> },
-        { path: 'opportunities', element: <OpportunitiesPage /> },
-        { path: 'opportunities/:slug', element: <OpportunityDetail /> },
-        { path: 'apply', element: <ApplicationEntry /> },
+        {
+          path: 'opportunities',
+          element: laravelModeEnabled ? <LaravelOpportunitiesPage /> : <OpportunitiesPage />,
+        },
+        {
+          path: 'opportunities/:slug',
+          element: laravelModeEnabled ? <LaravelOpportunitiesPage /> : <OpportunityDetail />,
+        },
+        {
+          path: 'apply',
+          element: laravelModeEnabled ? <Navigate to="/account" replace /> : <ApplicationEntry />,
+        },
         { path: 'pages/:slug', element: <ManagedPage /> },
         { path: 'certificates/:id', element: <CertificatePage /> },
-        ...[
-          'publications/stories',
-          'publications/blogs',
-          'publications/reports',
-          'marketplace',
-          'events',
-        ].map((path) => ({ path: `${path}/:slug`, element: <ContentDetail /> })),
-        { path: 'workshops', element: <EventCollectionPage type="workshops" /> },
-        { path: 'webinars', element: <EventCollectionPage type="webinars" /> },
-        { path: 'learn', element: <LearningPage /> },
-        { path: 'learn/:courseId', element: <LearningPage /> },
+        ...['publications/stories', 'publications/blogs', 'publications/reports', 'events'].map(
+          (path) => ({ path: `${path}/:slug`, element: <ContentDetail /> }),
+        ),
+        {
+          path: 'workshops',
+          element: laravelModeEnabled ? (
+            <EventCatalogue categoryName="Workshop" />
+          ) : (
+            <EventCollectionPage type="workshops" />
+          ),
+        },
+        {
+          path: 'webinars',
+          element: laravelModeEnabled ? (
+            <EventCatalogue categoryName="Webinar" />
+          ) : (
+            <EventCollectionPage type="webinars" />
+          ),
+        },
+        { path: 'learn', element: laravelModeEnabled ? <LearningWorkspace /> : <LearningPage /> },
+        {
+          path: 'learn/:courseId',
+          element: laravelModeEnabled ? <LearningWorkspace /> : <LearningPage />,
+        },
         {
           path: 'dashboard/learning/:courseId',
-          element: (
+          element: laravelModeEnabled ? (
+            <LearningWorkspace />
+          ) : (
             <RequireDemo workspace capabilities={dashboardAccess.learning}>
               <LearningPage dashboard />
             </RequireDemo>
@@ -245,12 +319,17 @@ function siteRoutes(): RouteObject[] {
         },
         {
           path: 'account',
-          element: (
+          element: laravelModeEnabled ? (
+            <LaravelAccountPage />
+          ) : (
             <RequireDemo>
               <GuestAccount />
             </RequireDemo>
           ),
         },
+        ...(laravelModeEnabled
+          ? [{ path: 'account/notifications', element: <LaravelNotifications /> }]
+          : []),
         {
           path: 'account/certificates',
           element: (
@@ -259,13 +338,23 @@ function siteRoutes(): RouteObject[] {
             </RequireDemo>
           ),
         },
-        { path: 'account/invitations/:id', element: <InstitutionInvitationPage /> },
+        {
+          path: 'account/invitations/:id',
+          element: laravelModeEnabled ? (
+            <Navigate to="/account" replace />
+          ) : (
+            <InstitutionInvitationPage />
+          ),
+        },
         { path: 'forums', element: <ForumsPage /> },
         { path: 'forums/:threadId', element: <ThreadPage /> },
         { path: 'network', element: <NetworkPage /> },
         { path: 'network/members/:memberId', element: <MemberProfilePage /> },
         { path: 'network/groups/:groupId', element: <GroupPage /> },
-        { path: 'sessions/:sessionId', element: <SessionPage /> },
+        {
+          path: 'sessions/:sessionId',
+          element: laravelModeEnabled ? <LaravelEventPage /> : <SessionPage />,
+        },
         { path: 'leaderboard', element: <Navigate to="/network?tab=leaderboard" replace /> },
         { path: 'yem/mentors', element: <MentorshipPage /> },
         { path: 'yem/mentees', element: <MentorshipPage mode="mentees" /> },
@@ -274,6 +363,9 @@ function siteRoutes(): RouteObject[] {
         { path: 'register', element: <AccountEntryRedirect mode="register" /> },
         { path: 'login', element: <AccountEntryRedirect /> },
         { path: 'demo', element: <DemoLoginPage /> },
+        ...(import.meta.env?.VITE_ENABLE_LOCAL_LARAVEL_AUTH === 'true'
+          ? [{ path: 'local-account', element: <LocalLaravelAccountPage /> }]
+          : []),
         { path: 'profile', element: <Navigate to="/dashboard/profile" replace /> },
         { path: 'contact', element: <ContactPage /> },
         { path: 'search', element: <ContentDirectory search /> },
@@ -298,7 +390,11 @@ function siteRoutes(): RouteObject[] {
     },
     {
       path: 'dashboard',
-      element: (
+      element: laravelModeEnabled ? (
+        <Suspense fallback={<SiteLoader screen />}>
+          <LaravelDashboard />
+        </Suspense>
+      ) : (
         <RequireDemo workspace>
           <Suspense fallback={<SiteLoader screen />}>
             <DashboardLayout />

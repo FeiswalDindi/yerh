@@ -28,6 +28,8 @@ return [
 
     'env' => env('APP_ENV', 'production'),
 
+    'local_email_verification' => (bool) env('YERH_LOCAL_EMAIL_VERIFICATION', false),
+
     /*
     |--------------------------------------------------------------------------
     | Application Debug Mode

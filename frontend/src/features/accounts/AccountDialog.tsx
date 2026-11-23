@@ -12,6 +12,13 @@ import { institutionAccess } from '../../domain/incubation';
 import { institutionSignInProblem } from '../../domain/institution-members';
 import type { DemoAccount } from '../../domain/demo';
 import { institutionHref } from '../dashboard/dashboard-navigation';
+import { LaravelAccountForm } from './LaravelAccountForm';
+import { laravelModeEnabled } from '../../config/laravel';
+import { useLaravelSession } from '../../app/useLaravelSession';
+import {
+  localLaravelIdentity,
+  type InstitutionChoice,
+} from '../../services/laravel-identity-repository';
 import './account.css';
 
 export function AccountDialog({ mode, search, onClose }: AccountRequest & { onClose: () => void }) {
@@ -19,6 +26,25 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
   const { state } = useDemo();
   const [register, setRegister] = useState(mode === 'register');
   const [selecting, setSelecting] = useState(mode !== 'register');
+  const [liveInstitutions, setLiveInstitutions] = useState<InstitutionChoice[]>([]);
+  const [institutionError, setInstitutionError] = useState('');
+  const session = useLaravelSession();
+  useEffect(() => {
+    if (!laravelModeEnabled || !selecting || session?.profile) return;
+    const request = new AbortController();
+    void localLaravelIdentity
+      .choices(request.signal)
+      .then((rows) => {
+        if (!request.signal.aborted) setLiveInstitutions(rows);
+      })
+      .catch((error: unknown) => {
+        if (!request.signal.aborted)
+          setInstitutionError(
+            error instanceof Error ? error.message : 'Could not load institutions.',
+          );
+      });
+    return () => request.abort();
+  }, [selecting, session?.profile]);
   const institutions = state.platform.training.institutions.filter(
     (school) => school.status === 'active',
   );
@@ -55,13 +81,17 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
     navigator.vibrate?.(45);
   }
 
+  const useLaravel = laravelModeEnabled;
+  const showingInstitution = selecting && (!useLaravel || !session?.profile);
   const title = register ? 'Create your account' : 'Sign in';
   return (
     <dialog
       ref={dialog}
-      className={selecting ? 'account-dialog account-institution-dialog' : 'account-dialog'}
+      className={
+        showingInstitution ? 'account-dialog account-institution-dialog' : 'account-dialog'
+      }
       aria-labelledby="account-title"
-      aria-describedby={selecting ? undefined : 'account-description'}
+      aria-describedby={showingInstitution ? undefined : 'account-description'}
       onCancel={(event) => {
         if (event.target !== event.currentTarget) return;
         event.preventDefault();
@@ -80,7 +110,7 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
         aria-label="Close account dialog"
         onClick={close}
       />
-      {selecting ? (
+      {showingInstitution ? (
         <div className="account-institution-card">
           <img className="account-institution-image" src="/media/institution-sign-in.webp" alt="" />
           <form
@@ -103,14 +133,22 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
                 <option value="" disabled>
                   Choose an institution
                 </option>
-                {yerh && <option value="yerh">YERH</option>}
-                {institutions.map((school) => (
+                {(useLaravel || yerh) && <option value="yerh">YERH</option>}
+                {(useLaravel
+                  ? liveInstitutions.map((row) => ({ id: row.slug, name: row.name }))
+                  : institutions
+                ).map((school) => (
                   <option key={school.id} value={school.id}>
                     {school.name}
                   </option>
                 ))}
               </select>
             </label>
+            {institutionError && (
+              <p role="alert" className="account-error">
+                {institutionError}
+              </p>
+            )}
             <button className="button account-submit">
               Continue <ArrowRight size={18} aria-hidden="true" />
             </button>
@@ -121,20 +159,36 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
           <Link className="account-brand" to="/" aria-label="YERH home" onClick={close}>
             <img src={media.logo} width={104} height={104} alt="" fetchPriority="high" />
           </Link>
-          <AccountForm
-            key={String(register)}
-            title={title}
-            register={register}
-            institution={institution}
-            onChangeInstitution={register ? undefined : () => setSelecting(true)}
-            search={search}
-            onGoogleUnavailable={signalUnavailable}
-            onSwitch={() => {
-              closeButton.current?.focus();
-              setRegister(!register);
-              setSelecting(register);
-            }}
-          />
+          {useLaravel ? (
+            <LaravelAccountForm
+              key={String(register)}
+              title={title}
+              register={register}
+              institution={institution}
+              verification={new URLSearchParams(search).get('verification')}
+              onComplete={close}
+              onChangeInstitution={() => setSelecting(true)}
+              onSwitch={() => {
+                setRegister(!register);
+                setSelecting(register);
+              }}
+            />
+          ) : (
+            <AccountForm
+              key={String(register)}
+              title={title}
+              register={register}
+              institution={institution}
+              onChangeInstitution={register ? undefined : () => setSelecting(true)}
+              search={search}
+              onGoogleUnavailable={signalUnavailable}
+              onSwitch={() => {
+                closeButton.current?.focus();
+                setRegister(!register);
+                setSelecting(register);
+              }}
+            />
+          )}
         </div>
       )}
     </dialog>

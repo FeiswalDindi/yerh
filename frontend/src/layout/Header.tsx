@@ -6,8 +6,11 @@ import { type NavigationItem } from '../config/navigation';
 import { roleLabels } from '../domain/roles';
 import { useCatalog } from '../app/useCatalog';
 import { useDemo } from '../app/useDemo';
+import { useLaravelSession } from '../app/useLaravelSession';
 import { AccountLink } from '../features/accounts/AccountLink';
+import { LaravelNotificationsLink } from '../features/accounts/LaravelNotifications';
 import { BreadcrumbBar } from '../shared/Breadcrumb';
+import { SiteThemeSwitch } from './SiteThemeSwitch';
 
 function NavigationBranch({ item, depth = 0 }: { item: NavigationItem; depth?: number }) {
   const [open, setOpen] = useState(false);
@@ -74,7 +77,11 @@ export function Header({
 }) {
   const { media, site } = useCatalog();
   const navigation = site.navigation;
-  const { account, enabled, execute } = useDemo();
+  const { account: demoAccount, enabled, execute } = useDemo();
+  const session = useLaravelSession();
+  const account = session ? session.profile : demoAccount;
+  const accountHref =
+    account?.role === 'guest' && !session?.profile?.staff.length ? '/account' : '/dashboard';
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const toggle = useRef<HTMLButtonElement>(null);
@@ -91,16 +98,16 @@ export function Header({
       </a>
 
       {/* Demo account top strip */}
-      {enabled && account && (
+      {!session && enabled && demoAccount && (
         <div className="demo-session-strip">
           <div className="container demo-strip-inner">
             <span>
-              DEVELOPMENT DEMO · {account.name} · {roleLabels[account.role]}
+              DEVELOPMENT DEMO · {demoAccount.name} · {roleLabels[demoAccount.role]}
             </span>
             <div className="demo-strip-links">
               <Link to="/demo">Switch demo role</Link>
-              <Link to={account.role === 'guest' ? '/account' : '/dashboard'}>
-                {account.role === 'guest' ? 'Account' : 'My workspace'}
+              <Link to={accountHref}>
+                {demoAccount.role === 'guest' ? 'Account' : 'My workspace'}
               </Link>
               <button
                 type="button"
@@ -136,8 +143,11 @@ export function Header({
             </nav>
 
             <div className="header-actions">
+              <SiteThemeSwitch />
               {dashboardMenu ? (
                 dashboardMenu.notifications
+              ) : session?.profile?.email_verified ? (
+                <LaravelNotificationsLink key={session.profile.id} />
               ) : (
                 <Link to="/search" className="icon-button" aria-label="Search the hub">
                   <Search size={19} aria-hidden="true" />
@@ -146,17 +156,14 @@ export function Header({
 
               {account ? (
                 <>
-                  <Link
-                    className="header-login"
-                    to={account.role === 'guest' ? '/account' : '/dashboard'}
-                  >
+                  <Link className="header-login" to={accountHref}>
                     MY ACCOUNT
                   </Link>
                   <button
                     type="button"
                     className="button button-gold button-small header-signout-btn"
-                    onClick={() => execute({ type: 'logout' })}
-                    title="Sign out of demo account"
+                    onClick={() => (session ? void session.signOut() : execute({ type: 'logout' }))}
+                    title="Sign out"
                   >
                     SIGN OUT
                   </button>

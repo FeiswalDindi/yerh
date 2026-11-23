@@ -1,5 +1,6 @@
+import { MarketplaceSectorGrid } from './MarketplaceSectorGrid';
 import { useEffect, useRef } from 'react';
-import { ArrowLeft, ArrowRight, Search, Store } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Search } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useCatalog } from '../../app/useCatalog';
 import {
@@ -123,32 +124,14 @@ export function MarketplacePage() {
               )}
             </>
           ) : sectors.length ? (
-            <ul
-              className="marketplace-sector-grid"
-              aria-label="Marketplace sectors"
-              ref={sectorGrid}
-              tabIndex={-1}
-            >
-              {sectors.map(([name, listings]) => {
-                const image = listings.find((item) => item.image)?.image;
-                return (
-                  <li key={name}>
-                    <Link className="marketplace-sector-card" to={businessSectorPath(name)}>
-                      <span className="marketplace-sector-image" aria-hidden="true">
-                        {image ? <img src={image} alt="" loading="lazy" /> : <Store size={36} />}
-                      </span>
-                      <span className="marketplace-sector-copy">
-                        <span>
-                          <strong>{name}</strong>
-                          <small>{listingCount(listings.length)}</small>
-                        </span>
-                        <ArrowRight size={19} aria-hidden="true" />
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <MarketplaceSectorGrid
+              gridRef={sectorGrid}
+              sectors={sectors.map(([name, listings]) => ({
+                name,
+                image: listings.find((item) => item.image)?.image,
+                count: listings.length,
+              }))}
+            />
           ) : (
             <p className="empty-state">
               Marketplace listings will appear here when they are published.

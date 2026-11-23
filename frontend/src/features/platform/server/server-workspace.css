@@ -1,0 +1,63 @@
+.server-workspace-content {
+  min-width: 0;
+  padding: clamp(1rem, 2.4vw, 2rem) clamp(1rem, 3.5vw, 3rem) 3rem;
+}
+
+.server-workspace-content > h1,
+.workspace-record-title h1 {
+  font-size: clamp(1.65rem, 2.9vw, 2.3rem);
+  line-height: 1.15;
+  margin: 0 0 0.85rem;
+}
+
+.server-workspace-content h3 {
+  margin-block: 1.5rem 0.75rem;
+}
+
+.workspace-record-title {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.workspace-record-title h1 {
+  margin-bottom: 0.45rem;
+}
+
+.workspace-record-status {
+  border: 1px solid var(--yerh-border);
+  border-radius: 3rem;
+  display: inline-flex;
+  font-size: 0.85em;
+  font-weight: 600;
+  padding: 0.15rem 0.65rem;
+  text-transform: capitalize;
+}
+
+.workspace-status-filter select {
+  background: var(--yerh-white);
+  border: 1px solid var(--yerh-border);
+  border-radius: 0.4rem;
+  color: var(--yerh-text);
+  font: inherit;
+  min-height: 2.4rem;
+  padding-inline: 0.75rem;
+}
+
+.workspace-user-picker {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.server-programme-stage {
+  margin-block: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--yerh-border);
+}
+
+.server-account > * + * {
+  margin-block-start: 1rem;
+}

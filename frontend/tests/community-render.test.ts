@@ -4,7 +4,11 @@ import { createServer } from 'vite';
 
 let server: Awaited<ReturnType<typeof createServer>>;
 before(async () => {
-  server = await createServer({ server: { middlewareMode: true, hmr: false }, appType: 'custom' });
+  server = await createServer({
+    mode: 'test',
+    server: { middlewareMode: true, hmr: false },
+    appType: 'custom',
+  });
 });
 after(async () => {
   await server?.close();

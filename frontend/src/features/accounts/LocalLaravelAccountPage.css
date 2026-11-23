@@ -1,0 +1,60 @@
+.local-account {
+  display: grid;
+  min-height: 70vh;
+  padding: clamp(1rem, 5vw, 3rem);
+  place-items: center;
+}
+
+.local-account__panel {
+  width: min(100%, 38rem);
+  padding: clamp(1.25rem, 5vw, 2.5rem);
+  border: 1px solid #dce2ef;
+  border-radius: 1rem;
+  color: #192c57;
+  background: white;
+}
+
+.local-account__label {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.local-account__modes,
+.local-account form {
+  display: grid;
+  gap: 0.8rem;
+  margin-block: 1rem;
+}
+
+.local-account__modes {
+  grid-template-columns: 1fr 1fr;
+}
+
+.local-account label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.local-account input,
+.local-account button {
+  padding: 0.65rem;
+  border: 1px solid #627299;
+  border-radius: 0.45rem;
+}
+
+.local-account button {
+  margin: 0.2rem;
+  color: inherit;
+  background: #f0f3f9;
+}
+
+.local-account button[aria-pressed='true'],
+.local-account button[type='submit'] {
+  color: white;
+  background: #192c57;
+}
+
+.local-account [role='alert'] {
+  color: #892720;
+}

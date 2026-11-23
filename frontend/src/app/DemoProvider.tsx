@@ -1,6 +1,7 @@
 import { DemoContext } from './useDemo';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { demoAccountsEnabled } from '../config/demo';
+import { laravelModeEnabled } from '../config/laravel';
 import { applyDemoAction, currentAccount, type DemoAction, type DemoState } from '../domain/demo';
 import { isDemoState } from '../domain/demo-validation';
 import {
@@ -10,14 +11,16 @@ import {
   type DemoRepository,
 } from '../services/demo-repository';
 
-const demoEnabled = demoAccountsEnabled(
-  {
-    DEV: import.meta.env.DEV,
-    MODE: import.meta.env.MODE,
-    VITE_ENABLE_DEMO_ACCOUNTS: import.meta.env.VITE_ENABLE_DEMO_ACCOUNTS,
-  },
-  typeof window === 'undefined' ? undefined : window.location,
-);
+const demoEnabled =
+  !laravelModeEnabled &&
+  demoAccountsEnabled(
+    {
+      DEV: import.meta.env.DEV,
+      MODE: import.meta.env.MODE,
+      VITE_ENABLE_DEMO_ACCOUNTS: import.meta.env.VITE_ENABLE_DEMO_ACCOUNTS,
+    },
+    typeof window === 'undefined' ? undefined : window.location,
+  );
 export function DemoProvider({
   children,
   repository = browserDemoRepository,

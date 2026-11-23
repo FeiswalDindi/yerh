@@ -15,6 +15,11 @@ export function ContentProvider({
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
+    const refresh = () => setAttempt((value) => value + 1);
+    window.addEventListener('yerh:editorial-updated', refresh);
+    return () => window.removeEventListener('yerh:editorial-updated', refresh);
+  }, []);
+  useEffect(() => {
     const controller = new AbortController();
     setFailed(false);
     repository

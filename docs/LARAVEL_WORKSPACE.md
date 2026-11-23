@@ -22,14 +22,117 @@ The `CourseCatalog` contract has a read-only `MoodleCourseCatalog` implementatio
 
 ## Notifications
 
-Laravel owns queued mail and in-app notification delivery. The first reusable notification handles an issued course certificate. It waits for the transaction to commit, then writes to the notification inbox and sends through the configured mail transport. In the local environment, messages use Laravel's log mailer. Run `php backend/artisan queue:work` from the repository root when exercising queued server workflows. Wire the notification to the real certificate issuance command when moving that workflow to Laravel. The current demo does not dispatch real email.
+Laravel owns queued mail and in-app notification delivery. Issuing a standalone course certificate queues a notification after the transaction commits. The notification appears in the signed-in account's bell and goes through the configured mail transport. Local email uses the log transport, so the queue worker must be running to deliver the notification. Existing demo mode stays separate.
 
 Use separate notification classes for invitation, approval and payment events as their server workflows go live. Keep recipient selection in the authorized workflow and pass committed references to the notification. Test retries and deduplication for each workflow where sending twice would cause a problem. See [Laravel Notifications](https://laravel.com/docs/12.x/notifications) and [Laravel Queues](https://laravel.com/docs/12.x/queues).
 
-## Migration order
+## Test locally
 
-1. Account sign-in, email verification, roles and institution membership. Verify the guest-to-entrepreneur flow, university and hub invitations, and school admin access.
-2. Ventures and products, including ownership, institution boundaries, approvals and marketplace publication.
-3. Incubation and certification. Verify the individual mentor workflow and the school results and certificate workflow independently.
-4. Standalone course enrolment and Moodle progress, followed by course certificate issuance and its notifications.
-5. Remaining payments, events, opportunities, community and CMS workflows. Move each through its existing acceptance checks.
+Use `http://127.0.0.1:8000` with the local Laravel build, or the current Vite
+address if you are developing the interface. The Laravel server, database and
+queue worker should be running. Use separate browser profiles for the different
+roles so switching accounts does not replace the same session.
+
+### Account verification and affiliation
+
+1. Register a fictional guest and sign in under **YERH**.
+2. In **Account**, select **Verify email address** beside **Resend verification**.
+   The account displays **Email verified**. The button requires
+   `APP_ENV=local`, `MAIL_MAILER=log`, an explicit
+   `YERH_LOCAL_EMAIL_VERIFICATION=true`, and a loopback request. Other
+   environments use the verification email.
+3. In **Account**, apply to an active university or hub. Approve or reject the
+   application from the platform administrator's **Approval queue**. An
+   approval lets the guest open the entrepreneur dashboard and sign in under
+   their approved institution. A rejected guest can correct and resubmit.
+
+### Individual ventures, marketplace and certification
+
+1. As an entrepreneur with an approved venture, open **Products** and add a
+   product. Open **Incubation**, launch that venture and include the product.
+2. As the administrator, use **Mentors → Add mentor** with a separate verified
+   unaffiliated guest. Assign the mentor under **Incubation** and review the
+   product under **Products**.
+3. As the founder, save the evidence for each step and request stage review.
+   The assigned mentor can leave feedback, record the review meeting and open
+   the exam. Submit a response as the founder and grade it as the mentor.
+   Every recorded mark advances the pathway, including a mark below 50%.
+4. As the founder, record a test payment reference for a priced stage
+   certificate. Confirm it under the administrator's **Payments** screen.
+   Under **Certificates → Individual ventures**, issue the certificate.
+   The funding and final certificates have no fee. The final certificate
+   requires all three assessments.
+5. Confirm that an approved product with approved pathway evidence can be
+   published after graduation. For a newly added product, submit targeted
+   evidence. For an early paid listing, record and confirm the listing fee,
+   then approve the listing. Use unique fictional references when testing
+   payment confirmation in the local environment.
+
+### School and institutional portal
+
+1. As the platform administrator, add a high school in **Institution directory**.
+   Open **Manage institution → Intake → Activate institution** to make it available
+   for sign-in. Assign a verified guest under **Staff & contacts**. Under
+   **Agreements**, choose **View** for programme terms or **Add agreement** to upload
+   a signed PDF. The school can download its documents under **Portal → Agreements**.
+2. Sign in as that manager using the school option. Under **Portal → Students**,
+   add fictional roster entries. These records have no sign-in accounts.
+3. In **Portal → Cohorts**, add a cohort and select **View**. In **Team
+   ventures**, add students to a team. Record a class under **Classes**.
+4. Under **Results**, use the pencil beside a student's mark. Record 75% for
+   one student and 45% for another, then verify both can receive a next-stage
+   mark. Filter by team and export the matching rows if needed.
+5. In the cohort's **Certificates** tab, choose the stage and select **Request
+   all eligible**. As the platform administrator, open **Certificates →
+   School requests**, approve one and return the other with a reason. As the
+   school manager, open the issued certificate, and use **Print or save PDF**.
+   The returned request displays the reason and can be resubmitted.
+6. For a university or hub, sign in as its manager. **Portal → Members** shows
+   affiliated members. **Invitations** manages onboarding and **Pathway
+   progress** shows each venture's assessed stages, fees and credentials.
+
+### Standalone courses
+
+1. As a verified guest, open **Courses**, choose a general course and confirm
+   that you want to enter its workspace. For a paid course, submit a unique
+   fictional payment reference.
+2. As the platform administrator, open **Courses → Enrolments & certificates**
+   and confirm the payment. Reload the course as the guest and mark every
+   lesson complete. The page displays **Course completed**.
+3. As the administrator, issue the certificate in the enrolment registry.
+   Reload the course as the guest to view it. The queued notification also
+   appears in the signed-in account's bell after processing.
+4. As a mentor, use **Course proposals** to submit a proposal with a fictional
+   PDF. Approve it in the administrator's **Courses** workspace. The mentor can
+   then add lessons. An administrator publishes the course and sets price,
+   discount and royalty. Mentor royalties accrue on confirmed enrolments;
+   disbursements require a separate payment integration.
+
+### Events and opportunities
+
+1. In the administrator's **Events**, create a category and add an event.
+   Save as **Draft** and verify that **Preview** excludes it. Edit it to
+   **Published** and verify it appears publicly. A future end date moves a
+   previously archived event back to **Upcoming**. Verify that event
+   reservations respect capacity and the registration deadline.
+2. In the administrator's **Opportunities**, publish an internal listing.
+   Sign in as an entrepreneur and apply with an approved venture. The
+   administrator reviews it under **Applications**. The entrepreneur tracks
+   the decision under **Opportunities → Applications**.
+
+### Editorial content
+
+In **Content Studio**, add a draft article, story, or report. Publishing makes
+it visible from the public listing. Archiving takes it off the public site.
+Choose to feature a published story to display it on the homepage.
+
+## Remaining integrations and fixture surfaces
+
+The local course workflow uses recorded enrolments and lesson completion.
+Live Moodle account mapping, enrolment, completion sync and mobile app testing
+still need a configured Moodle instance. The payment reference screens record
+administrator confirmation. A payment provider is needed to collect and verify
+money automatically. Outbound mail requires a configured transport.
+
+Community discussion and networking remain in the fixture frontend and are
+outside the test steps above.

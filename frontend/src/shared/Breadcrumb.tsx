@@ -26,7 +26,7 @@ export function BreadcrumbBar({ home }: { home?: string } = {}) {
   );
 }
 
-function BreadcrumbTrail({
+export function BreadcrumbTrail({
   current,
   home,
   parents = [],

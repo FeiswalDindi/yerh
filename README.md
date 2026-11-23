@@ -4,7 +4,7 @@ The `yerh-laravel` branch is the local development branch for the Laravel migrat
 
 ## Run locally with XAMPP
 
-Use Node 22.12+, Composer 2 and PHP 8.2+. From the repository root, run:
+From the repository root, install frontend and Composer dependencies if needed:
 
 ```powershell
 npm.cmd --prefix frontend ci
@@ -12,32 +12,34 @@ composer --working-dir=backend install
 if (!(Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
 ```
 
-For a fresh `backend/.env`, generate the Laravel application key once:
+Use Node 22.12+, Composer 2, and PHP 8.2+. Run `php backend/artisan key:generate` once for a fresh Laravel environment. Keep the existing key for a database with saved sessions or queued jobs.
+
+The XAMPP Windows installation can serve `yerh_db` in either of these ways:
+
+- If XAMPP **MySQL** starts normally, point `backend/.env` at its port and credentials, with `DB_DATABASE=yerh_db`.
+- If the shared XAMPP service cannot start, use the same XAMPP binaries in a separate YERH-only instance. From the repository root run `./scripts/start-local-database.ps1`. In `backend/.env` use `DB_CONNECTION=mysql`, `DB_HOST=127.0.0.1`, `DB_PORT=3307`, `DB_DATABASE=yerh_db`, `DB_USERNAME=root`, and an empty `DB_PASSWORD` for that loopback instance. It stores persistent local data in `backend/storage/app/private/local-mariadb`. Keep that directory when restarting or updating the app.
+
+Review the resolved database name and port before running migrations. Run the normal forward migration:
 
 ```powershell
-php backend/artisan key:generate
-```
-
-1. Start **MySQL** in the XAMPP Control Panel. XAMPP provides MariaDB under that label. Use its database client to create a `yerh` database with `utf8mb4`.
-2. Create a local database user for YERH with schema privileges on `yerh`. Enter its credentials and the XAMPP port in `backend/.env`. The template uses the Laravel `mysql` connection on port 3306.
-3. Run the migrations and start Laravel:
-
-```powershell
+php backend/artisan config:clear
 php backend/artisan migrate
+php backend/artisan migrate:status
 php backend/artisan serve --host=127.0.0.1 --port=8000
 ```
 
-4. In another PowerShell window at the repository root, run `npm.cmd run dev` and open [YERH development](http://127.0.0.1:5173). Vite proxies `/api` to Laravel. Check [the API status through Vite](http://127.0.0.1:5173/api/v1/status) before opening [Demo accounts](http://127.0.0.1:5173/demo).
-5. To test the compiled React app through Laravel, run `npm.cmd run build:laravel` and open [YERH served by Laravel](http://127.0.0.1:8000). The generated UI is written to `backend/public/ui`. The two ports have separate browser demo records.
+In a separate terminal, run `php backend/artisan queue:work database --tries=3` with `MAIL_MAILER=log` configured in `backend/.env`. In another terminal, run `npm.cmd run dev` and open [the local site](http://127.0.0.1:5173). If that port is in use, run `npm.cmd run dev -- --port 5182`. Vite proxies `/api` to Laravel. Keep the same hostname, `127.0.0.1`, for the UI and verification links.
 
-The frontend can run by itself for fixture-based UI work. Start Laravel and the database when testing server features. The current demo sign-ins and dashboard activity still use browser storage. Only use fictional demo data.
+Set `VITE_ENABLE_LARAVEL_ACCOUNT_DIALOG=true` in the private `frontend/.env.local` and restart Vite for the wired account and dashboard. Use `false` for the fixture walkthroughs. When compiling the local Laravel UI with `npm.cmd run build:laravel`, the same setting is built into the generated UI. See [local acceptance steps](docs/LARAVEL_WORKSPACE.md#test-the-wired-flow) for setup of the first administrator and the verification, approval and venture flows.
 
 ## Checks
 
 ```powershell
 npm.cmd run check
 npm.cmd run format:check
-php backend/artisan test
+Push-Location backend
+php artisan test
+Pop-Location
 ```
 
 Laravel tests use in-memory SQLite and fake the Moodle HTTP service and email delivery. The local app uses the database configured in `backend/.env`.

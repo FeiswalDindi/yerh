@@ -344,6 +344,22 @@
   background: transparent;
 }
 
+.workspace-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr));
+  gap: 0.85rem;
+}
+
+.workspace-dialog .workspace-form label.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.workspace-dialog .workspace-form .checkbox-label input[type='checkbox'] {
+  width: auto;
+}
+
 .workspace-dialog .workspace-form label {
   min-width: 0;
 }

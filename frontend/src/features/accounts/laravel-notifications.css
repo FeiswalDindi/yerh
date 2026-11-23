@@ -1,0 +1,13 @@
+.icon-button:has(.laravel-unread-dot) {
+  position: relative;
+}
+
+.laravel-unread-dot {
+  position: absolute;
+  inset-block-start: 5px;
+  inset-inline-end: 5px;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #d33246;
+}
