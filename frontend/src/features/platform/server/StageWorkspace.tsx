@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Paperclip } from 'lucide-react';
 import { passMark } from '../../../domain/incubation';
 import {
   laravelProgramme,
@@ -28,13 +29,22 @@ export function StageWorkspace({
   const canEdit = founder && !work?.review_requested_at && !work?.exam_opened_at;
   const canReview = mentor && work?.review_requested_at && !work.exam_opened_at;
   const score = work?.score;
+  const passed = Boolean(
+    work?.graded_at &&
+    (work.passed === true ||
+      work.passed === 1 ||
+      (work.passed == null && typeof score === 'number' && score >= passMark)),
+  );
+  const mentorApprovedBelowPass = Boolean(passed && typeof score === 'number' && score < passMark);
+  const failed = Boolean(work?.graded_at && !passed);
+  const attempt = work?.attempt ?? 1;
   const savedSteps = evidence.length === definition.steps.length;
 
   function action(
     label: string,
     command: string,
     fields: ReactNode,
-    body: (data: FormData) => object,
+    body: (data: FormData) => object | FormData,
   ) {
     return (
       <WorkspaceAction
@@ -53,11 +63,14 @@ export function StageWorkspace({
 
   return (
     <section className="server-programme-stage">
-      <h3>{definition.title}</h3>
+      <h3>
+        {definition.title}
+        {attempt > 1 ? ` · Attempt ${attempt}` : ''}
+      </h3>
       {!unlocked ? (
         <p>
           {path.mentor_id
-            ? 'Locked until the previous assessment is graded.'
+            ? `Locked until the previous assessment is passed (${passMark}% minimum) or approved by your mentor.`
             : 'Locked until a mentor is assigned.'}
         </p>
       ) : (
@@ -69,6 +82,19 @@ export function StageWorkspace({
                 <h4>{step.title}</h4>
                 <p>{step.instruction}</p>
                 {entry && <p>{entry.body}</p>}
+                {entry?.has_attachment && (
+                  <p>
+                    <a
+                      className="workspace-attachment-link"
+                      href={laravelProgramme.evidenceAttachmentUrl(path.id, definition.id, step.id)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Paperclip size={14} aria-hidden="true" />{' '}
+                      {entry.attachment_name || 'Download attached evidence'}
+                    </a>
+                  </p>
+                )}
                 {entry?.feedback && <p>Mentor feedback · {entry.feedback}</p>}
                 {canEdit &&
                   action(
@@ -85,6 +111,20 @@ export function StageWorkspace({
                           maxLength={5000}
                         />
                       </label>
+                      <label>
+                        Supporting document or image (optional: PDF, Office, JPG/PNG/WebP, max 8 MB)
+                        <input
+                          name="attachment"
+                          type="file"
+                          accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+                        />
+                      </label>
+                      {entry?.has_attachment && (
+                        <label className="inline-checkbox">
+                          <input type="checkbox" name="remove_attachment" /> Remove existing
+                          attachment ({entry.attachment_name || 'file'})
+                        </label>
+                      )}
                       <label className="inline-checkbox">
                         <input
                           type="checkbox"
@@ -94,11 +134,28 @@ export function StageWorkspace({
                         Request mentor feedback
                       </label>
                     </>,
-                    (data) => ({
-                      step: step.id,
-                      body: fieldValue(data, 'evidence'),
-                      request_feedback: data.get('feedback') === 'on',
-                    }),
+                    (data) => {
+                      const file = data.get('attachment');
+                      const removeAttachment = data.get('remove_attachment') === 'on';
+                      if ((file instanceof File && file.size > 0) || removeAttachment) {
+                        const form = new FormData();
+                        form.append('step', step.id);
+                        form.append('body', fieldValue(data, 'evidence'));
+                        form.append('request_feedback', data.get('feedback') === 'on' ? '1' : '0');
+                        if (file instanceof File && file.size > 0) {
+                          form.append('attachment', file);
+                        }
+                        if (removeAttachment) {
+                          form.append('remove_attachment', '1');
+                        }
+                        return form;
+                      }
+                      return {
+                        step: step.id,
+                        body: fieldValue(data, 'evidence'),
+                        request_feedback: data.get('feedback') === 'on',
+                      };
+                    },
                   )}
                 {mentor &&
                   Boolean(entry?.feedback_requested) &&
@@ -158,7 +215,7 @@ export function StageWorkspace({
             work?.exam_opened_at &&
             !work.submitted_at &&
             action(
-              'Take exam',
+              attempt > 1 ? 'Retake exam' : 'Take exam',
               'submit',
               <>
                 <p>{definition.examPrompt}</p>
@@ -166,13 +223,43 @@ export function StageWorkspace({
                   Your answer
                   <textarea name="answer" required minLength={10} maxLength={8000} />
                 </label>
+                <label>
+                  Pitch deck or supporting file (optional: PDF, Office, image, max 8 MB)
+                  <input
+                    name="attachment"
+                    type="file"
+                    accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+                  />
+                </label>
               </>,
-              (data) => ({ answer: fieldValue(data, 'answer') }),
+              (data) => {
+                const file = data.get('attachment');
+                if (file instanceof File && file.size > 0) {
+                  const form = new FormData();
+                  form.append('answer', fieldValue(data, 'answer'));
+                  form.append('attachment', file);
+                  return form;
+                }
+                return { answer: fieldValue(data, 'answer') };
+              },
             )}
           {work?.submitted_at && (
             <>
               <h4>Assessment response</h4>
               <p>{work.answer}</p>
+              {work.has_answer_attachment && (
+                <p>
+                  <a
+                    className="workspace-attachment-link"
+                    href={laravelProgramme.examAttachmentUrl(path.id, definition.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Paperclip size={14} aria-hidden="true" />{' '}
+                    {work.answer_attachment_name || 'Download assessment attachment'}
+                  </a>
+                </p>
+              )}
             </>
           )}
           {mentor &&
@@ -182,6 +269,10 @@ export function StageWorkspace({
               'Grade exam',
               'grade',
               <>
+                <p>
+                  Pass mark is {passMark}%. For scores below {passMark}%, you can open a retake or
+                  approve progression to the next stage.
+                </p>
                 <label>
                   Mark (%)
                   <input name="score" type="number" min={0} max={100} step={1} required />
@@ -194,11 +285,37 @@ export function StageWorkspace({
               }),
             )}
           {work?.graded_at && typeof score === 'number' && (
-            <p>
-              Assessment completed · {score}% ·{' '}
-              {score >= passMark ? 'Passed' : 'Below the pass mark'}
+            <p role="status">
+              Assessment graded · {score}% ·{' '}
+              {mentorApprovedBelowPass
+                ? 'Approved by mentor to continue'
+                : passed
+                  ? 'Passed'
+                  : `Below the ${passMark}% pass mark — awaiting mentor retake or approval to continue`}
               {work.grade_note ? ' · ' + work.grade_note : ''}
             </p>
+          )}
+          {mentor && failed && (
+            <div className="workspace-row-actions">
+              {action('Open exam retake', 'reopen-exam', <NoteField />, (data) => ({
+                note: fieldValue(data, 'note'),
+              }))}
+              {action(
+                'Approve to continue',
+                'approve-progression',
+                <>
+                  <p>
+                    Allow {path.owner} to proceed to the next stage despite scoring {score}% (below{' '}
+                    {passMark}%). Your note will be saved on the stage record.
+                  </p>
+                  <NoteField />
+                </>,
+                (data) => ({ note: fieldValue(data, 'note') }),
+              )}
+              {action('Return for evidence revision', 'revise', <NoteField />, (data) => ({
+                note: fieldValue(data, 'note'),
+              }))}
+            </div>
           )}
         </>
       )}

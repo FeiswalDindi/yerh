@@ -303,7 +303,9 @@ export function assertCmsSnapshot(value: CmsSnapshot, state?: DemoState) {
     demand(
       fields(page, ['title', 'eyebrow', 'description']) &&
         Array.isArray(page.sections) &&
-        page.sections.every((s) => fields(s, ['title', 'body'])),
+        page.sections.every((s) => fields(s, ['title', 'body'])) &&
+        (!page.heroImage || (typeof page.heroImage === 'string' && safeUrl(page.heroImage))) &&
+        (!page.heroOverlay || ['navy', 'dark', 'gradient', 'soft'].includes(page.heroOverlay)),
       'Page content is invalid.',
     );
   }

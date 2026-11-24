@@ -42,6 +42,15 @@ img {
   display: block;
   max-width: 100%;
 }
+:where(img.yerh-img) {
+  height: auto;
+}
+img.yerh-img {
+  transition: opacity 180ms ease-out;
+}
+img.yerh-img.is-loading {
+  opacity: 0;
+}
 svg {
   flex-shrink: 0;
 }
@@ -76,7 +85,7 @@ button {
 }
 ::selection {
   background: var(--yerh-gold);
-  color: var(--yerh-navy);
+  color: var(--yerh-navy-dark);
 }
 :focus-visible {
   outline: 3px solid #9a7b00;
@@ -185,7 +194,8 @@ button {
   top: -70px;
   left: 20px;
   padding: 12px 20px;
-  background: white;
+  background: var(--yerh-white);
+  color: var(--yerh-navy);
   border: 2px solid var(--yerh-navy);
 }
 .skip-link:focus {
@@ -224,5 +234,9 @@ button {
     scroll-behavior: auto !important;
     transition: none !important;
     animation: none !important;
+  }
+  img.yerh-img.is-loading {
+    opacity: 1;
+    transition: none;
   }
 }

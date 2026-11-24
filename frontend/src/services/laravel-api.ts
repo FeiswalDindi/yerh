@@ -7,6 +7,12 @@ export class LaravelRequestError extends Error {
   }
 }
 
+const apiOrigin = (import.meta.env?.VITE_API_URL ?? '').replace(/\/$/, '');
+
+export function apiUrl(path: string): string {
+  return `${apiOrigin}/api/v1${path}`;
+}
+
 export async function laravelRequest<T>(
   path: string,
   { method = 'GET', data, signal }: { method?: string; data?: object; signal?: AbortSignal } = {},
@@ -17,10 +23,13 @@ export async function laravelRequest<T>(
   async function send(url: string, init?: RequestInit) {
     let response: Response;
     try {
-      response = await fetch('/api/v1' + url, { ...options, ...init, headers });
+      response = await fetch(apiUrl(url), { ...options, ...init, headers });
     } catch (error) {
       if (signal?.aborted) throw error;
-      throw new LaravelRequestError('Could not reach Laravel. Check the local server.', 0);
+      throw new LaravelRequestError(
+        'Could not reach the server. Please check your connection and try again.',
+        0,
+      );
     }
 
     if (response.status === 204) return undefined;
@@ -29,16 +38,16 @@ export async function laravelRequest<T>(
       const detail = result?.errors && Object.values(result.errors).flat()[0];
       const message =
         response.status === 429
-          ? 'Too many requests. Wait a minute and try again.'
+          ? 'Too many requests. Please wait a minute and try again.'
           : response.status < 500
             ? (detail ?? result?.message)
-            : 'Laravel could not complete the request. Check that the database is running.';
+            : 'Something went wrong on our end. Please try again shortly.';
       throw new LaravelRequestError(
-        typeof message === 'string' ? message : 'Laravel could not complete the request.',
+        typeof message === 'string' ? message : 'The request could not be completed.',
         response.status,
       );
     }
-    if (!result) throw new LaravelRequestError('Laravel returned an unexpected response.', 502);
+    if (!result) throw new LaravelRequestError('The server returned an unexpected response.', 502);
     return result;
   }
 

@@ -1,5 +1,6 @@
 import { MarketplaceSectorAdmin } from './MarketplaceSectors';
 import { ProfileForm } from '../../dashboard/ProfileForm';
+import { ChangePasswordDialog } from '../../accounts/ChangePasswordForm';
 import { laravelWorkspace } from '../../../services/laravel-workspace-repository';
 import { ApprovalQueue } from './ApprovalQueue';
 import { AdminVentures } from './AdminVentures';
@@ -17,6 +18,7 @@ import { SchoolCertificateQueue } from './SchoolResults';
 import { CourseAdministration, CourseEnrolmentRegistry } from './CourseAdministration';
 import { EventAdministration } from './EventAdministration';
 import { EditorialWorkspace } from './EditorialWorkspace';
+import { CommunicationsWorkspace } from './CommunicationsWorkspace';
 import { OpportunityWorkspace } from './OpportunityWorkspace';
 import { WorkspaceTabs } from '../workspace/WorkspaceControls';
 import { VentureWorkspace } from './VentureWorkspace';
@@ -26,7 +28,7 @@ import { ProgrammePayments, VentureCertificates } from './ProgrammeFinance';
 import { errorText, RecordsFeedback, useWorkspaceRecords } from './WorkspaceActions';
 import { LaravelDashboardFrame } from './LaravelDashboardFrame';
 import { LearningWorkspace } from './LearningWorkspace';
-import { EventCatalogue } from './EventCatalogue';
+import { EventCatalogue, LaravelEventPage } from './EventCatalogue';
 import './server-workspace.css';
 
 export function LaravelAccountPage() {
@@ -86,7 +88,11 @@ export function LaravelAccountPage() {
           </p>
           {!profile.email_verified ? (
             <>
-              <p>Verify your email to apply for incubation or join an institution.</p>
+              <p>
+                {profile.requested_institution
+                  ? `Verify your email to complete affiliation with ${profile.requested_institution.name}.`
+                  : 'Verify your email to apply for incubation or join an institution.'}
+              </p>
               {profile.local_verification_available && (
                 <button
                   type="button"
@@ -175,12 +181,15 @@ function SessionDashboard() {
   }
 
   const admin = profile.role === 'admin';
+  const contentManager = profile.role === 'content_manager';
+  const canEditContent = admin || contentManager;
   const founder = profile.role === 'entrepreneur';
   const mentor = profile.role === 'mentor';
   const programmeRole = admin ? 'admin' : founder ? 'entrepreneur' : mentor ? 'mentor' : null;
   const portal = (admin ? (institutions ?? []) : profile.staff).find(
     (institution) => institution.slug === params.get('institution'),
   );
+  const dashboardEventMatch = pathname.match(/^\/dashboard\/events\/([^/]+)$/);
   const tab = params.get('tab') ?? '';
   const requested =
     pathname === '/dashboard/profile'
@@ -203,6 +212,7 @@ function SessionDashboard() {
     'manage-products': 'products',
     'admin-courses': 'courses',
     mentees: 'incubation',
+    enquiries: 'communications',
   };
   const view = aliases[requested] ?? requested;
   const overview = pathname.replace(/\/$/, '') === '/dashboard';
@@ -214,23 +224,34 @@ function SessionDashboard() {
   const workspace = (tab: string) => '/dashboard/workspace?tab=' + tab;
   const records = params.get('record') ?? undefined;
   const navGroups = [
-    section('Dashboard', [['Overview', '/dashboard']]),
+    section('Dashboard', [
+      ['Overview', '/dashboard'],
+      ...(admin ? [['Analytics & reports', workspace('reports')]] : []),
+    ]),
     ...(admin
       ? [
-          section('Administration', [
+          section('People & Access', [
             ['Approval queue', workspace('approvals')],
-            ['Manage ventures', workspace('ventures')],
-            ['Marketplace products', workspace('products')],
-            ['Courses', workspace('courses')],
             ['Users & roles', workspace('users')],
-            ['Analytics & reports', workspace('reports')],
-            ['Certificates', '/dashboard/certificates'],
-            ['Payments', workspace('payments')],
-            ['Events', '/dashboard/events'],
-            ['Incubation', workspace('incubation')],
+            ['Institution directory', workspace('institutions')],
             ['Mentors', workspace('mentors')],
           ]),
-          section('Institutions', [['Institution directory', workspace('institutions')]]),
+          section('Ventures & Programmes', [
+            ['Manage ventures', workspace('ventures')],
+            ['Incubation', workspace('incubation')],
+            ['Courses', workspace('courses')],
+            ['Certificates', '/dashboard/certificates'],
+          ]),
+          section('Shop & Finance', [
+            ['Shop products', workspace('products')],
+            ['Payments', workspace('payments')],
+          ]),
+          section('Content & Events', [
+            ['Content Studio', '/dashboard/cms'],
+            ['Events', '/dashboard/events'],
+            ['Opportunities', '/dashboard/opportunities'],
+          ]),
+          section('Communications', [['Emails', workspace('communications')]]),
         ]
       : []),
     ...(founder
@@ -253,12 +274,15 @@ function SessionDashboard() {
           ]),
         ]
       : []),
-    ...(admin || profile.role === 'content_manager'
+    ...(contentManager && !admin
       ? [
-          section('Editorial', [
+          section('Content & Events', [
             ['Content Studio', '/dashboard/cms'],
-            ...(admin ? [['Opportunities', '/dashboard/opportunities']] : []),
+            ['Events', '/dashboard/events'],
+            ['Opportunities', '/dashboard/opportunities'],
+            ['Shop categories', workspace('sectors')],
           ]),
+          section('Communications', [['Emails', workspace('communications')]]),
         ]
       : []),
     ...profile.staff.map(({ slug, name, kind }) => {
@@ -270,6 +294,7 @@ function SessionDashboard() {
               ['Results & Certificates', base + '&view=cohorts&section=results'],
             ]
           : [
+              ['Affiliation Requests', base + '&view=requests'],
               ['Member Progress', base + '&view=progress'],
               ['Payments & Certificates', base + '&view=finance'],
             ];
@@ -277,28 +302,26 @@ function SessionDashboard() {
     }),
     section('Account', [
       ['Profile', '/dashboard/profile'],
-      ...(founder
-        ? [
-            ['Events', '/dashboard/events'],
-            ['Certificates', '/dashboard/certificates'],
-          ]
-        : []),
+      ...(founder || mentor ? [['Events', '/dashboard/events']] : []),
+      ...(founder ? [['Certificates', '/dashboard/certificates']] : []),
     ]),
   ];
   const currentPath = pathname.replace(/\/$/, '');
   const portalView = params.get('view');
   const institutionTitle =
-    portalView === 'finance'
-      ? 'Payments & Certificates'
-      : portalView === 'progress'
-        ? 'Member Progress'
-        : params.get('section') === 'results'
-          ? 'Results & Certificates'
-          : params.get('section') === 'teams'
-            ? 'Incubation Pathway'
-            : 'Portal';
+    portalView === 'requests'
+      ? 'Affiliation Requests'
+      : portalView === 'finance'
+        ? 'Payments & Certificates'
+        : portalView === 'progress'
+          ? 'Member Progress'
+          : params.get('section') === 'results'
+            ? 'Results & Certificates'
+            : params.get('section') === 'teams'
+              ? 'Incubation Pathway'
+              : 'Portal';
   const title =
-    (view === 'school' ? institutionTitle : undefined) ??
+    (view === 'school' ? institutionTitle : dashboardEventMatch ? 'Event details' : undefined) ??
     navGroups
       .flatMap((group) => group.links)
       .find((link) => link.to === currentPath || link.to === workspace(view))?.label ??
@@ -310,6 +333,7 @@ function SessionDashboard() {
       badges={{
         [workspace('approvals')]: summary.records?.metrics.approvals ?? 0,
         [workspace('payments')]: summary.records?.metrics.payments ?? 0,
+        [workspace('communications')]: summary.records?.metrics.enquiries ?? 0,
       }}
       title={title}
       role={roleLabels[profile.role]}
@@ -340,16 +364,19 @@ function SessionDashboard() {
                 <h2>{profile.name}</h2>
                 <span className="dashboard-profile-role">{roleLabels[profile.role]}</span>
                 <p>{profile.affiliation?.name ?? profile.staff.map((s) => s.name).join(', ')}</p>
+                <ChangePasswordDialog />
               </div>
             </aside>
-            <ProfileForm
-              person={profile}
-              save={async (fields) => {
-                await localLaravelIdentity.updateProfile(fields);
-                await session.refresh();
-                return true;
-              }}
-            />
+            <div>
+              <ProfileForm
+                person={profile}
+                save={async (fields) => {
+                  await localLaravelIdentity.updateProfile(fields);
+                  await session.refresh();
+                  return true;
+                }}
+              />
+            </div>
           </div>
         </section>
       ) : view === 'institutions' && admin ? (
@@ -390,18 +417,24 @@ function SessionDashboard() {
             <ProductsWorkspace role={programmeRole} />
           )}
         </>
-      ) : view === 'editorial' && (admin || profile.role === 'content_manager') ? (
+      ) : view === 'editorial' && canEditContent ? (
         <EditorialWorkspace />
-      ) : view === 'events' && (admin || founder) ? (
-        admin ? (
+      ) : view === 'communications' && canEditContent ? (
+        <CommunicationsWorkspace />
+      ) : view === 'sectors' && canEditContent ? (
+        <MarketplaceSectorAdmin />
+      ) : dashboardEventMatch?.[1] && (canEditContent || founder || mentor) ? (
+        <LaravelEventPage dashboard slugOverride={decodeURIComponent(dashboardEventMatch[1])} />
+      ) : view === 'events' && (canEditContent || founder || mentor) ? (
+        canEditContent ? (
           <EventAdministration />
         ) : (
-          <EventCatalogue />
+          <EventCatalogue embedded />
         )
       ) : view === 'learning' && founder ? (
         <LearningWorkspace />
-      ) : view === 'opportunities' && (admin || founder) ? (
-        <OpportunityWorkspace admin={admin} />
+      ) : view === 'opportunities' && (canEditContent || founder) ? (
+        <OpportunityWorkspace admin={canEditContent} canReviewSubmissions={admin} />
       ) : view === 'courses' && (admin || mentor) ? (
         <CourseAdministration admin={admin} />
       ) : view === 'mentors' && admin ? (

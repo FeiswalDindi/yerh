@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { laravelWorkspace, type Venture } from '../../../services/laravel-workspace-repository';
 import { WorkspaceTable, WorkspaceTabs } from '../workspace/WorkspaceControls';
+import { StatusIndicator } from '../../../shared/StatusIndicator';
 import { RecordsFeedback, useWorkspaceRecords } from './WorkspaceActions';
 
 const registry = '/dashboard/workspace?tab=ventures';
@@ -91,9 +92,7 @@ export function AdminVentures() {
                       v.name,
                       v.owner,
                       v.sector,
-                      <span className="workspace-status" data-status={v.status}>
-                        {v.status}
-                      </span>,
+                      <StatusIndicator status={v.status} />,
                       <div className="workspace-row-actions">
                         <Link to={registry + '&venture=' + v.id}>View</Link>
                         <ReviewVenture venture={v} reload={individual.reload} />

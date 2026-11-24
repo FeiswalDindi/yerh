@@ -5,17 +5,22 @@ import { SiteLayout } from '../layout/SiteLayout';
 import { HomePage } from '../features/home/HomePage';
 import { NotFoundPage } from '../features/info/NotFoundPage';
 import { RequireDemo } from '../features/demo/RequireDemo';
+import { useCatalog } from './useCatalog';
 import { useDemo } from './useDemo';
 import { cmsModule, dashboardAccess } from '../features/dashboard/dashboard-navigation';
+import { lookupManagedPage } from '../features/platform/server/cms/cms-page-registry';
 import { AccountAccess } from '../features/accounts/AccountAccess';
 import { AccountEntryRedirect } from '../features/accounts/AccountLink';
 import { GuestAccount } from '../features/accounts/GuestAccount';
 import { InstitutionInvitationPage } from '../features/accounts/InstitutionInvitationPage';
+import { LaravelInvitationPage } from '../features/accounts/LaravelInvitationPage';
+import { ResetPasswordPage } from '../features/accounts/ResetPasswordPage';
 import { roleAccessPath } from '../features/accounts/role-requests';
 import { BreadcrumbProvider } from '../shared/BreadcrumbProvider';
 import { SiteLoader } from '../shared/SiteLoader';
 import { RouteLoadError } from './RouteLoadError';
 import { laravelModeEnabled } from '../config/laravel';
+import { loadDashboardLayout, loadLaravelWorkspace } from './route-preload';
 import {
   MarketplaceListings,
   MarketplaceProduct,
@@ -26,12 +31,12 @@ const LaravelNotifications = lazy(() =>
   })),
 );
 const LaravelAccountPage = lazy(() =>
-  import('../features/platform/server/LaravelWorkspacePage').then((m) => ({
+  loadLaravelWorkspace().then((m) => ({
     default: m.LaravelAccountPage,
   })),
 );
 const LaravelDashboard = lazy(() =>
-  import('../features/platform/server/LaravelWorkspacePage').then((m) => ({
+  loadLaravelWorkspace().then((m) => ({
     default: m.LaravelDashboard,
   })),
 );
@@ -41,7 +46,7 @@ const LocalLaravelAccountPage = lazy(() =>
   })),
 );
 const DashboardLayout = lazy(() =>
-  import('../features/dashboard/DashboardLayout').then((m) => ({ default: m.DashboardLayout })),
+  loadDashboardLayout().then((m) => ({ default: m.DashboardLayout })),
 );
 const DashboardCatalogue = lazy(() =>
   import('../features/dashboard/DashboardCatalogue').then((m) => ({
@@ -123,6 +128,11 @@ const TermsPage = lazy(() =>
 const JoinPage = lazy(() =>
   import('../features/connect/JoinPage').then((m) => ({ default: m.JoinPage })),
 );
+const InstitutionOnboardingPage = lazy(() =>
+  import('../features/institutions/InstitutionOnboardingPage').then((m) => ({
+    default: m.InstitutionOnboardingPage,
+  })),
+);
 const ApplicationsPage = lazy(() =>
   import('../features/accounts/ApplicationsPage').then((m) => ({ default: m.ApplicationsPage })),
 );
@@ -194,13 +204,16 @@ const ModerationPage = lazy(() =>
 );
 function LegacyRoute() {
   const { pathname } = useLocation();
+  const { site } = useCatalog();
   const normalized = pathname.replace(/\/index\.html$/, '').replace(/\/$/, '') || '/';
   const destination = (legacyRoutes as Record<string, string>)[normalized];
-  return destination && destination !== pathname ? (
-    <Navigate to={destination} replace />
-  ) : (
-    <NotFoundPage />
-  );
+  if (destination && destination !== pathname) {
+    return <Navigate to={destination} replace />;
+  }
+  if (lookupManagedPage(site.pages, normalized)) {
+    return <ManagedPage />;
+  }
+  return <NotFoundPage />;
 }
 function CollectionRedirect({ to }: { to: string }) {
   const { slug } = useParams();
@@ -281,7 +294,7 @@ function siteRoutes(): RouteObject[] {
           path: 'apply',
           element: laravelModeEnabled ? <Navigate to="/account" replace /> : <ApplicationEntry />,
         },
-        { path: 'pages/:slug', element: <ManagedPage /> },
+        { path: 'pages/*', element: <ManagedPage /> },
         { path: 'certificates/:id', element: <CertificatePage /> },
         ...['publications/stories', 'publications/blogs', 'publications/reports', 'events'].map(
           (path) => ({ path: `${path}/:slug`, element: <ContentDetail /> }),
@@ -340,11 +353,11 @@ function siteRoutes(): RouteObject[] {
         },
         {
           path: 'account/invitations/:id',
-          element: laravelModeEnabled ? (
-            <Navigate to="/account" replace />
-          ) : (
-            <InstitutionInvitationPage />
-          ),
+          element: laravelModeEnabled ? <LaravelInvitationPage /> : <InstitutionInvitationPage />,
+        },
+        {
+          path: 'reset-password',
+          element: <ResetPasswordPage />,
         },
         { path: 'forums', element: <ForumsPage /> },
         { path: 'forums/:threadId', element: <ThreadPage /> },
@@ -360,6 +373,7 @@ function siteRoutes(): RouteObject[] {
         { path: 'yem/mentees', element: <MentorshipPage mode="mentees" /> },
         { path: 'community', element: <Navigate to="/network" replace /> },
         { path: 'join', element: <JoinPage /> },
+        { path: 'institutions/apply', element: <InstitutionOnboardingPage /> },
         { path: 'register', element: <AccountEntryRedirect mode="register" /> },
         { path: 'login', element: <AccountEntryRedirect /> },
         { path: 'demo', element: <DemoLoginPage /> },

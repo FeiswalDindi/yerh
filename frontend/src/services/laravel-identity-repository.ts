@@ -5,6 +5,7 @@ export type InstitutionChoice = {
   slug: string;
   name: string;
   kind: 'high-school' | 'university' | 'hub';
+  allowed_domains?: string[];
 };
 
 export interface LaravelProfile {
@@ -18,6 +19,7 @@ export interface LaravelProfile {
   local_verification_available: boolean;
   role: Role;
   affiliation: (InstitutionChoice & { status: string }) | null;
+  requested_institution?: InstitutionChoice | null;
   staff: (InstitutionChoice & { access: 'manage' | 'view' })[];
 }
 
@@ -25,6 +27,8 @@ type AccountInput = {
   email: string;
   password: string;
   institution?: string;
+  location?: string;
+  remember?: boolean;
   name?: string;
   password_confirmation?: string;
 };
@@ -43,6 +47,42 @@ export const localLaravelIdentity = {
     return (
       await laravelRequest<{ data: LaravelProfile }>('/auth/' + mode, { method: 'POST', data })
     ).data;
+  },
+
+  async forgotPassword(email: string): Promise<string> {
+    return (
+      await laravelRequest<{ data: { message: string } }>('/auth/forgot-password', {
+        method: 'POST',
+        data: { email },
+      })
+    ).data.message;
+  },
+
+  async resetPassword(data: {
+    token: string;
+    email: string;
+    password: string;
+    password_confirmation: string;
+  }): Promise<string> {
+    return (
+      await laravelRequest<{ data: { message: string } }>('/auth/reset-password', {
+        method: 'POST',
+        data,
+      })
+    ).data.message;
+  },
+
+  async changePassword(data: {
+    current_password: string;
+    password: string;
+    password_confirmation: string;
+  }): Promise<string> {
+    return (
+      await laravelRequest<{ data: { message: string } }>('/auth/change-password', {
+        method: 'POST',
+        data,
+      })
+    ).data.message;
   },
 
   async choices(signal?: AbortSignal): Promise<InstitutionChoice[]> {

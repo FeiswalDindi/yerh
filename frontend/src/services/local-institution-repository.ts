@@ -1,29 +1,39 @@
-import { laravelRequest } from './laravel-api';
+import { apiUrl, laravelRequest } from './laravel-api';
+
 type Scope = { institution: string; access: 'view' | 'manage' };
 type Accepted = { institution: string; role: 'entrepreneur' };
+export type InvitationPreview = {
+  invitee_name: string;
+  institution_name: string;
+  institution_slug: string;
+  valid: boolean;
+  expired: boolean;
+  accepted: boolean;
+  revoked: boolean;
+};
 
 async function read<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    if (res.status === 401) throw new Error('Sign in to the local Laravel account first.');
+    if (res.status === 401) throw new Error('Please sign in first.');
     if (res.status === 403) throw new Error('This account cannot perform that institution action.');
     if (res.status === 404)
       throw new Error('No matching active institution or invitation was found.');
     if (res.status === 429) throw new Error('Too many requests. Wait one minute and try again.');
     const problem = body?.errors && Object.values(body.errors).flat()[0];
     throw new Error(
-      typeof problem === 'string' ? problem : 'Laravel could not complete this institution action.',
+      typeof problem === 'string' ? problem : 'This institution action could not be completed.',
     );
   }
 
-  if (!body) throw new Error('Laravel returned an unexpected response.');
+  if (!body) throw new Error('The server returned an unexpected response.');
   return body as T;
 }
 
 async function request(path: string, method = 'GET', body?: object) {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (method !== 'GET') {
-    const response = await fetch('/api/v1/auth/csrf', {
+    const response = await fetch(apiUrl('/auth/csrf'), {
       headers,
       credentials: 'same-origin',
       cache: 'no-store',
@@ -32,7 +42,7 @@ async function request(path: string, method = 'GET', body?: object) {
   }
 
   if (body) headers['Content-Type'] = 'application/json';
-  return fetch('/api/v1/identity' + path, {
+  return fetch(apiUrl('/identity' + path), {
     headers,
     method,
     credentials: 'same-origin',
@@ -44,6 +54,14 @@ async function request(path: string, method = 'GET', body?: object) {
 const scopePath = (slug: string) => '/institutions/' + encodeURIComponent(slug);
 
 export const localInstitution = {
+  async preview(token: string, signal?: AbortSignal): Promise<InvitationPreview> {
+    return (
+      await laravelRequest<{ data: InvitationPreview }>(
+        '/identity/invitations/preview/' + encodeURIComponent(token),
+        { signal },
+      )
+    ).data;
+  },
   async candidates(slug: string, q: string, signal: AbortSignal) {
     return (
       await laravelRequest<{ data: { id: number; name: string }[] }>(

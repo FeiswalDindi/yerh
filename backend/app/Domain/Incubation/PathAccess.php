@@ -12,10 +12,19 @@ final class PathAccess
     {
         $query = DB::table('incubation_paths as path')
             ->join('ventures as venture', 'venture.id', '=', 'path.venture_id')
+            ->join('institutions as institution', 'institution.id', '=', 'venture.institution_id')
             ->leftJoin('users as mentor', 'mentor.id', '=', 'path.mentor_id')
             ->join('users as owner', 'owner.id', '=', 'venture.owner_id')
-            ->select('path.*', 'venture.owner_id', 'venture.institution_id', 'venture.name as venture',
-                'mentor.name as mentor', 'owner.name as owner');
+            ->select(
+                'path.*',
+                'venture.owner_id',
+                'venture.institution_id',
+                'venture.status as venture_status',
+                'institution.status as institution_status',
+                'venture.name as venture',
+                'mentor.name as mentor',
+                'owner.name as owner',
+            );
 
         return match ($actor->role) {
             'admin' => $query,
@@ -35,7 +44,15 @@ final class PathAccess
     public function completed(int $pathId, array $stages): bool
     {
         return $stages === [] || DB::table('incubation_stages')
-            ->where('path_id', $pathId)->whereIn('stage', $stages)->whereNotNull('graded_at')
+            ->where('path_id', $pathId)
+            ->whereIn('stage', $stages)
+            ->whereNotNull('graded_at')
+            ->where(function (Builder $query): void {
+                $query->where('passed', true)
+                    ->orWhere(function (Builder $fallback): void {
+                        $fallback->whereNull('passed')->where('score', '>=', Curriculum::PASS_MARK);
+                    });
+            })
             ->count() === count($stages);
     }
 }

@@ -2,8 +2,6 @@
 
 namespace App\Domain\Incubation;
 
-use Illuminate\Support\Facades\File;
-
 final class Curriculum
 {
     public const STAGES = ['getting-started', 'advanced', 'funding'];
@@ -14,11 +12,9 @@ final class Curriculum
 
     public const PASS_MARK = 50;
 
-    private ?array $source = null;
-
     public function stages(): array
     {
-        return $this->training()['curriculum'];
+        return config('yerh.curriculum', []);
     }
 
     public function stage(string $key): array
@@ -43,11 +39,10 @@ final class Curriculum
 
     public function defaultFees(): array
     {
-        return $this->training()['fees'];
-    }
-
-    private function training(): array
-    {
-        return $this->source ??= File::json(base_path('../frontend/src/mocks/data/platform.json'))['training'];
+        return config('yerh.default_fees', [
+            'getting-started' => 500,
+            'advanced' => 750,
+            'marketplace' => 1000,
+        ]);
     }
 }

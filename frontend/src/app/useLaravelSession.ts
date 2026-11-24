@@ -4,6 +4,7 @@ import type { LaravelProfile } from '../services/laravel-identity-repository';
 interface LaravelSession {
   profile: LaravelProfile | null;
   loading: boolean;
+  signingOut: boolean;
   error: string;
   setProfile: (profile: LaravelProfile | null) => void;
   refresh: () => Promise<void>;

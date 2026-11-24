@@ -1,4 +1,4 @@
-import { laravelRequest } from './laravel-api';
+import { apiUrl, laravelRequest } from './laravel-api';
 
 export interface CourseOffer {
   slug: string;
@@ -35,6 +35,8 @@ type CourseRegistryEntry = {
   learner: string;
   course: string;
   payment_reference: string | null;
+  has_receipt?: boolean;
+  receipt_name?: string | null;
   price_paid: number;
   payment_status: PaymentStatus;
   payment_note: string | null;
@@ -54,15 +56,23 @@ function write(path: string, data?: object, method = 'POST') {
 export const learningRepository = {
   catalogue: (signal?: AbortSignal) => get<CourseOffer[]>('', signal),
   show: (slug: string, signal?: AbortSignal) => get<CourseDetail>(coursePath(slug), signal),
-  enrol: (slug: string, reference?: string) =>
-    write(coursePath(slug) + '/enrolments', { reference }),
+  enrol: (slug: string, reference?: string, receipt?: File | null) => {
+    if (receipt && receipt.size > 0) {
+      const form = new FormData();
+      if (reference) form.append('reference', reference);
+      form.append('receipt', receipt);
+      return write(coursePath(slug) + '/enrolments', form);
+    }
+    return write(coursePath(slug) + '/enrolments', { reference });
+  },
   complete: (slug: string, lesson: number) =>
     write(coursePath(slug) + '/lessons/' + lesson, undefined, 'PUT'),
   registry: (signal?: AbortSignal) => get<CourseRegistryEntry[]>('/registry', signal),
+  receiptUrl: (id: number) => apiUrl('/learning/registry/' + id + '/receipt'),
   reviewPayment: (id: number, decision: string, note: string) =>
     write('/registry/' + id + '/payment', { decision, note }),
   issue: (id: number) => write('/registry/' + id + '/certificate'),
-  certificate: (uuid: string) => '/api/v1/learning/certificates/' + uuid,
+  certificate: (uuid: string) => apiUrl('/learning/certificates/' + uuid),
   authoring: (signal?: AbortSignal) =>
     get<{
       rows: CourseDraft[];
@@ -74,5 +84,5 @@ export const learningRepository = {
     write('/authoring/' + id + '/review', { decision, note }),
   addLesson: (id: number, data: object) => write('/authoring/' + id + '/lessons', data),
   publish: (id: number, data: object) => write('/authoring/' + id + '/publish', data),
-  attachment: (id: number) => '/api/v1/learning/authoring/' + id + '/attachment',
+  attachment: (id: number) => apiUrl('/learning/authoring/' + id + '/attachment'),
 };

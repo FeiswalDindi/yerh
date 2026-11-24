@@ -165,9 +165,11 @@
   );
 }
 
-.blog-hero h1,
+.blog-hero h1 {
+  color: #ffffff;
+}
 .blog-hero .intro-description {
-  color: var(--yerh-white);
+  color: rgba(241, 245, 249, 0.92);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -306,7 +308,7 @@
 .category-select select {
   border: none;
   min-height: 50px;
-  background: white;
+  background: var(--yerh-white);
   color: var(--yerh-navy);
   max-width: 100%;
   font-size: 13px;
@@ -384,7 +386,7 @@
   padding-top: 30px;
   font-size: 17px;
   line-height: 1.9;
-  color: #444a5b;
+  color: var(--yerh-body);
   overflow-wrap: anywhere;
 }
 .article-body p {
@@ -503,7 +505,7 @@
   border-bottom: 1px solid var(--yerh-border);
 }
 .lesson-number {
-  color: #9e882c;
+  color: var(--yerh-gold-text);
   font-size: 20px;
 }
 .lesson-list small {

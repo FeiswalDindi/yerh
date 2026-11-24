@@ -1,7 +1,11 @@
-import { useState, type FormEvent } from 'react';
-import { ArrowUpRight, Mail, MapPin, Phone } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useRef, useState, type FormEvent } from 'react';
+import { ArrowUpRight, Building2, CheckCircle2, Mail, MapPin, Phone } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useCatalog } from '../../app/useCatalog';
+import { laravelModeEnabled } from '../../config/laravel';
+import { laravelWorkspace } from '../../services/laravel-workspace-repository';
+import { errorText } from '../platform/server/WorkspaceActions';
+import { triggerCardErrorFeedback } from '../../shared/error-feedback';
 import { PageIntro } from '../../shared/PageIntro';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { emailDraftHref, type ContactDraft } from './contact';
@@ -22,14 +26,35 @@ export function ContactPage() {
     message: '',
   });
   const [prepared, setPrepared] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [sentId, setSentId] = useState<number | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   usePageTitle('Contact the team');
   function update(field: keyof ContactDraft, value: string) {
     setDraft((d) => ({ ...d, [field]: value }));
     setPrepared(false);
+    setSubmitError('');
+    setSentId(null);
   }
-  function prepare(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setPrepared(true);
+    if (!laravelModeEnabled) {
+      setPrepared(true);
+      return;
+    }
+    setBusy(true);
+    setSubmitError('');
+    try {
+      const response = await laravelWorkspace.submitContactMessage(draft);
+      setSentId(response.data.id);
+      setDraft({ name: '', email: '', topic: draft.topic, message: '' });
+    } catch (failure) {
+      setSubmitError(errorText(failure));
+      triggerCardErrorFeedback(formRef.current);
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <>
@@ -63,6 +88,14 @@ export function ContactPage() {
               </span>
               <ArrowUpRight size={17} />
             </a>
+            <Link to="/institutions/apply">
+              <Building2 size={22} />
+              <span>
+                <small>PARTNER WITH US</small>
+                Apply to onboard a school, university, or hub
+              </span>
+              <ArrowUpRight size={17} />
+            </Link>
             <div>
               <MapPin size={22} />
               <span>
@@ -72,7 +105,12 @@ export function ContactPage() {
             </div>
           </div>
         </div>
-        <form className="contact-form" onSubmit={prepare}>
+        <form
+          ref={formRef}
+          className="contact-form"
+          onSubmit={(e) => void handleSubmit(e)}
+          onInvalidCapture={() => triggerCardErrorFeedback(formRef.current)}
+        >
           <h2>What’s on your mind?</h2>
           <div className="form-row">
             <label>
@@ -124,22 +162,51 @@ export function ContactPage() {
               placeholder="Tell us a little about how we can help…"
             />
           </label>
-          <p className="form-note">
-            Prepare a draft to open in your email app. Nothing is sent or stored by this site.
-          </p>
-          <button className="button" type="submit">
-            Prepare email
-            <ArrowUpRight size={17} />
-          </button>
-          {prepared && (
-            <div className="form-success" role="status">
-              <strong>Your email draft is ready.</strong>
-              <p>Open your email app to review and send it.</p>
-              <a className="text-link" href={emailDraftHref(site.contact.email, draft)}>
-                Open email draft
-                <ArrowUpRight size={16} />
-              </a>
-            </div>
+          {laravelModeEnabled ? (
+            <>
+              <p className="form-note">
+                Your enquiry goes straight to our workspace team inbox and a coordinator will reply
+                by email.
+              </p>
+              {submitError && (
+                <p role="alert" className="form-error">
+                  {submitError}
+                </p>
+              )}
+              <button className="button" type="submit" disabled={busy}>
+                {busy ? 'Sending…' : 'Send message'}
+                <ArrowUpRight size={17} />
+              </button>
+              {sentId !== null && (
+                <div className="form-success" role="status">
+                  <strong>
+                    <CheckCircle2 size={16} aria-hidden="true" /> Thank you — your message has been
+                    received.
+                  </strong>
+                  <p>Reference #{sentId}. Our team will follow up with you shortly.</p>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="form-note">
+                Prepare a draft to open in your email app. Nothing is sent or stored by this site.
+              </p>
+              <button className="button" type="submit">
+                Prepare email
+                <ArrowUpRight size={17} />
+              </button>
+              {prepared && (
+                <div className="form-success" role="status">
+                  <strong>Your email draft is ready.</strong>
+                  <p>Open your email app to review and send it.</p>
+                  <a className="text-link" href={emailDraftHref(site.contact.email, draft)}>
+                    Open email draft
+                    <ArrowUpRight size={16} />
+                  </a>
+                </div>
+              )}
+            </>
           )}
         </form>
       </section>

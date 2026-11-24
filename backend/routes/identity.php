@@ -12,6 +12,8 @@ Route::prefix('api/v1/auth')->group(function () {
     Route::middleware('throttle:5,1')->group(function () {
         Route::post('/register', [IdentityController::class, 'register']);
         Route::post('/login', [IdentityController::class, 'login']);
+        Route::post('/forgot-password', [IdentityController::class, 'forgotPassword']);
+        Route::post('/reset-password', [IdentityController::class, 'resetPassword']);
     });
     Route::get('/verify-email/{id}/{hash}', [IdentityController::class, 'verify'])
         ->whereNumber('id')
@@ -21,6 +23,8 @@ Route::prefix('api/v1/auth')->group(function () {
     Route::middleware('auth')->group(function () {
         Route::get('/me', [IdentityController::class, 'show']);
         Route::patch('/me', [IdentityController::class, 'updateProfile']);
+        Route::post('/change-password', [IdentityController::class, 'changePassword'])
+            ->middleware('throttle:5,1');
         Route::post('/logout', [IdentityController::class, 'logout']);
         Route::post('/verify-email/local-link', [IdentityController::class, 'localVerificationLink'])
             ->middleware('throttle:6,1,local-verification');
@@ -28,6 +32,10 @@ Route::prefix('api/v1/auth')->group(function () {
             ->middleware('throttle:3,1');
     });
 });
+
+Route::get('/api/v1/identity/invitations/preview/{token}', [InstitutionIdentityController::class, 'preview'])
+    ->where('token', '[a-f0-9]{64}')
+    ->middleware('throttle:20,1');
 
 Route::prefix('api/v1/identity')->middleware(['auth', 'throttle:30,1,institution-access'])->group(function () {
     Route::get('/institutions/{slug}/access', [InstitutionIdentityController::class, 'access']);

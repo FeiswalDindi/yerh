@@ -1,15 +1,17 @@
 import { MobileNavigationDrawer } from './MobileNavigationDrawer';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Globe, LogOut, Menu, Search, X } from 'lucide-react';
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { ChevronDown, ChevronRight, Globe, Loader2, LogOut, Menu, Search, X } from 'lucide-react';
 import { type NavigationItem } from '../config/navigation';
 import { roleLabels } from '../domain/roles';
 import { useCatalog } from '../app/useCatalog';
 import { useDemo } from '../app/useDemo';
 import { useLaravelSession } from '../app/useLaravelSession';
+import { preloadAccountRoute } from '../app/route-preload';
 import { AccountLink } from '../features/accounts/AccountLink';
 import { LaravelNotificationsLink } from '../features/accounts/LaravelNotifications';
 import { BreadcrumbBar } from '../shared/Breadcrumb';
+import { SmartImage } from '../shared/SmartImage';
 import { SiteThemeSwitch } from './SiteThemeSwitch';
 
 function NavigationBranch({ item, depth = 0 }: { item: NavigationItem; depth?: number }) {
@@ -82,8 +84,12 @@ export function Header({
   const account = session ? session.profile : demoAccount;
   const accountHref =
     account?.role === 'guest' && !session?.profile?.staff.length ? '/account' : '/dashboard';
+  const signingOut = Boolean(session?.signingOut);
   const [open, setOpen] = useState(false);
+  const [navigatingAccount, setNavigatingAccount] = useState(false);
+  const navAttemptRef = useRef(0);
   const location = useLocation();
+  const navigate = useNavigate();
   const toggle = useRef<HTMLButtonElement>(null);
 
   // Close drawer on route change
@@ -91,11 +97,84 @@ export function Header({
     setOpen(false);
   }, [location.pathname, location.search, location.hash, account?.id, account?.role]);
 
+  // Clear pending navbar navigation state on route change or sign-out transitions
+  useEffect(() => {
+    navAttemptRef.current += 1;
+    setNavigatingAccount(false);
+    return () => {
+      navAttemptRef.current += 1;
+    };
+  }, [location.pathname, location.search, location.key, account?.id, signingOut]);
+
+  // Idle-preload heavy account/dashboard route bundle when signed in
+  useEffect(() => {
+    if (!account || typeof window === 'undefined') return;
+    const preload = () => void preloadAccountRoute(Boolean(session));
+    const win = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof win.requestIdleCallback === 'function') {
+      const id = win.requestIdleCallback(preload, { timeout: 1200 });
+      return () => win.cancelIdleCallback?.(id);
+    }
+    const timer = window.setTimeout(preload, 350);
+    return () => window.clearTimeout(timer);
+  }, [account, session]);
+
+  function handleAccountClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
+      return;
+    }
+    if (signingOut || navigatingAccount) {
+      event.preventDefault();
+      return;
+    }
+    const alreadyAtAccount =
+      location.pathname.replace(/\/$/, '') === accountHref && !location.search;
+    if (alreadyAtAccount) {
+      event.preventDefault();
+      document.getElementById('main-content')?.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    event.preventDefault();
+    setNavigatingAccount(true);
+    const attempt = ++navAttemptRef.current;
+    void preloadAccountRoute(Boolean(session)).finally(() => {
+      if (navAttemptRef.current !== attempt) return;
+      navigate(accountHref);
+    });
+  }
+
+  const announcement = site.announcement;
+  const showAnnouncement = Boolean(
+    !dashboardMenu && announcement?.enabled && announcement.text?.trim(),
+  );
+  const announcementLink = announcement?.linkHref?.trim() || '';
+
   return (
     <>
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
+
+      {showAnnouncement && announcement && (
+        <div className="site-announcement-bar" role="region" aria-label="Site announcement">
+          <div className="container site-announcement-inner">
+            <span>{announcement.text}</span>
+            {announcement.linkLabel?.trim() &&
+              announcementLink &&
+              (/^https?:\/\//i.test(announcementLink) ? (
+                <a href={announcementLink} target="_blank" rel="noreferrer">
+                  {announcement.linkLabel}
+                </a>
+              ) : (
+                <Link to={announcementLink}>{announcement.linkLabel}</Link>
+              ))}
+          </div>
+        </div>
+      )}
 
       {/* Demo account top strip */}
       {!session && enabled && demoAccount && (
@@ -127,10 +206,12 @@ export function Header({
         <header className="site-header reference-header">
           <div className="container header-inner">
             <Link className="reference-brand" to="/" aria-label="YERH home">
-              <img
+              <SmartImage
                 src={media.wordmark}
                 alt="Youth Entrepreneurship Resource Hub — YERH Kenya"
-                fetchPriority="high"
+                priority
+                width={197}
+                height={40}
               />
             </Link>
 
@@ -156,16 +237,46 @@ export function Header({
 
               {account ? (
                 <>
-                  <Link className="header-login" to={accountHref}>
-                    MY ACCOUNT
+                  <Link
+                    className={`header-login${navigatingAccount ? ' is-busy' : ''}`}
+                    to={accountHref}
+                    aria-busy={navigatingAccount || undefined}
+                    aria-disabled={navigatingAccount || signingOut || undefined}
+                    onMouseEnter={() => void preloadAccountRoute(Boolean(session))}
+                    onFocus={() => void preloadAccountRoute(Boolean(session))}
+                    onClick={handleAccountClick}
+                  >
+                    {navigatingAccount ? (
+                      <>
+                        <Loader2 size={14} className="header-action-spinner" aria-hidden="true" />
+                        OPENING…
+                      </>
+                    ) : (
+                      'MY ACCOUNT'
+                    )}
                   </Link>
                   <button
                     type="button"
                     className="button button-gold button-small header-signout-btn"
-                    onClick={() => (session ? void session.signOut() : execute({ type: 'logout' }))}
-                    title="Sign out"
+                    disabled={signingOut}
+                    aria-busy={signingOut || undefined}
+                    onClick={() => {
+                      if (signingOut) return;
+                      navAttemptRef.current += 1;
+                      setNavigatingAccount(false);
+                      if (session) void session.signOut();
+                      else execute({ type: 'logout' });
+                    }}
+                    title={signingOut ? 'Signing out…' : 'Sign out'}
                   >
-                    SIGN OUT
+                    {signingOut ? (
+                      <>
+                        <Loader2 size={14} className="header-action-spinner" aria-hidden="true" />
+                        SIGNING OUT…
+                      </>
+                    ) : (
+                      'SIGN OUT'
+                    )}
                   </button>
                 </>
               ) : (
@@ -217,6 +328,13 @@ export function Header({
               )}
             </div>
           </div>
+          {(navigatingAccount || signingOut) && (
+            <div
+              className="header-progress-bar"
+              role="progressbar"
+              aria-label={signingOut ? 'Signing out' : 'Opening your account'}
+            />
+          )}
         </header>
         {!dashboardMenu && (
           <BreadcrumbBar

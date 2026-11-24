@@ -8,10 +8,10 @@
 .local-account__panel {
   width: min(100%, 38rem);
   padding: clamp(1.25rem, 5vw, 2.5rem);
-  border: 1px solid #dce2ef;
+  border: 1px solid var(--yerh-border);
   border-radius: 1rem;
-  color: #192c57;
-  background: white;
+  color: var(--yerh-ink);
+  background: var(--yerh-white);
 }
 
 .local-account__label {
@@ -39,22 +39,28 @@
 .local-account input,
 .local-account button {
   padding: 0.65rem;
-  border: 1px solid #627299;
+  border: 1px solid var(--yerh-border);
   border-radius: 0.45rem;
+}
+
+.local-account input {
+  background: var(--yerh-white);
+  color: var(--yerh-ink);
 }
 
 .local-account button {
   margin: 0.2rem;
-  color: inherit;
-  background: #f0f3f9;
+  color: var(--yerh-ink);
+  background: var(--yerh-surface);
 }
 
 .local-account button[aria-pressed='true'],
 .local-account button[type='submit'] {
   color: white;
-  background: #192c57;
+  background: var(--yerh-navy-surface);
+  border-color: var(--yerh-navy-surface);
 }
 
 .local-account [role='alert'] {
-  color: #892720;
+  color: #b42318;
 }

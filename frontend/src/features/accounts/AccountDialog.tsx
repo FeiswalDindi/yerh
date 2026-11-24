@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, CircleAlert, FlaskConical } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useCatalog } from '../../app/useCatalog';
 import { useDemo } from '../../app/useDemo';
 import { platformHref } from '../../config/site';
 import { CloseButton } from '../../shared/CloseButton';
+import { triggerCardErrorFeedback } from '../../shared/error-feedback';
+import { SmartImage } from '../../shared/SmartImage';
+import { INLINE_YERH_LOGO } from '../../config/brand-inline';
 import { TermsDialog } from '../legal/TermsDialog';
 import { GoogleAccountButton } from './GoogleAccountButton';
 import { accountDestination, type AccountRequest } from './account-navigation';
@@ -22,7 +24,6 @@ import {
 import './account.css';
 
 export function AccountDialog({ mode, search, onClose }: AccountRequest & { onClose: () => void }) {
-  const { media } = useCatalog();
   const { state } = useDemo();
   const [register, setRegister] = useState(mode === 'register');
   const [selecting, setSelecting] = useState(mode !== 'register');
@@ -38,24 +39,33 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
         if (!request.signal.aborted) setLiveInstitutions(rows);
       })
       .catch((error: unknown) => {
-        if (!request.signal.aborted)
+        if (!request.signal.aborted) {
           setInstitutionError(
             error instanceof Error ? error.message : 'Could not load institutions.',
           );
+          signalError();
+        }
       });
     return () => request.abort();
   }, [selecting, session?.profile]);
   const institutions = state.platform.training.institutions.filter(
     (school) => school.status === 'active',
   );
+  const yerh = state.platform.training.yerhSignIn !== false;
+  const useLaravel = laravelModeEnabled;
   const [institution, setInstitution] = useState(() => {
     const requested = new URLSearchParams(search).get('institution');
-    return institutions.find((school) => school.id === requested)?.id ?? '';
+    if (requested) {
+      if (requested === 'yerh') return 'yerh';
+      const match = institutions.find((school) => school.id === requested);
+      if (match) return match.id;
+      if (useLaravel) return requested;
+    }
+    return useLaravel || yerh ? 'yerh' : '';
   });
-  const yerh = state.platform.training.yerhSignIn !== false;
   const dialog = useRef<HTMLDialogElement>(null);
   const card = useRef<HTMLDivElement>(null);
-  const shake = useRef<Animation>(null);
+  const institutionCard = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const startedOutside = useRef(false);
 
@@ -70,20 +80,18 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
     onClose();
   }
 
-  function signalUnavailable() {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    shake.current?.cancel();
-    shake.current =
-      card.current?.animate?.(
-        [0, -5, 5, -4, 4, -2, 2, 0].map((offset) => ({ transform: `translateX(${offset}px)` })),
-        { duration: 300, easing: 'ease-out' },
-      ) ?? null;
-    navigator.vibrate?.(45);
-  }
-
-  const useLaravel = laravelModeEnabled;
   const showingInstitution = selecting && (!useLaravel || !session?.profile);
+
+  function signalError() {
+    triggerCardErrorFeedback(showingInstitution ? institutionCard.current : card.current);
+  }
   const title = register ? 'Create your account' : 'Sign in';
+  const selectedInstitutionName =
+    institution === 'yerh'
+      ? 'No institution (Guest / YERH)'
+      : ((useLaravel
+          ? liveInstitutions.find((row) => row.slug === institution)?.name
+          : institutions.find((school) => school.id === institution)?.name) ?? institution);
   return (
     <dialog
       ref={dialog}
@@ -111,17 +119,28 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
         onClick={close}
       />
       {showingInstitution ? (
-        <div className="account-institution-card">
-          <img className="account-institution-image" src="/media/institution-sign-in.webp" alt="" />
+        <div className="account-institution-card" ref={institutionCard}>
+          <SmartImage
+            className="account-institution-image"
+            src="/media/institution-sign-in.webp"
+            alt=""
+            priority
+            targetWidth={840}
+          />
           <form
             className="account-institution-form"
+            onInvalidCapture={signalError}
             onSubmit={(event) => {
               event.preventDefault();
+              if (!institution) {
+                signalError();
+                return;
+              }
               setSelecting(false);
               closeButton.current?.focus();
             }}
           >
-            <img src={media.logo} width={90} height={90} alt="YERH" />
+            <img src={INLINE_YERH_LOGO} width={108} height={108} decoding="sync" alt="YERH" />
             <h2 id="account-title">Select your institution</h2>
             <label className="account-field">
               <span className="sr-only">Institution</span>
@@ -133,7 +152,9 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
                 <option value="" disabled>
                   Choose an institution
                 </option>
-                {(useLaravel || yerh) && <option value="yerh">YERH</option>}
+                {(useLaravel || yerh) && (
+                  <option value="yerh">No institution (Guest / YERH)</option>
+                )}
                 {(useLaravel
                   ? liveInstitutions.map((row) => ({ id: row.slug, name: row.name }))
                   : institutions
@@ -152,12 +173,25 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
             <button className="button account-submit">
               Continue <ArrowRight size={18} aria-hidden="true" />
             </button>
+            <p className="account-switch">
+              School, university, or hub administrator?{' '}
+              <Link className="account-link" to="/institutions/apply" onClick={close}>
+                Register your institution
+              </Link>
+            </p>
           </form>
         </div>
       ) : (
         <div className="account-card" ref={card}>
           <Link className="account-brand" to="/" aria-label="YERH home" onClick={close}>
-            <img src={media.logo} width={104} height={104} alt="" fetchPriority="high" />
+            <img
+              src={INLINE_YERH_LOGO}
+              width={104}
+              height={104}
+              decoding="sync"
+              alt=""
+              fetchPriority="high"
+            />
           </Link>
           {useLaravel ? (
             <LaravelAccountForm
@@ -165,9 +199,11 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
               title={title}
               register={register}
               institution={institution}
+              institutionLabel={selectedInstitutionName}
               verification={new URLSearchParams(search).get('verification')}
               onComplete={close}
               onChangeInstitution={() => setSelecting(true)}
+              onErrorFeedback={signalError}
               onSwitch={() => {
                 setRegister(!register);
                 setSelecting(register);
@@ -181,7 +217,8 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
               institution={institution}
               onChangeInstitution={register ? undefined : () => setSelecting(true)}
               search={search}
-              onGoogleUnavailable={signalUnavailable}
+              onGoogleUnavailable={signalError}
+              onErrorFeedback={signalError}
               onSwitch={() => {
                 closeButton.current?.focus();
                 setRegister(!register);
@@ -202,6 +239,7 @@ function AccountForm({
   search,
   onSwitch,
   onGoogleUnavailable,
+  onErrorFeedback,
   onChangeInstitution,
 }: {
   title: string;
@@ -210,6 +248,7 @@ function AccountForm({
   search: string;
   onSwitch: () => void;
   onGoogleUnavailable: () => void;
+  onErrorFeedback: () => void;
   onChangeInstitution?: () => void;
 }) {
   const { account, state, enabled, execute, error } = useDemo();
@@ -263,12 +302,14 @@ function AccountForm({
         now: new Date().toISOString(),
       });
       setActionFailed(!created);
+      if (!created) onErrorFeedback();
       if (created) navigate(accountDestination(search, '/account'), { replace: true });
       return;
     }
 
     const signedIn = execute({ type: 'email-sign-in', email, institutionId: institution });
     setActionFailed(!signedIn);
+    if (!signedIn) onErrorFeedback();
     if (signedIn) {
       const member = state.accounts.find((person) => person.email.toLowerCase() === email);
       if (member) navigate(destination(member), { replace: true });
@@ -276,7 +317,9 @@ function AccountForm({
   }
 
   function signOut() {
-    setActionFailed(!execute({ type: 'logout' }));
+    const ok = execute({ type: 'logout' });
+    setActionFailed(!ok);
+    if (!ok) onErrorFeedback();
   }
 
   return (
@@ -331,7 +374,7 @@ function AccountForm({
           </button>
         </div>
       ) : enabled ? (
-        <form className="account-form" onSubmit={submit}>
+        <form className="account-form" onSubmit={submit} onInvalidCapture={onErrorFeedback}>
           {register && (
             <label className="account-field">
               Full name

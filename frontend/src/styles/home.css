@@ -27,7 +27,7 @@
 .hero-feature {
   min-height: 510px;
   border-radius: 0;
-  background: var(--yerh-navy);
+  background: var(--yerh-navy-surface);
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -112,7 +112,7 @@
 }
 .carousel-arrows button:hover {
   background: var(--yerh-gold);
-  color: var(--yerh-navy);
+  color: var(--yerh-navy-dark);
 }
 .hero-caption {
   position: absolute;
@@ -157,7 +157,7 @@
   padding-bottom: 17px;
 }
 .blog-feed > h2 > span {
-  color: #ae921b;
+  color: var(--yerh-gold-text);
 }
 .blog-feed ol {
   padding: 0;
@@ -183,7 +183,7 @@
   padding-right: 10px;
 }
 .blog-feed li small {
-  color: #707584;
+  color: var(--yerh-muted);
   font-size: 8px;
   font-weight: 650;
   letter-spacing: 1px;
@@ -292,6 +292,7 @@
   justify-content: center;
 }
 .partner-logos img {
+  width: auto;
   height: 46px;
   max-width: 135px;
   object-fit: contain;
@@ -342,7 +343,7 @@
 .resource-photo {
   position: relative;
   height: 480px;
-  background: var(--yerh-navy);
+  background: var(--yerh-navy-surface);
 }
 .resource-photo > img {
   width: 100%;
@@ -367,7 +368,7 @@
 }
 .resource-copy h2 em {
   font-style: normal;
-  color: #907608;
+  color: var(--yerh-gold-text);
 }
 .resource-copy > p:not(.eyebrow) {
   max-width: 440px;
@@ -406,7 +407,7 @@
   border-bottom: 1px solid var(--yerh-border);
 }
 .publication-number {
-  color: #aa953e;
+  color: var(--yerh-gold-text);
   font-size: 21px;
   font-weight: 450;
 }

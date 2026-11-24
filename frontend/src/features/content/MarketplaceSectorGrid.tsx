@@ -2,6 +2,7 @@ import type { Ref } from 'react';
 import { ArrowRight, Store } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { businessSectorPath } from '../../domain/content';
+import { SmartImage } from '../../shared/SmartImage';
 
 export function MarketplaceSectorGrid({
   sectors,
@@ -21,7 +22,16 @@ export function MarketplaceSectorGrid({
         <li key={name}>
           <Link className="marketplace-sector-card" to={businessSectorPath(name)}>
             <span className="marketplace-sector-image" aria-hidden="true">
-              {image ? <img src={image} alt="" loading="lazy" /> : <Store size={36} />}
+              {image ? (
+                <SmartImage
+                  src={image}
+                  alt=""
+                  targetWidth={480}
+                  sizes="(max-width: 900px) 50vw, 260px"
+                />
+              ) : (
+                <Store size={36} />
+              )}
             </span>
             <span className="marketplace-sector-copy">
               <span>

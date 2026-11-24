@@ -63,7 +63,13 @@ test('navigation preserves the requested hierarchy without standalone news or st
   );
   assert.ok(navigation[3]!.children?.some((n) => n.href === '/publications/blogs'));
   assert.ok(navigation[3]!.children?.some((n) => n.href === '/publications/stories'));
-  assert.equal(navigation[1]!.children?.length, 8);
+  const resourceChildren = navigation[1]!.children ?? [];
+  assert.equal(resourceChildren.length, 6);
+  assert.equal(resourceChildren.find((n) => n.id === 'marketplace')?.label, 'Shop');
+  assert.equal(
+    resourceChildren.some((n) => n.id === 'workshops' || n.id === 'webinars'),
+    false,
+  );
 });
 test('anonymous writes and invalid identities are rejected', () => {
   assert.throws(

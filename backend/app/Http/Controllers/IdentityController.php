@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Notifications\WorkspaceAlert;
+use App\Support\WorkspaceNotifier;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -13,6 +16,8 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -26,14 +31,41 @@ final class IdentityController extends Controller
     {
         $this->normalizeEmail($request);
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
+            'name' => ['required', 'string', 'min:2', 'max:120'],
             'email' => ['required', 'email', 'max:254', 'unique:users,email'],
             'password' => ['required', 'string', 'max:128', 'confirmed', Password::min(6)],
+            'institution' => ['nullable', 'string', 'max:120'],
+            'location' => ['nullable', 'string', 'min:2', 'max:120'],
             'role' => ['prohibited'],
         ]);
 
+        $requestedInstitution = null;
+        $slug = isset($data['institution']) ? trim($data['institution']) : '';
+        if ($slug !== '' && $slug !== 'yerh') {
+            $requestedInstitution = DB::table('institutions')
+                ->where('slug', $slug)
+                ->where('status', 'active')
+                ->whereIn('kind', ['university', 'hub'])
+                ->first(['id', 'slug', 'name']);
+            if (! $requestedInstitution) {
+                throw ValidationException::withMessages([
+                    'institution' => 'Choose an active university or hub.',
+                ]);
+            }
+        }
+
         try {
-            $user = User::query()->create($data);
+            $user = User::query()->create([
+                'name' => trim($data['name']),
+                'email' => $data['email'],
+                'password' => $data['password'],
+            ]);
+            if ($requestedInstitution || ! empty($data['location'])) {
+                $user->forceFill([
+                    'requested_institution_id' => $requestedInstitution?->id,
+                    'location' => isset($data['location']) ? trim($data['location']) : null,
+                ])->save();
+            }
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages(['email' => __('validation.unique', ['attribute' => 'email'])]);
         }
@@ -52,10 +84,11 @@ final class IdentityController extends Controller
             'email' => ['required', 'email', 'max:254'],
             'password' => ['required', 'string', 'max:128'],
             'institution' => ['sometimes', 'required', 'string', 'max:120'],
+            'remember' => ['sometimes', 'boolean'],
         ]);
         $credentials = ['email' => $data['email'], 'password' => $data['password']];
 
-        if (! Auth::attempt([...$credentials, 'suspended_at' => null])) {
+        if (! Auth::attempt([...$credentials, 'suspended_at' => null], (bool) ($data['remember'] ?? false))) {
             throw ValidationException::withMessages(['email' => __('auth.failed')]);
         }
 
@@ -64,10 +97,22 @@ final class IdentityController extends Controller
         $user = $request->user();
         $affiliation = $this->affiliation($user);
         $staff = $this->staff($user);
-        $allowed = $affiliation ? [$affiliation->slug] : $staff->pluck('slug')->all();
-        if (! $affiliation && ! DB::table('institution_access')->where('user_id', $user->id)->exists()) {
-            $allowed = ['yerh'];
+        $allowed = [];
+        if ($affiliation && $affiliation->status === 'active') {
+            $allowed[] = $affiliation->slug;
         }
+        if ($staff->isNotEmpty()) {
+            $allowed = [...$allowed, ...$staff->pluck('slug')->all()];
+        }
+        if ($user->role === 'admin' || $allowed === []) {
+            $allowed[] = 'yerh';
+        }
+        $requested = $this->requestedInstitution($user);
+        if ($requested) {
+            $allowed[] = $requested->slug;
+        }
+        $allowed = array_values(array_unique($allowed));
+
         if (! in_array($data['institution'] ?? 'yerh', $allowed, true)) {
             Auth::logout();
             $request->session()->invalidate();
@@ -81,7 +126,88 @@ final class IdentityController extends Controller
             $this->verifyEmail($user);
         }
 
-        return $this->profile($user);
+        return $this->profile($user->refresh());
+    }
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $this->normalizeEmail($request);
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:254'],
+        ]);
+
+        $user = User::query()->where('email', $data['email'])->first();
+        if ($user && $user->isActive()) {
+            PasswordBroker::broker()->sendResetLink(['email' => $user->email]);
+        }
+
+        return response()->json([
+            'data' => [
+                'message' => 'If an account matches that email address, a password reset link has been sent.',
+            ],
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $this->normalizeEmail($request);
+        $data = $request->validate([
+            'token' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:254'],
+            'password' => ['required', 'string', 'max:128', 'confirmed', Password::min(6)],
+        ]);
+
+        $status = PasswordBroker::broker()->reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password): void {
+                abort_unless($user->isActive(), 403, 'This account is unavailable.');
+                $user->forceFill([
+                    'password' => $password,
+                    'remember_token' => Str::random(60),
+                ])->save();
+                DB::table('sessions')->where('user_id', $user->id)->delete();
+                event(new PasswordReset($user));
+            }
+        );
+
+        if ($status !== PasswordBroker::PASSWORD_RESET) {
+            throw ValidationException::withMessages([
+                'email' => __($status),
+            ]);
+        }
+
+        return response()->json([
+            'data' => [
+                'message' => 'Your password has been reset. You can now sign in with your new password.',
+            ],
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    public function changePassword(Request $request): JsonResponse
+    {
+        $actor = $request->user();
+        abort_unless($actor->isActive(), 403, 'This account is unavailable.');
+
+        $data = $request->validate([
+            'current_password' => ['required', 'string', 'current_password'],
+            'password' => ['required', 'string', 'max:128', 'confirmed', 'different:current_password', Password::min(6)],
+        ]);
+
+        $actor->forceFill([
+            'password' => $data['password'],
+            'remember_token' => Str::random(60),
+        ])->save();
+
+        DB::table('sessions')
+            ->where('user_id', $actor->id)
+            ->where('id', '!=', $request->session()->getId())
+            ->delete();
+
+        return response()->json([
+            'data' => [
+                'message' => 'Your password has been updated.',
+            ],
+        ])->header('Cache-Control', 'no-store');
     }
 
     public function show(Request $request): JsonResponse
@@ -122,10 +248,11 @@ final class IdentityController extends Controller
         }
 
         $this->verifyEmail($user);
+        $fresh = $user->refresh();
 
         return $request->expectsJson()
-            ? $this->profile($user)
-            : $this->verificationRedirect('/account?verification=verified');
+            ? $this->profile($fresh)
+            : $this->verificationRedirect($fresh->role === 'entrepreneur' ? '/dashboard' : '/account?verification=verified');
     }
 
     private function matchesVerification(User $user, string $id, string $hash): bool
@@ -136,9 +263,150 @@ final class IdentityController extends Controller
 
     private function verifyEmail(User $user): void
     {
+        $hadRequestedInstitution = ! empty($user->requested_institution_id);
+        $newlyVerified = false;
+
         if (! $user->hasVerifiedEmail() && $user->markEmailAsVerified()) {
+            $newlyVerified = true;
             event(new Verified($user));
         }
+
+        $this->resolveRequestedAffiliation($user);
+
+        if ($newlyVerified && ! $hadRequestedInstitution) {
+            WorkspaceNotifier::notifyUser(
+                $user->id,
+                'Welcome to the Youth Entrepreneurship Resource Hub! Your email is verified and your account is ready.',
+                '/account',
+                'Welcome to YERH — Email Verified',
+                'Open YERH Account',
+            );
+        }
+    }
+
+    private function resolveRequestedAffiliation(User $user): void
+    {
+        if (! $user->requested_institution_id) {
+            return;
+        }
+
+        $outcome = DB::transaction(function () use ($user) {
+            $actor = User::query()->lockForUpdate()->find($user->id);
+            if (! $actor || ! $actor->requested_institution_id || ! $actor->hasVerifiedEmail() || ! $actor->isActive()) {
+                return null;
+            }
+
+            $institution = DB::table('institutions')
+                ->where('id', $actor->requested_institution_id)
+                ->where('status', 'active')
+                ->whereIn('kind', ['university', 'hub'])
+                ->first();
+
+            $actor->forceFill(['requested_institution_id' => null])->save();
+
+            if (! $institution || $actor->role !== 'guest'
+                || DB::table('institution_memberships')->where('user_id', $actor->id)->exists()
+                || DB::table('institution_access')->where('user_id', $actor->id)->exists()
+                || DB::table('affiliation_applications')->where('pending_user_id', $actor->id)->exists()) {
+                return null;
+            }
+
+            $domains = $this->parseDomains($institution->allowed_domains ?? null);
+            $emailDomain = Str::after(Str::lower($actor->email), '@');
+            $location = trim((string) ($actor->location ?? '')) ?: 'Not specified';
+
+            if ($domains !== [] && in_array($emailDomain, $domains, true)) {
+                DB::table('institution_memberships')->insert([
+                    'user_id' => $actor->id,
+                    'institution_id' => $institution->id,
+                    'location' => $location,
+                    'consented_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $actor->forceFill(['role' => 'entrepreneur'])->save();
+
+                return ['type' => 'approved', 'actor' => $actor, 'institution' => $institution];
+            }
+
+            DB::table('affiliation_applications')->insert([
+                'user_id' => $actor->id,
+                'pending_user_id' => $actor->id,
+                'institution_id' => $institution->id,
+                'location' => $location,
+                'details' => 'Requested institution affiliation during account registration.',
+                'consented_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return ['type' => 'pending', 'actor' => $actor, 'institution' => $institution];
+        }, 3);
+
+        if (! $outcome) {
+            return;
+        }
+
+        /** @var User $actor */
+        $actor = $outcome['actor'];
+        $institution = $outcome['institution'];
+
+        if ($outcome['type'] === 'approved') {
+            $actor->notify(new WorkspaceAlert(
+                "Your {$institution->name} email was verified automatically. Your Entrepreneur dashboard is now unlocked.",
+                '/dashboard',
+            ));
+
+            return;
+        }
+
+        $actor->notify(new WorkspaceAlert(
+            "Your affiliation request for {$institution->name} has been sent to the institution coordinator and YERH admin for review.",
+            '/account',
+        ));
+
+        $coordinators = User::query()
+            ->whereNull('suspended_at')
+            ->whereNotNull('email_verified_at')
+            ->whereIn('id', DB::table('institution_access')
+                ->where('institution_id', $institution->id)
+                ->where('access', 'manage')
+                ->select('user_id'))
+            ->get();
+        if ($coordinators->isNotEmpty()) {
+            Notification::send($coordinators, new WorkspaceAlert(
+                "{$actor->name} requested affiliation with {$institution->name}.",
+                '/dashboard/workspace?tab=school&institution='.rawurlencode($institution->slug).'&view=requests',
+            ));
+        }
+
+        $admins = User::query()->where('role', 'admin')->whereNull('suspended_at')->whereNotNull('email_verified_at')->get();
+        if ($admins->isNotEmpty()) {
+            Notification::send($admins, new WorkspaceAlert(
+                "{$actor->name} requested affiliation with {$institution->name}.",
+                '/dashboard/workspace?tab=approvals&view=roles',
+            ));
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function parseDomains(mixed $raw): array
+    {
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : [];
+        }
+
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            static fn ($domain) => is_string($domain) ? Str::lower(ltrim(trim($domain), '@')) : '',
+            $raw
+        )));
     }
 
     private function verificationRedirect(string $path): RedirectResponse
@@ -198,6 +466,18 @@ final class IdentityController extends Controller
             ->first(['institution.slug', 'institution.name', 'institution.kind', 'institution.status']);
     }
 
+    private function requestedInstitution(User $user): ?object
+    {
+        if (! $user->requested_institution_id) {
+            return null;
+        }
+
+        return DB::table('institutions')
+            ->where('id', $user->requested_institution_id)
+            ->where('status', 'active')
+            ->first(['slug', 'name', 'kind']);
+    }
+
     private function staff(User $user): Collection
     {
         return DB::table('institution_access as staff')
@@ -235,6 +515,7 @@ final class IdentityController extends Controller
             'local_verification_available' => ! $user->hasVerifiedEmail() && $this->allowsLocalVerification(request()),
             'role' => $user->role,
             'affiliation' => $this->affiliation($user),
+            'requested_institution' => $this->requestedInstitution($user),
             'staff' => $this->staff($user),
         ]], $status)->header('Cache-Control', 'no-store');
     }

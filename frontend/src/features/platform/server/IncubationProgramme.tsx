@@ -1,6 +1,7 @@
 import { ExistingUserPicker } from './ExistingUserPicker';
 import { useCallback, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { passMark } from '../../../domain/incubation';
 import {
   laravelProgramme,
   type Pathway,
@@ -179,7 +180,11 @@ async function searchVerifiedMentors(query: string, signal: AbortSignal) {
   const list = await laravelProgramme.mentors(signal);
   const term = query.toLocaleLowerCase();
   return list
-    .filter((mentor) => mentor.name.toLocaleLowerCase().includes(term))
+    .filter(
+      (mentor) =>
+        mentor.name.toLocaleLowerCase().includes(term) ||
+        mentor.email.toLocaleLowerCase().includes(term),
+    )
     .map(({ id, name }) => ({ id, name }));
 }
 
@@ -198,12 +203,17 @@ export function ProgrammeMentors() {
               create
               submit="Grant mentor access"
               save={async (data) => {
-                await laravelProgramme.addMentor(Number(fieldValue(data, 'user_id')));
+                const userId = Number(fieldValue(data, 'user_id'));
+                if (!Number.isSafeInteger(userId) || userId < 1) {
+                  throw new Error('Select an eligible account from the search results.');
+                }
+                await laravelProgramme.addMentor(userId);
                 reload();
               }}
             >
               <ExistingUserPicker
                 label="Eligible mentor account"
+                hint="Only verified, unaffiliated guest accounts without a pending institution request appear here."
                 load={laravelProgramme.mentorCandidates}
               />
             </WorkspaceAction>
@@ -245,7 +255,15 @@ function PathwayDetail({ id, role }: { id: number; role: ProgrammeRole }) {
               role={role}
               unlocked={
                 Boolean(records.path.mentor_id) &&
-                records.stages.slice(0, index).every((prior) => prior.work?.graded_at)
+                records.stages
+                  .slice(0, index)
+                  .every(
+                    (prior) =>
+                      prior.work?.graded_at &&
+                      (prior.work.passed === true ||
+                        prior.work.passed === 1 ||
+                        (prior.work.passed == null && (prior.work.score ?? 0) >= passMark)),
+                  )
               }
               reload={reload}
             />

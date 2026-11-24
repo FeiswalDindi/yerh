@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, LayoutGrid, type LucideIcon } from 'lucide-react';
+import { SmartImage } from '../../shared/SmartImage';
 
 export function DashboardCategoryRail({
   entries,
@@ -69,7 +70,7 @@ export function DashboardCategoryRail({
             >
               <span className="dashboard-category-icon">
                 {image ? (
-                  <img src={image} alt="" loading="lazy" />
+                  <SmartImage src={image} alt="" targetWidth={480} />
                 ) : (
                   <FilterIcon size={22} aria-hidden="true" />
                 )}

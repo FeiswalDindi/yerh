@@ -1,4 +1,4 @@
-import { laravelRequest } from './laravel-api';
+import { apiUrl, laravelRequest } from './laravel-api';
 
 export type StageKey = 'getting-started' | 'advanced' | 'funding';
 export type CredentialKind = StageKey | 'venture';
@@ -25,6 +25,7 @@ export interface Stage {
     examPrompt: string;
   };
   work: {
+    attempt?: number;
     review_requested_at: string | null;
     meeting_at: string | null;
     meeting_location: string | null;
@@ -32,7 +33,10 @@ export interface Stage {
     exam_opened_at: string | null;
     submitted_at: string | null;
     answer: string | null;
+    has_answer_attachment?: boolean;
+    answer_attachment_name?: string | null;
     score: number | null;
+    passed?: boolean | number | null;
     grade_note: string | null;
     graded_at: string | null;
   } | null;
@@ -41,10 +45,22 @@ export interface Stage {
     body: string;
     feedback_requested: boolean | number;
     feedback: string | null;
+    has_attachment?: boolean;
+    attachment_name?: string | null;
   }[];
 }
 
-type ProductInput = { name: string; description: string; price: string; venture_id?: number };
+export type ProductInput = {
+  name: string;
+  description: string;
+  price: string;
+  venture_id?: number;
+  photo?: File | null;
+  remove_photo?: boolean;
+  contact_email?: string;
+  contact_phone?: string;
+  whatsapp?: string;
+};
 export interface PublicProduct {
   sector: string;
   slug: string;
@@ -52,6 +68,13 @@ export interface PublicProduct {
   description: string;
   price: string | number;
   venture: string;
+  location?: string | null;
+  institution?: string | null;
+  seller_name?: string | null;
+  seller_email?: string | null;
+  seller_phone?: string | null;
+  whatsapp?: string | null;
+  image_url?: string | null;
 }
 export interface Product extends PublicProduct {
   owner: string;
@@ -69,12 +92,24 @@ export interface Product extends PublicProduct {
   payment_status: PaymentStatus | null;
   payment_note: string | null;
   published: boolean;
+  has_image?: boolean;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  whatsapp?: string | null;
 }
 
 interface FeeSetting {
   purpose: FeePurpose;
   amount: number;
   enabled: boolean;
+}
+
+export interface PaymentInstructions {
+  provider: string;
+  paybill_number: string;
+  account_number: string;
+  recipient_name: string;
+  instructions: string;
 }
 
 interface Payment {
@@ -85,6 +120,8 @@ interface Payment {
   venture: string | null;
   product: string | null;
   reference: string;
+  has_receipt?: boolean;
+  receipt_name?: string | null;
   status: PaymentStatus;
   decision_note: string | null;
 }
@@ -122,11 +159,43 @@ export const laravelProgramme = {
     get<{ id: number; name: string }[]>('mentors/candidates?' + new URLSearchParams({ q }), signal),
   addMentor: (user_id: number) => write('mentors', { user_id }),
   assignMentor: (id: number, mentor_id: number) => write(`incubation/${id}/mentor`, { mentor_id }),
-  updateStage: (id: number, stage: StageKey, action: string, data: object = {}) =>
+  updateStage: (id: number, stage: StageKey, action: string, data: object | FormData = {}) =>
     write(`incubation/${id}/stages/${stage}/${action}`, data),
+  evidenceAttachmentUrl: (id: number, stage: StageKey, step: string) =>
+    apiUrl(
+      `/workspace/incubation/${id}/stages/${encodeURIComponent(stage)}/evidence/${encodeURIComponent(step)}/attachment`,
+    ),
+  examAttachmentUrl: (id: number, stage: StageKey) =>
+    apiUrl(`/workspace/incubation/${id}/stages/${encodeURIComponent(stage)}/exam-attachment`),
   products: (signal?: AbortSignal) => get<Product[]>('products', signal),
-  saveProduct: (data: ProductInput, id?: number) =>
-    id === undefined ? write('products', data) : write('products/' + id, data, 'PATCH'),
+  saveProduct: (data: ProductInput, id?: number) => {
+    const usesMultipart = Boolean((data.photo && data.photo.size > 0) || data.remove_photo);
+    if (usesMultipart) {
+      const form = new FormData();
+      form.append('name', data.name);
+      form.append('description', data.description);
+      form.append('price', data.price);
+      if (data.venture_id !== undefined) form.append('venture_id', String(data.venture_id));
+      if (data.contact_email !== undefined) form.append('contact_email', data.contact_email);
+      if (data.contact_phone !== undefined) form.append('contact_phone', data.contact_phone);
+      if (data.whatsapp !== undefined) form.append('whatsapp', data.whatsapp);
+      if (data.photo && data.photo.size > 0) form.append('photo', data.photo);
+      if (data.remove_photo) form.append('remove_photo', '1');
+      return write(id === undefined ? 'products' : 'products/' + id, form, 'POST');
+    }
+    const payload = {
+      name: data.name,
+      description: data.description,
+      price: data.price,
+      ...(data.venture_id !== undefined ? { venture_id: data.venture_id } : {}),
+      ...(data.contact_email !== undefined ? { contact_email: data.contact_email || null } : {}),
+      ...(data.contact_phone !== undefined ? { contact_phone: data.contact_phone || null } : {}),
+      ...(data.whatsapp !== undefined ? { whatsapp: data.whatsapp || null } : {}),
+    };
+    return id === undefined
+      ? write('products', payload)
+      : write('products/' + id, payload, 'PATCH');
+  },
   submitProductEvidence: (id: number, evidence: string) =>
     write(`products/${id}/evidence`, { evidence }),
   reviewProduct: (
@@ -139,9 +208,28 @@ export const laravelProgramme = {
   fees: (signal?: AbortSignal) => get<FeeSetting[]>('programme-fees', signal),
   updateFee: (purpose: FeePurpose, amount: number, enabled: boolean) =>
     write(`programme-fees/${purpose}`, { amount, enabled }, 'PUT'),
+  paymentInstructions: (signal?: AbortSignal) =>
+    get<PaymentInstructions>('payment-instructions', signal),
+  updatePaymentInstructions: (data: PaymentInstructions) =>
+    write('payment-instructions', data, 'PUT'),
   payments: (signal?: AbortSignal) => get<Payment[]>('programme-payments', signal),
-  recordPayment: (purpose: FeePurpose, target_id: number, reference: string) =>
-    write('programme-payments', { purpose, target_id, reference }),
+  recordPayment: (
+    purpose: FeePurpose,
+    target_id: number,
+    reference: string,
+    receipt?: File | null,
+  ) => {
+    if (receipt && receipt.size > 0) {
+      const form = new FormData();
+      form.append('purpose', purpose);
+      form.append('target_id', String(target_id));
+      form.append('reference', reference);
+      form.append('receipt', receipt);
+      return write('programme-payments', form);
+    }
+    return write('programme-payments', { purpose, target_id, reference });
+  },
+  paymentReceiptUrl: (id: number) => apiUrl(`/workspace/programme-payments/${id}/receipt`),
   reviewPayment: (id: number, decision: string, note: string) =>
     write(`programme-payments/${id}/review`, { decision, note }),
   certificates: (signal?: AbortSignal) => get<Certificate[]>('venture-certificates', signal),

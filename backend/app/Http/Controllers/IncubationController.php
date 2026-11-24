@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Domain\Incubation\Curriculum;
 use App\Domain\Incubation\PathAccess;
 use App\Models\User;
+use App\Support\WorkspaceNotifier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,14 +19,31 @@ final class IncubationController extends Controller
     public function index(Request $request): JsonResponse
     {
         return response()->json(['data' => $this->access->visible($request->user())->addSelect(['graded_stages' => DB::table('incubation_stages')->selectRaw('count(*)')
-            ->whereColumn('path_id', 'path.id')->whereNotNull('graded_at')])->latest('path.id')->get()]);
+            ->whereColumn('path_id', 'path.id')
+            ->whereNotNull('graded_at')
+            ->where(function ($query): void {
+                $query->where('passed', true)
+                    ->orWhere(function ($fallback): void {
+                        $fallback->whereNull('passed')->where('score', '>=', Curriculum::PASS_MARK);
+                    });
+            })])->latest('path.id')->get()]);
     }
 
     public function show(Request $request, int $id): JsonResponse
     {
         $path = $this->access->find($request->user(), $id);
-        $stages = DB::table('incubation_stages')->where('path_id', $id)->get()->keyBy('stage');
-        $evidence = DB::table('incubation_evidence')->whereIn('stage_id', $stages->pluck('id'))->get()->groupBy('stage_id');
+        $stages = DB::table('incubation_stages')->where('path_id', $id)->get()->map(function ($row) {
+            $row->has_answer_attachment = ! empty($row->answer_attachment_path);
+            unset($row->answer_attachment_path);
+
+            return $row;
+        })->keyBy('stage');
+        $evidence = DB::table('incubation_evidence')->whereIn('stage_id', $stages->pluck('id'))->get()->map(function ($row) {
+            $row->has_attachment = ! empty($row->attachment_path);
+            unset($row->attachment_path);
+
+            return $row;
+        })->groupBy('stage_id');
         $payments = DB::table('programme_payments')->where('path_id', $id)->get(['purpose', 'amount', 'status', 'decision_note']);
         $credentials = DB::table('venture_credentials')->where('path_id', $id)->get(['document_id', 'kind', 'issued_at']);
 
@@ -52,7 +70,7 @@ final class IncubationController extends Controller
             'product_ids' => ['sometimes', 'array', 'max:30'],
             'product_ids.*' => ['required', 'integer', 'distinct'],
         ]);
-        $id = DB::transaction(function () use ($request, $ventureId, $data) {
+        [$id, $ventureName] = DB::transaction(function () use ($request, $ventureId, $data) {
             $venture = DB::table('ventures')->where('id', $ventureId)
                 ->where('owner_id', $request->user()->id)->lockForUpdate()->first() ?? abort(404);
             abort_unless($venture->status === 'approved', 409, 'Get the venture approved before launching it.');
@@ -66,8 +84,13 @@ final class IncubationController extends Controller
             ]);
             $selection->update(['included_path_id' => $id]);
 
-            return $id;
+            return [$id, $venture->name];
         }, 3);
+
+        WorkspaceNotifier::notifyAdmins(
+            "{$request->user()->name} launched incubation for {$ventureName} and needs a mentor assigned.",
+            '/dashboard/workspace?tab=approvals&view=incubation',
+        );
 
         return response()->json(['data' => ['id' => $id]], 201);
     }
@@ -85,9 +108,12 @@ final class IncubationController extends Controller
         abort_unless($request->user()->role === 'admin', 403);
         $data = $request->validate(['q' => ['nullable', 'string', 'max:120']]);
         $query = trim($data['q'] ?? '');
+        $like = '%'.addcslashes($query, '\\%_').'%';
 
         return response()->json(['data' => $this->eligibleMentorCandidates()
-            ->when($query !== '', fn ($builder) => $builder->whereLike('name', '%'.$query.'%'))
+            ->when($query !== '', fn ($builder) => $builder->where(
+                fn ($nested) => $nested->whereLike('name', $like)->orWhereLike('email', $like)
+            ))
             ->orderBy('name')->orderBy('id')->limit(24)->get(['id', 'name'])]);
     }
 
@@ -121,13 +147,26 @@ final class IncubationController extends Controller
     {
         abort_unless($request->user()->role === 'admin', 403);
         $data = $request->validate(['mentor_id' => ['required', 'integer']]);
-        DB::transaction(function () use ($request, $id, $data) {
+        [$path, $mentor] = DB::transaction(function () use ($request, $id, $data) {
             $path = $this->access->find($request->user(), $id, lock: true);
             abort_if($path->graduated_at, 409, 'This pathway has graduated.');
             $mentor = User::query()->where('role', 'mentor')->find($data['mentor_id']);
             abort_unless($mentor && $mentor->isActive() && $mentor->hasVerifiedEmail(), 422, 'Choose an active, verified mentor.');
             DB::table('incubation_paths')->where('id', $id)->update(['mentor_id' => $mentor->id, 'updated_at' => now()]);
+
+            return [$path, $mentor];
         }, 3);
+
+        WorkspaceNotifier::notifyUser(
+            $mentor->id,
+            "You have been assigned as mentor for {$path->venture}.",
+            '/dashboard/workspace?tab=incubation&path='.$id,
+        );
+        WorkspaceNotifier::notifyUser(
+            (int) $path->owner_id,
+            "{$mentor->name} has been assigned as mentor for {$path->venture}.",
+            '/dashboard/workspace?tab=incubation&path='.$id,
+        );
 
         return response()->json(['data' => ['id' => $id]]);
     }

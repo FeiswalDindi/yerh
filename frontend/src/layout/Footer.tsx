@@ -3,11 +3,21 @@ import { useId } from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Youtube, Rss, ArrowRight } from 'lucide-react';
 import { useCatalog } from '../app/useCatalog';
+import { SmartImage } from '../shared/SmartImage';
 
 export function Footer({ onTerms }: { onTerms?: () => void }) {
   const { site, media } = useCatalog();
   const wordmarkFilter = useId();
   const socialLinks = Object.fromEntries(site.socials.map((s) => [s.label.toLowerCase(), s.href]));
+  const footerCta = {
+    eyebrow: site.footerCta?.eyebrow?.trim() || 'YOUR NEXT CHAPTER STARTS HERE',
+    heading: site.footerCta?.heading?.trim() || 'Big ideas. Real possibilities.',
+    buttonLabel: site.footerCta?.buttonLabel?.trim() || 'Find your next step',
+    buttonHref: site.footerCta?.buttonHref?.trim() || '/resources',
+  };
+  const copyrightNote =
+    site.copyrightNote?.trim() ||
+    'All rights reserved. No parts of this site may be copied without our written permission.';
   return (
     <footer className="site-footer">
       <svg width={0} height={0} aria-hidden="true" style={{ position: 'absolute' }}>
@@ -30,13 +40,25 @@ export function Footer({ onTerms }: { onTerms?: () => void }) {
         {/* Top Callout Strip */}
         <div className="footer-top">
           <div>
-            <p className="eyebrow">YOUR NEXT CHAPTER STARTS HERE</p>
-            <h2>Big ideas. Real possibilities.</h2>
+            <p className="eyebrow">{footerCta.eyebrow}</p>
+            <h2>{footerCta.heading}</h2>
           </div>
-          <Link className="button button-gold" to="/resources">
-            Find your next step
-            <ArrowRight size={18} />
-          </Link>
+          {/^https?:\/\//i.test(footerCta.buttonHref) ? (
+            <a
+              className="button button-gold"
+              href={footerCta.buttonHref}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {footerCta.buttonLabel}
+              <ArrowRight size={18} />
+            </a>
+          ) : (
+            <Link className="button button-gold" to={footerCta.buttonHref}>
+              {footerCta.buttonLabel}
+              <ArrowRight size={18} />
+            </Link>
+          )}
         </div>
 
         {/* 4-Column Footer Grid matching screenshot */}
@@ -44,10 +66,13 @@ export function Footer({ onTerms }: { onTerms?: () => void }) {
           {/* Col 1: Brand & Slogan */}
           <div className="footer-brand">
             <Link to="/" className="footer-logo-link" aria-label="YERH home">
-              <img
+              <SmartImage
                 src={media.wordmark}
                 alt={site.name}
                 className="footer-logo-img"
+                loading="lazy"
+                width={197}
+                height={40}
                 style={{ filter: `url(#${wordmarkFilter})` }}
               />
             </Link>
@@ -163,8 +188,7 @@ export function Footer({ onTerms }: { onTerms?: () => void }) {
         {/* Bottom Copyright Bar */}
         <div className="footer-bottom">
           <small>
-            © {new Date().getFullYear()} {site.name}. All rights reserved. No parts of this site may
-            be copied without our written permission.
+            © {new Date().getFullYear()} {site.name}. {copyrightNote}
           </small>
         </div>
       </div>

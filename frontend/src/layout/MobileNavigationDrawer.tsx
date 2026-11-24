@@ -8,11 +8,12 @@ import {
   type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bookmark,
   ChevronDown,
   LayoutDashboard,
+  Loader2,
   LogOut,
   Mail,
   Phone,
@@ -24,6 +25,8 @@ import { useCatalog } from '../app/useCatalog';
 import { roleLabels } from '../domain/roles';
 import type { SiteNavigation } from '../domain/site';
 import { useDemo } from '../app/useDemo';
+import { useLaravelSession } from '../app/useLaravelSession';
+import { preloadAccountRoute } from '../app/route-preload';
 import { AccountLink } from '../features/accounts/AccountLink';
 
 function MobileNavigationList({
@@ -104,12 +107,28 @@ export function MobileNavigationDrawer({
   setOpen: Dispatch<SetStateAction<boolean>>;
   toggle: RefObject<HTMLButtonElement | null>;
 }) {
-  const { account, execute } = useDemo();
+  const { account: demoAccount, execute } = useDemo();
+  const session = useLaravelSession();
+  const account = session ? session.profile : demoAccount;
+  const accountHref =
+    account?.role === 'guest' && !session?.profile?.staff.length ? '/account' : '/dashboard';
+  const signingOut = Boolean(session?.signingOut);
   const { site } = useCatalog();
   const navigation = site.navigation;
   const socialLinks = Object.fromEntries(site.socials.map((s) => [s.label.toLowerCase(), s.href]));
   const drawer = useRef<HTMLElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
+  const [navigatingAccount, setNavigatingAccount] = useState(false);
+  const navAttemptRef = useRef(0);
+
+  useEffect(() => {
+    navAttemptRef.current += 1;
+    setNavigatingAccount(false);
+    return () => {
+      navAttemptRef.current += 1;
+    };
+  }, [open, location.pathname, location.search, location.key, account?.id, signingOut]);
   useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
@@ -195,18 +214,63 @@ export function MobileNavigationDrawer({
                         </div>
                         <div className="feiso-account-details">
                           <p className="feiso-account-name">{account.name}</p>
-                          <p className="feiso-account-email">{account.headline}</p>
+                          <p className="feiso-account-email">
+                            {account.headline || session?.profile?.email || ''}
+                          </p>
                         </div>
                       </div>
                       <div className="feiso-account-role-badge">{roleLabels[account.role]}</div>
                       <div className="feiso-account-actions">
                         <Link
-                          to={account.role === 'guest' ? '/account' : '/dashboard'}
-                          onClick={() => setOpen(false)}
+                          to={accountHref}
+                          aria-busy={navigatingAccount || undefined}
+                          aria-disabled={navigatingAccount || signingOut || undefined}
+                          onMouseEnter={() => void preloadAccountRoute(Boolean(session))}
+                          onClick={(event) => {
+                            if (
+                              event.button !== 0 ||
+                              event.metaKey ||
+                              event.ctrlKey ||
+                              event.altKey ||
+                              event.shiftKey
+                            ) {
+                              setOpen(false);
+                              return;
+                            }
+                            event.preventDefault();
+                            if (signingOut || navigatingAccount) return;
+                            const alreadyAtAccount =
+                              location.pathname.replace(/\/$/, '') === accountHref &&
+                              !location.search;
+                            if (alreadyAtAccount) {
+                              setOpen(false);
+                              return;
+                            }
+                            setNavigatingAccount(true);
+                            const attempt = ++navAttemptRef.current;
+                            void preloadAccountRoute(Boolean(session)).finally(() => {
+                              if (navAttemptRef.current !== attempt) return;
+                              setOpen(false);
+                              navigate(accountHref);
+                            });
+                          }}
                           className="button button-gold feiso-dashboard-btn"
                         >
-                          <LayoutDashboard size={16} />
-                          {account.role === 'guest' ? 'Account' : 'My Workspace'}
+                          {navigatingAccount ? (
+                            <>
+                              <Loader2
+                                size={16}
+                                className="header-action-spinner"
+                                aria-hidden="true"
+                              />
+                              Opening…
+                            </>
+                          ) : (
+                            <>
+                              <LayoutDashboard size={16} />
+                              {accountHref === '/account' ? 'Account' : 'My Workspace'}
+                            </>
+                          )}
                         </Link>
                         <div className="feiso-account-row-btns">
                           {account.role !== 'guest' && (
@@ -221,14 +285,36 @@ export function MobileNavigationDrawer({
                           )}
                           <button
                             type="button"
+                            disabled={signingOut}
+                            aria-busy={signingOut || undefined}
                             onClick={() => {
-                              execute({ type: 'logout' });
-                              setOpen(false);
+                              if (signingOut) return;
+                              navAttemptRef.current += 1;
+                              setNavigatingAccount(false);
+                              if (session) {
+                                void session.signOut().then(() => setOpen(false));
+                              } else {
+                                execute({ type: 'logout' });
+                                setOpen(false);
+                              }
                             }}
                             className="feiso-sub-btn feiso-signout-btn"
                           >
-                            <LogOut size={15} />
-                            Sign Out
+                            {signingOut ? (
+                              <>
+                                <Loader2
+                                  size={15}
+                                  className="header-action-spinner"
+                                  aria-hidden="true"
+                                />
+                                Signing out…
+                              </>
+                            ) : (
+                              <>
+                                <LogOut size={15} />
+                                Sign Out
+                              </>
+                            )}
                           </button>
                         </div>
                       </div>

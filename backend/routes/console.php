@@ -5,33 +5,45 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-Artisan::command('yerh:bootstrap-admin {email}', function () {
-    if (! app()->environment('local')) {
-        $this->error('This command is available only in the local environment.');
-
-        return 1;
-    }
-
+Artisan::command('yerh:bootstrap-admin {email} {--verify : Mark the account email as verified if unverified}', function () {
     $email = Str::lower(trim($this->argument('email')));
-    $promoted = DB::transaction(function () use ($email) {
+    $verify = (bool) $this->option('verify');
+    $promoted = DB::transaction(function () use ($email, $verify) {
         if (User::query()->where('role', 'admin')->lockForUpdate()->first()) {
-            return false;
+            return 'exists';
         }
         $user = User::query()->where('email', $email)->lockForUpdate()->first();
-        if (! $user || $user->role !== 'guest' || ! $user->isActive() || ! $user->hasVerifiedEmail()) {
-            return false;
+        if (! $user || $user->role !== 'guest' || ! $user->isActive()) {
+            return 'ineligible';
+        }
+        if (! $user->hasVerifiedEmail()) {
+            if (! $verify) {
+                return 'unverified';
+            }
+            $user->forceFill(['email_verified_at' => now()]);
         }
         $user->forceFill(['role' => 'admin'])->save();
 
-        return true;
+        return 'ok';
     }, 3);
-    if (! $promoted) {
-        $this->error('A verified active guest is required, and this database must have no platform administrator.');
+
+    if ($promoted === 'exists') {
+        $this->error('A platform administrator already exists in this database.');
+
+        return 1;
+    }
+    if ($promoted === 'unverified') {
+        $this->error('Verify this account email first, or pass --verify to bootstrap on a fresh server.');
+
+        return 1;
+    }
+    if ($promoted !== 'ok') {
+        $this->error('An active guest account matching that email is required.');
 
         return 1;
     }
 
-    $this->info('The local platform administrator is ready. Refresh the account page.');
+    $this->info('The platform administrator is ready. Refresh the account page.');
 
     return 0;
-})->purpose('Promote a verified local account as the first YERH platform administrator');
+})->purpose('Promote an active guest account as the first YERH platform administrator when none exists');

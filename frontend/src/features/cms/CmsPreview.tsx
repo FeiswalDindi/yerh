@@ -5,6 +5,7 @@ import { SessionCard } from '../community/CommunityCards';
 import { DiscoverySidebar } from '../discovery/DiscoverySidebar';
 import { TermsSummary } from '../legal/TermsDialog';
 import { TeamSection } from '../info/TeamSection';
+import { SmartImage } from '../../shared/SmartImage';
 
 /** Uses the public components and draft catalog without changing the published provider. */
 export function CmsPreview({
@@ -42,7 +43,7 @@ export function CmsPreview({
           c.media.business,
           ...c.media.partners.map((p) => p.image),
         ].map((url, i) => (
-          <img src={url} key={`${url}-${i}`} alt="Draft media preview" />
+          <SmartImage src={url} key={`${url}-${i}`} alt="Draft media preview" targetWidth={480} />
         ))}
       </div>
     );

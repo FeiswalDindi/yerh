@@ -8,6 +8,7 @@ import { can } from '../../domain/roles';
 import { opportunityProblem } from '../../domain/platform-actions';
 import type { Opportunity } from '../../domain/platform';
 import { PageIntro } from '../../shared/PageIntro';
+import { SmartImage } from '../../shared/SmartImage';
 import { DemoNotice } from '../demo/DemoNotice';
 import { NotFoundPage } from '../info/NotFoundPage';
 import { usePageTitle } from '../../shared/usePageTitle';
@@ -32,7 +33,11 @@ export function OpportunityCard({
       className={`benefit-card ${o.featured ? 'benefit-featured' : ''} ${closed ? 'is-closed' : ''}`}
     >
       <Link to={detail} tabIndex={-1} aria-hidden="true">
-        <img src={o.image || '/media/be-part-of-the-team-3382b8d1.jpg'} alt="" loading="lazy" />
+        <SmartImage
+          src={o.image || '/media/be-part-of-the-team-3382b8d1.webp'}
+          alt=""
+          targetWidth={640}
+        />
       </Link>
       <div>
         <div className="tag-list">
@@ -278,7 +283,13 @@ export function OpportunityDetail({ dashboard = false }: { dashboard?: boolean }
         </Link>
         <div className="benefit-detail">
           <div className="benefit-prose">
-            <img className="article-image" src={o.image} alt="" />
+            <SmartImage
+              className="article-image"
+              src={o.image}
+              alt=""
+              priority
+              targetWidth={1200}
+            />
             <h2>About the opportunity</h2>
             <p>{o.description}</p>
             <h2>Benefits & value</h2>

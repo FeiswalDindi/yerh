@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { ArrowRight, ArrowUpRight, Linkedin } from 'lucide-react';
 import type { TeamContent, TeamMember } from '../../domain/site';
 import { CloseButton } from '../../shared/CloseButton';
+import { SmartImage } from '../../shared/SmartImage';
 import './team.css';
 
 function TeamPortrait({ member }: { member: TeamMember }) {
@@ -17,11 +18,10 @@ function TeamPortrait({ member }: { member: TeamMember }) {
   return (
     <span className="team-portrait" aria-hidden="true">
       {member.image && member.image !== failedImage ? (
-        <img
+        <SmartImage
           src={member.image}
           alt=""
-          loading="lazy"
-          decoding="async"
+          targetWidth={320}
           referrerPolicy="no-referrer"
           onError={() => setFailedImage(member.image)}
         />
@@ -113,22 +113,14 @@ export function TeamSection({ team }: { team: TeamContent }) {
           ))}
         </ul>
         {team.groupPhoto.image && team.groupPhoto.image !== failedPhoto && (
-          <img
+          <SmartImage
             className="team-group-photo"
             src={team.groupPhoto.image}
             alt={team.groupPhoto.alt}
-            loading="lazy"
-            decoding="async"
+            targetWidth={1200}
             referrerPolicy="no-referrer"
             onError={() => setFailedPhoto(team.groupPhoto.image)}
           />
-        )}
-        {team.sourceUrl && (
-          <div className="team-source">
-            <a className="text-link" href={team.sourceUrl} target="_blank" rel="noreferrer">
-              Official YERH team listing <ArrowUpRight size={16} aria-hidden="true" />
-            </a>
-          </div>
         )}
       </div>
       {profile && <TeamProfileDialog member={profile} onClose={() => setProfile(null)} />}

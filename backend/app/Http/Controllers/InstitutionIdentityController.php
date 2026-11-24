@@ -27,6 +27,39 @@ final class InstitutionIdentityController extends Controller
         ]])->header('Cache-Control', 'no-store');
     }
 
+    public function preview(string $token): JsonResponse
+    {
+        $invite = DB::table('institution_invitations as invite')
+            ->join('institutions as institution', 'institution.id', '=', 'invite.institution_id')
+            ->where('invite.token_hash', hash('sha256', $token))
+            ->first([
+                'invite.name as invitee_name',
+                'invite.expires_at',
+                'invite.accepted_at',
+                'invite.revoked_at',
+                'institution.name as institution_name',
+                'institution.slug as institution_slug',
+                'institution.status as institution_status',
+            ]);
+        abort_unless($invite, 404);
+
+        $expired = now()->greaterThanOrEqualTo($invite->expires_at);
+        $valid = ! $expired
+            && $invite->accepted_at === null
+            && $invite->revoked_at === null
+            && $invite->institution_status === 'active';
+
+        return response()->json(['data' => [
+            'invitee_name' => $invite->invitee_name,
+            'institution_name' => $invite->institution_name,
+            'institution_slug' => $invite->institution_slug,
+            'valid' => $valid,
+            'expired' => $expired,
+            'accepted' => $invite->accepted_at !== null,
+            'revoked' => $invite->revoked_at !== null,
+        ]])->header('Cache-Control', 'no-store');
+    }
+
     public function members(Request $request, string $slug): JsonResponse
     {
         $institution = $this->institution($slug);
@@ -42,19 +75,29 @@ final class InstitutionIdentityController extends Controller
             ? DB::table('institution_invitations')->where('institution_id', $institution->id)->latest('id')
                 ->get(['id', 'name', 'email', 'expires_at', 'accepted_at', 'revoked_at'])
             : [];
+        $applications = in_array($institution->kind, ['university', 'hub'], true)
+            ? DB::table('affiliation_applications as application')
+                ->join('users as applicant', 'applicant.id', '=', 'application.user_id')
+                ->where('application.institution_id', $institution->id)
+                ->latest('application.id')
+                ->get([
+                    'application.id', 'application.status', 'application.location', 'application.details',
+                    'application.decision_note', 'applicant.name as applicant', 'applicant.email as applicant_email',
+                ])
+            : [];
 
         $paths = DB::table('incubation_paths as path')->join('ventures as venture', 'venture.id', '=', 'path.venture_id')
             ->where('venture.institution_id', $institution->id)->whereIn('venture.owner_id', $members->pluck('id'))
             ->get(['path.id', 'path.venture_id', 'path.graduated_at']);
         $stages = DB::table('incubation_stages')->whereIn('path_id', $paths->pluck('id'))
-            ->get(['path_id', 'stage', 'graded_at']);
+            ->get(['path_id', 'stage', 'score', 'passed', 'graded_at']);
         $payments = DB::table('programme_payments')->whereIn('path_id', $paths->pluck('id'))
             ->get(['path_id', 'purpose', 'status']);
         $credentials = DB::table('venture_credentials')->whereIn('path_id', $paths->pluck('id'))
             ->get(['path_id', 'kind', 'issued_at']);
         $agreement = $institution->agreement_reference;
 
-        return response()->json(['data' => compact('access', 'members', 'ventures', 'invitations', 'paths', 'stages', 'payments', 'credentials', 'agreement')])
+        return response()->json(['data' => compact('access', 'members', 'ventures', 'invitations', 'applications', 'paths', 'stages', 'payments', 'credentials', 'agreement')])
             ->header('Cache-Control', 'no-store');
     }
 
@@ -78,9 +121,13 @@ final class InstitutionIdentityController extends Controller
     public function invitees(Request $request, string $slug): JsonResponse
     {
         $this->invitationScope($request, $slug);
-        $search = $request->validate(['q' => ['nullable', 'string', 'max:120']])['q'] ?? '';
+        $search = trim($request->validate(['q' => ['nullable', 'string', 'max:120']])['q'] ?? '');
+        $like = '%'.addcslashes($search, '\\%_').'%';
 
-        return response()->json(['data' => $this->eligibleInvitees()->whereLike('name', '%'.$search.'%')
+        return response()->json(['data' => $this->eligibleInvitees()
+            ->when($search !== '', fn ($builder) => $builder->where(
+                fn ($nested) => $nested->whereLike('name', $like)->orWhereLike('email', $like)
+            ))
             ->orderBy('name')->orderBy('id')->limit(50)->get(['id', 'name'])])->header('Cache-Control', 'no-store');
     }
 

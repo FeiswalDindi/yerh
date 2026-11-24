@@ -16,6 +16,7 @@ import { contentPath, type ContentItem, type ContentKind } from '../../domain/co
 import { popularContent, readingRecommendations, recentComments } from '../../domain/sidebar';
 import { MemberAvatar, MemberLink } from '../community/CommunityCards';
 import { CourseEntryLink } from '../resources/CourseEntryLink';
+import { SmartImage } from '../../shared/SmartImage';
 import { AdvertisementsWidget } from './AdvertisementsWidget';
 
 function Widget({
@@ -44,7 +45,7 @@ function ContentRows({ items, likes }: { items: ContentItem[]; likes?: Map<strin
         <li key={item.id}>
           <Link className="discovery-content-row" to={contentPath(item)}>
             {item.image ? (
-              <img src={item.image} alt="" loading="lazy" />
+              <SmartImage src={item.image} alt="" targetWidth={320} sizes="120px" />
             ) : (
               <span className="discovery-thumbnail" aria-hidden="true">
                 <BookOpen size={24} />

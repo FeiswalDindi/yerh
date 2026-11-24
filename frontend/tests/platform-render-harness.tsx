@@ -350,12 +350,19 @@ export async function checkPlatformRendering() {
     false,
   );
   const courseFromDashboard = render(coursePath + '?category=Getting+started', 'demo-founder');
-  assert.match(courseFromDashboard, /<a href="\/dashboard"[^>]*>Home<\/a>/);
+  assert.match(
+    courseFromDashboard,
+    /<a[^>]*href="\/dashboard"[^>]*>.*?<span class="sr-only">Home<\/span><\/a>/,
+  );
+  assert.match(courseFromDashboard, /aria-label="Home"/);
   assert.doesNotMatch(courseFromDashboard, /aria-label="Dashboard navigation"/);
   assert.match(courseFromDashboard, /\/dashboard\/learning\?category=Getting\+started/);
   const founderOpportunities = render('/dashboard/opportunities', 'demo-founder');
   assert.match(founderOpportunities, /href="\/dashboard\/opportunities\/demo-seed-grant"/);
-  assert.match(founderOpportunities, /<a href="\/dashboard"[^>]*>Home<\/a>/);
+  assert.match(
+    founderOpportunities,
+    /<a[^>]*href="\/dashboard"[^>]*>.*?<span class="sr-only">Home<\/span><\/a>/,
+  );
   assert.ok(!founderOpportunities.includes('tab=applications'));
   assert.ok(founderOpportunities.includes('view=applications'));
   const opportunitiesState = structuredClone(state);

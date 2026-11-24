@@ -1,5 +1,6 @@
 import { SectorSelect } from './MarketplaceSectors';
 import { WorkspaceTable } from '../workspace/WorkspaceControls';
+import { StatusIndicator } from '../../../shared/StatusIndicator';
 import { laravelWorkspace, type Venture } from '../../../services/laravel-workspace-repository';
 import {
   DecisionAction,
@@ -41,7 +42,7 @@ export function VentureWorkspace({ admin }: { admin: boolean }) {
                 {admin && <p>{venture.owner}</p>}
               </>,
               <>
-                <strong>{venture.status}</strong>
+                <StatusIndicator status={venture.status} />
                 {venture.decision_note && <p>{venture.decision_note}</p>}
               </>,
               admin && venture.status === 'pending' ? (

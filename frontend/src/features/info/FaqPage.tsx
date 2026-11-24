@@ -9,7 +9,7 @@ export function FaqPage() {
       <PageIntro
         eyebrow="FAQ"
         title="A little clarity for your next step."
-        description="Answers to the questions from the original YERH hub, with guidance for the local demo."
+        description="Answers to common questions about YERH programmes, ventures, mentorship, and learning."
       />
       <section className="container section">
         <div className="faq-list faq-full">

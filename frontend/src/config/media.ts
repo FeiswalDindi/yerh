@@ -5,7 +5,7 @@ export const mediaAssets = {
   workshop: '/media/image-2-bdce0363.webp',
   business: '/media/mowrah-designs-ac3786bf.jpg',
   logo: '/media/yerh-logo-224.webp',
-  wordmark: '/media/yerh-wordmark.png',
+  wordmark: '/media/yerh-wordmark.webp',
 } as const;
 
 // Pressmaster via Pexels (3129957), adapted for the Blogs hero.

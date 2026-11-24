@@ -1,5 +1,5 @@
 import { Bell } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import './laravel-notifications.css';
 import { Link } from 'react-router-dom';
 import { laravelRequest } from '../../services/laravel-api';
@@ -43,6 +43,19 @@ export function LaravelNotificationsLink() {
 
 export function LaravelNotifications() {
   const { records, reload, error } = useWorkspaceRecords(inbox);
+  const [busy, setBusy] = useState(false);
+
+  async function markAllRead() {
+    setBusy(true);
+    try {
+      await laravelRequest('/notifications/read-all', { method: 'POST' });
+      reload();
+      window.dispatchEvent(new Event('yerh:notifications-read'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <section className="container section">
       <h1>Notifications</h1>
@@ -51,13 +64,31 @@ export function LaravelNotifications() {
         <WorkspaceTable
           label="notifications"
           columns={['Notification', 'Received', 'Action']}
+          actions={
+            records.unread > 0 && (
+              <button
+                type="button"
+                className="button button-outline workspace-action"
+                disabled={busy}
+                onClick={() => void markAllRead()}
+              >
+                {busy ? 'Marking…' : 'Mark all as read'}
+              </button>
+            )
+          }
           rows={records.items.map((item) => ({
             id: item.id,
             search: item.message,
             cells: [
-              <a href={item.url}>{item.message}</a>,
+              item.url.startsWith('/api/') ? (
+                <a href={item.url} target="_blank" rel="noreferrer">
+                  {item.message}
+                </a>
+              ) : (
+                <Link to={item.url}>{item.message}</Link>
+              ),
               new Date(item.received_at).toLocaleDateString('en-KE'),
-              !item.read && (
+              !item.read ? (
                 <WorkspaceAction
                   action="Mark as read"
                   submit="Mark as read"
@@ -69,6 +100,8 @@ export function LaravelNotifications() {
                 >
                   <p>{item.message}</p>
                 </WorkspaceAction>
+              ) : (
+                'Read'
               ),
             ],
           }))}

@@ -5,10 +5,13 @@
   --yerh-card-surface: #1d293c;
   --yerh-white: #1a2536;
   --yerh-ink: #e7edf8;
+  --yerh-body: #dce5f4;
   --yerh-muted: #b1bfd4;
   --yerh-border: #37455d;
   --yerh-navy: #d1e2ff;
+  --yerh-navy-surface: #13213a;
   --yerh-gold-light: #3a311c;
+  --yerh-gold-text: #f0d774;
   --workspace-subtle: #202d41;
   --workspace-hover: #25344b;
   --workspace-neutral: #2a3950;
@@ -185,4 +188,179 @@
 .sector-thumbnail {
   object-fit: cover;
   vertical-align: middle;
+}
+
+/* Comprehensive dark-mode contrast fixes across public editorial, widgets, and studio UI */
+:root[data-dashboard-theme='dark']
+  :is(input, select, textarea):not([type='checkbox'], [type='radio'], [type='range']) {
+  background: var(--yerh-white);
+  color: var(--yerh-ink);
+  border-color: var(--yerh-border);
+}
+:root[data-dashboard-theme='dark'] :is(.search-input, .workspace-search, .cms-search) input {
+  background: transparent;
+  color: var(--yerh-ink);
+}
+:root[data-dashboard-theme='dark'] select option {
+  background: var(--yerh-card-surface);
+  color: var(--yerh-ink);
+}
+:root[data-dashboard-theme='dark'] ::placeholder {
+  color: var(--yerh-muted);
+  opacity: 1;
+}
+
+:root[data-dashboard-theme='dark'] .article-body :is(strong, b) {
+  color: #f4f8ff;
+}
+
+:root[data-dashboard-theme='dark'] .image-tag {
+  background: rgba(15, 23, 42, 0.9);
+  color: #f2d77e;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+:root[data-dashboard-theme='dark'] .save-button {
+  background: rgba(15, 23, 42, 0.88);
+  color: #e7edf8;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+:root[data-dashboard-theme='dark'] .save-button[aria-pressed='true'] {
+  background: var(--yerh-gold);
+  border-color: var(--yerh-gold);
+  color: #11203e;
+}
+
+:root[data-dashboard-theme='dark'] .blog-hero-media::after {
+  background: linear-gradient(
+    to bottom,
+    rgba(13, 28, 56, 0.2),
+    rgba(13, 28, 56, 0.58) 55%,
+    rgba(26, 37, 54, 0.85) 82%,
+    var(--yerh-white)
+  );
+}
+
+:root[data-dashboard-theme='dark'] :is(.discovery-ad, .discovery-community-callout) {
+  border: 1px solid #2b4269;
+}
+
+:root[data-dashboard-theme='dark'] .desktop-nav a {
+  color: var(--yerh-muted);
+}
+:root[data-dashboard-theme='dark'] .selected .pathway-check {
+  color: #142747;
+}
+:root[data-dashboard-theme='dark'] .button-navy-outline:hover {
+  color: #142747;
+}
+:root[data-dashboard-theme='dark'] .member-cover .button-outline {
+  background: rgba(17, 24, 39, 0.78);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+:root[data-dashboard-theme='dark'] .cookie-floating-banner {
+  background: rgba(20, 30, 48, 0.92);
+}
+:root[data-dashboard-theme='dark'] .cookie-banner-icon {
+  background: rgba(203, 174, 45, 0.2);
+  color: #f2d77e;
+}
+:root[data-dashboard-theme='dark'] .control-icon {
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+}
+:root[data-dashboard-theme='dark'] .status-all {
+  background: rgba(16, 185, 129, 0.18);
+  color: #86efac;
+}
+:root[data-dashboard-theme='dark'] .status-essential {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+:root[data-dashboard-theme='dark'] .status-none {
+  background: rgba(148, 163, 184, 0.16);
+  color: #cbd5e1;
+}
+
+:root[data-dashboard-theme='dark'] .social-card-pane {
+  border-color: var(--yerh-border);
+}
+:root[data-dashboard-theme='dark'] .social-card-pane p {
+  color: var(--yerh-muted);
+}
+:root[data-dashboard-theme='dark'] .important-link-item {
+  border-color: var(--yerh-border);
+}
+:root[data-dashboard-theme='dark'] :is(.business-thumb-wrap, .story-card-placeholder) {
+  background: var(--workspace-subtle);
+  color: var(--yerh-muted);
+}
+:root[data-dashboard-theme='dark'] .social-tab-btn {
+  color: #7dd3fc;
+}
+:root[data-dashboard-theme='dark'] :is(.partner-logos, .partner-card) img {
+  mix-blend-mode: normal;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+:root[data-dashboard-theme='dark'] .tab-count {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--yerh-ink);
+}
+:root[data-dashboard-theme='dark'] :is(.account-error, .workspace-dialog-error) {
+  background: rgba(185, 28, 28, 0.2);
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+}
+:root[data-dashboard-theme='dark'] .dashboard-notifications-new {
+  color: #fca5a5;
+}
+
+:root[data-dashboard-theme='dark'] .cms-pill[data-tone='published'] {
+  background: rgba(16, 185, 129, 0.18);
+  color: #86efac;
+}
+:root[data-dashboard-theme='dark'] .cms-pill[data-tone='draft'] {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fde68a;
+}
+:root[data-dashboard-theme='dark'] .cms-icon-btn.is-danger {
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
+:root[data-dashboard-theme='dark'] .status-pill.approved,
+:root[data-dashboard-theme='dark']
+  .workspace-status:is(
+    [data-status='approved'],
+    [data-status='active'],
+    [data-status='passed'],
+    [data-status='completed'],
+    [data-status='confirmed'],
+    [data-status='ready to graduate']
+  ) {
+  background: rgba(16, 185, 129, 0.18);
+  color: #86efac;
+}
+:root[data-dashboard-theme='dark']
+  .workspace-status:is(
+    [data-status='pending'],
+    [data-status='in progress'],
+    [data-status='review requested']
+  ) {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fde68a;
+}
+:root[data-dashboard-theme='dark'] .status-pill.rejected,
+:root[data-dashboard-theme='dark']
+  .workspace-status:is(
+    [data-status='rejected'],
+    [data-status='resit available'],
+    [data-status='declined']
+  ) {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
 }

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, Link2, Play } from 'lucide-react';
 import { contentPath, type ContentItem } from '../../domain/content';
+import { SmartImage } from '../../shared/SmartImage';
 
 export function StoryPortrait({
   story,
@@ -60,7 +61,13 @@ export function StoryPortrait({
     >
       <div className="story-card-image-wrap">
         {story.image ? (
-          <img src={story.image} alt={story.title} className="story-card-img" loading="lazy" />
+          <SmartImage
+            src={story.image}
+            alt={story.title}
+            className="story-card-img"
+            targetWidth={480}
+            sizes="(max-width: 800px) 50vw, 320px"
+          />
         ) : (
           <div className="story-card-placeholder">
             <Eye size={32} aria-hidden="true" />

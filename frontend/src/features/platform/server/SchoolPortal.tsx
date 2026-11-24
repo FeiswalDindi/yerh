@@ -275,6 +275,7 @@ function CohortWorkspace({
             {
               id: 'teams',
               label: 'Team ventures',
+              count: detail.teams.length,
               content: (
                 <WorkspaceTable
                   label="team ventures"
@@ -301,6 +302,7 @@ function CohortWorkspace({
             {
               id: 'classes',
               label: 'Classes',
+              count: detail.classes.length,
               content: (
                 <WorkspaceTable
                   label="classes"
@@ -323,6 +325,7 @@ function CohortWorkspace({
             {
               id: 'results',
               label: 'Results',
+              count: detail.results.length,
               content: (
                 <SchoolResults slug={slug} detail={detail} manage={manage} reload={reload} />
               ),
@@ -330,6 +333,7 @@ function CohortWorkspace({
             {
               id: 'certificates',
               label: 'Certificates',
+              count: detail.credentials.length,
               content: (
                 <SchoolCertificates slug={slug} detail={detail} manage={manage} reload={reload} />
               ),
@@ -379,6 +383,7 @@ export function SchoolPortal({
               {
                 id: 'cohorts',
                 label: 'Cohorts',
+                count: records.cohorts.length,
                 content: (
                   <WorkspaceTable
                     label="cohorts"
@@ -406,6 +411,7 @@ export function SchoolPortal({
               {
                 id: 'students',
                 label: 'Students',
+                count: records.students.length,
                 content: (
                   <WorkspaceTable
                     label="students"

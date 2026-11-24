@@ -9,6 +9,7 @@ import {
   type WorkspaceSummary,
 } from '../../../services/laravel-workspace-repository';
 import { WorkspaceTable } from '../workspace/WorkspaceControls';
+import { StatusIndicator } from '../../../shared/StatusIndicator';
 import {
   WorkspaceAction,
   fieldValue,
@@ -21,6 +22,8 @@ const tab = (key: string) => '/dashboard/workspace?tab=' + key;
 const metrics: Record<string, [string, string]> = {
   listings: ['Product listings awaiting approval', tab('approvals')],
   roles: ['Pending role requests', tab('approvals') + '&view=roles'],
+  onboarding: ['Institution onboarding', tab('approvals') + '&view=institutions'],
+  enquiries: ['New enquiries', tab('enquiries')],
   accounts: ['Active accounts', tab('users')],
   payments: ['Payments awaiting review', tab('payments')],
   institutions: ['Institutions', tab('institutions')],
@@ -35,6 +38,10 @@ const metrics: Record<string, [string, string]> = {
   cohorts: ['Cohorts', '&view=cohorts'],
   members: ['Members', '&view=members'],
   affiliatedVentures: ['Ventures', '&view=progress'],
+  pendingRequests: ['Affiliation requests', '&view=requests'],
+  editorial: ['Editorial posts', '/dashboard/cms'],
+  media: ['Media library assets', '/dashboard/cms'],
+  events: ['Events', '/dashboard/events'],
 };
 const descriptions: Record<string, string> = {
   'Approval queue': 'Moderate product listings, assign incubation mentors, and review requests.',
@@ -48,6 +55,7 @@ const descriptions: Record<string, string> = {
   Incubation: 'Launch or continue a venture pathway.',
   'Assigned pathways': 'Review evidence and assessments for your assigned ventures.',
   Courses: 'Open your course workspace.',
+  Enquiries: 'Respond to enquiries submitted from the public contact form.',
 };
 
 export function WorkspaceOverview({
@@ -148,12 +156,7 @@ export function AccountDirectory({ actor }: { actor: number }) {
               u.name,
               u.email,
               roleLabels[u.role],
-              <span
-                className="workspace-status"
-                data-status={u.suspended_at ? 'suspended' : 'active'}
-              >
-                {u.suspended_at ? 'Suspended' : 'Active'}
-              </span>,
+              <StatusIndicator status={u.suspended_at ? 'suspended' : 'active'} />,
               u.id === actor ? (
                 'Your account'
               ) : (

@@ -1,4 +1,5 @@
 import { WorkspaceTable } from '../workspace/WorkspaceControls';
+import { StatusIndicator } from '../../../shared/StatusIndicator';
 import { laravelWorkspace } from '../../../services/laravel-workspace-repository';
 import { localLaravelIdentity } from '../../../services/laravel-identity-repository';
 import { localInstitution } from '../../../services/local-institution-repository';
@@ -66,7 +67,7 @@ export function AffiliationWorkspace({
                 <p>{entry.location}</p>
               </>,
               <>
-                <strong>{entry.status}</strong>
+                <StatusIndicator status={entry.status} />
                 {entry.decision_note && <p>{entry.decision_note}</p>}
               </>,
               ...(admin

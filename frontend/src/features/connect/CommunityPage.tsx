@@ -2,6 +2,7 @@ import { ArrowUpRight, BookOpen, MessageCircle, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCatalog } from '../../app/useCatalog';
 import { PageIntro } from '../../shared/PageIntro';
+import { SmartImage } from '../../shared/SmartImage';
 import { usePageTitle } from '../../shared/usePageTitle';
 export function CommunityPage() {
   const { media } = useCatalog();
@@ -14,7 +15,12 @@ export function CommunityPage() {
         description="Find inspiration in shared experiences and discover how mentorship can support your entrepreneurial journey."
       />
       <section className="container section community-feature">
-        <img src={media.team} alt="Young people sharing a workspace" />
+        <SmartImage
+          src={media.team}
+          alt="Young people sharing a workspace"
+          priority
+          targetWidth={1200}
+        />
         <div>
           <p className="eyebrow">CONNECTION MAKES A DIFFERENCE</p>
           <h2>

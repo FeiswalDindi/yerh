@@ -1,4 +1,4 @@
-import { mediaAssets } from '../config/media';
+import { INLINE_YERH_LOGO } from '../config/brand-inline';
 
 export function SiteLoader({ screen = false }: { screen?: boolean }) {
   return (
@@ -8,7 +8,14 @@ export function SiteLoader({ screen = false }: { screen?: boolean }) {
       aria-label="Loading YERH"
     >
       <span className="yerh-loader__emblem" aria-hidden="true">
-        <img src={mediaAssets.logo} width="80" height="80" alt="" />
+        <img
+          src={INLINE_YERH_LOGO}
+          width={80}
+          height={80}
+          decoding="sync"
+          fetchPriority="high"
+          alt=""
+        />
       </span>
     </div>
   );

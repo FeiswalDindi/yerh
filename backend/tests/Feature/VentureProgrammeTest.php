@@ -49,7 +49,15 @@ final class VentureProgrammeTest extends TestCase
             ])->assertOk();
             $this->postJson($base.'/open-exam', ['note' => 'Discussed evidence at review.'])->assertOk();
             $this->actingAs($founder)->postJson($base.'/submit', ['answer' => 'My answer uses the evidence I submitted.'])->assertOk();
-            $this->actingAs($mentor)->postJson($base.'/grade', ['score' => 0, 'note' => 'An assessment can complete below the pass mark.'])->assertOk();
+            $this->actingAs($mentor)->postJson($base.'/grade', ['score' => 40, 'note' => 'Below pass mark, retake required.'])->assertOk();
+            if ($stage['id'] === 'getting-started') {
+                $this->actingAs($founder)->postJson(self::API."/incubation/$id/stages/advanced/evidence", [
+                    'step' => 'pilot', 'body' => 'Should stay locked after a failing score.',
+                ])->assertConflict();
+            }
+            $this->actingAs($mentor)->postJson($base.'/reopen-exam', ['note' => 'Please focus on validated metrics in your retake.'])->assertOk();
+            $this->actingAs($founder)->postJson($base.'/submit', ['answer' => 'Improved retake response with verified metrics and margins.'])->assertOk();
+            $this->actingAs($mentor)->postJson($base.'/grade', ['score' => 75, 'note' => 'Strong retake performance above pass mark.'])->assertOk();
         }
 
         $this->getJson('/api/v1/marketplace')->assertJsonPath('data.0.name', 'Starter basket');

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { memberPath } from '../../domain/community';
 import type { EventPresenter } from '../../domain/events';
+import { SmartImage } from '../../shared/SmartImage';
 import './event-presenters.css';
 
 export function EventPresenterAvatar({
@@ -18,7 +19,11 @@ export function EventPresenterAvatar({
     .toUpperCase();
   return (
     <span className="event-presenter-avatar" aria-hidden="true">
-      {presenter.photo ? <img src={presenter.photo} alt="" loading="lazy" /> : initials || '•'}
+      {presenter.photo ? (
+        <SmartImage src={presenter.photo} alt="" targetWidth={320} />
+      ) : (
+        initials || '•'
+      )}
     </span>
   );
 }

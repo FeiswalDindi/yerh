@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->appendToGroup('web', \App\Http\Middleware\RecordWorkspaceActivity::class);
+        $middleware->convertEmptyStringsToNull(except: [
+            fn (Request $request): bool => $request->is('api/v1/workspace/cms/*')
+                && ! $request->is('api/v1/workspace/cms/media*'),
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function (InvalidSignatureException $exception, Request $request) {

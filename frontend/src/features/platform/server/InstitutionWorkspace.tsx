@@ -1,7 +1,8 @@
-import { CircleCheck } from 'lucide-react';
 import { ExistingUserPicker } from './ExistingUserPicker';
+import { StatusIndicator } from '../../../shared/StatusIndicator';
 import { useCallback, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { passMark } from '../../../domain/incubation';
 import { WorkspaceTable, WorkspaceTabs } from '../workspace/WorkspaceControls';
 import {
   schoolRepository,
@@ -18,6 +19,7 @@ import {
 import { localInstitution } from '../../../services/local-institution-repository';
 import type { InstitutionChoice } from '../../../services/laravel-identity-repository';
 import {
+  DecisionAction,
   fieldValue,
   RecordsFeedback,
   useWorkspaceRecords,
@@ -25,6 +27,13 @@ import {
 } from './WorkspaceActions';
 
 const kindLabels = { 'high-school': 'High school', university: 'University', hub: 'Hub' };
+
+function parseDomainInput(value: string): string[] {
+  return value
+    .split(/[\s,;]+/)
+    .map((entry) => entry.trim().replace(/^@+/, '').toLowerCase())
+    .filter(Boolean);
+}
 
 export function InstitutionDirectory({ record }: { record?: string }) {
   const { records, error, reload } = useWorkspaceRecords(laravelWorkspace.institutions);
@@ -64,14 +73,25 @@ export function InstitutionDirectory({ record }: { record?: string }) {
                     ))}
                   </select>
                 </label>
+                <Link
+                  className="button button-outline workspace-action"
+                  to="/dashboard/workspace?tab=approvals&view=institutions"
+                >
+                  Onboarding applications
+                </Link>
                 <WorkspaceAction
                   action="Add institution"
                   create
                   submit="Create institution"
                   save={async (data) => {
+                    const domains = parseDomainInput(fieldValue(data, 'allowed_domains'));
                     await laravelWorkspace.addInstitution({
                       name: fieldValue(data, 'name'),
                       kind: fieldValue(data, 'kind'),
+                      agreement_reference: fieldValue(data, 'agreement_reference') || undefined,
+                      contact_email: fieldValue(data, 'contact_email') || undefined,
+                      contact_phone: fieldValue(data, 'contact_phone') || undefined,
+                      allowed_domains: domains.length ? domains : undefined,
                     });
                     reload();
                   }}
@@ -88,6 +108,25 @@ export function InstitutionDirectory({ record }: { record?: string }) {
                         </option>
                       ))}
                     </select>
+                  </label>
+                  <label>
+                    Verified student email domains (optional, comma-separated)
+                    <input
+                      name="allowed_domains"
+                      placeholder="e.g. students.kcau.ac.ke, kcau.ac.ke"
+                    />
+                  </label>
+                  <label>
+                    Agreement reference (optional)
+                    <input name="agreement_reference" maxLength={180} />
+                  </label>
+                  <label>
+                    Contact email (optional)
+                    <input name="contact_email" type="email" maxLength={254} />
+                  </label>
+                  <label>
+                    Contact phone (optional)
+                    <input name="contact_phone" maxLength={40} />
                   </label>
                 </WorkspaceAction>
               </>
@@ -133,17 +172,17 @@ function InstitutionStaff({ slug, changed }: { slug: string; changed: () => void
       {records && (
         <WorkspaceTable
           label="institution staff"
-          columns={['Name', 'Access', 'Status']}
+          columns={['Name', 'Access', 'Status', 'Action']}
           actions={
             <WorkspaceAction
               action="Assign staff"
               submit="Save access"
               save={async (data) => {
-                await laravelWorkspace.assignStaff(
-                  slug,
-                  Number(fieldValue(data, 'user_id')),
-                  fieldValue(data, 'access'),
-                );
+                const userId = Number(fieldValue(data, 'user_id'));
+                if (!Number.isSafeInteger(userId) || userId < 1) {
+                  throw new Error('Select an eligible account from the search results.');
+                }
+                await laravelWorkspace.assignStaff(slug, userId, fieldValue(data, 'access'));
                 reload();
                 changed();
               }}
@@ -161,7 +200,23 @@ function InstitutionStaff({ slug, changed }: { slug: string; changed: () => void
           rows={records.map((staff) => ({
             id: String(staff.id),
             search: staff.name,
-            cells: [staff.name, staff.access, staff.suspended_at ? 'Suspended' : 'Active'],
+            cells: [
+              staff.name,
+              staff.access,
+              staff.suspended_at ? 'Suspended' : 'Active',
+              <WorkspaceAction
+                action="Remove"
+                title={staff.name}
+                submit="Remove staff"
+                save={async () => {
+                  await laravelWorkspace.removeStaff(slug, staff.id);
+                  reload();
+                  changed();
+                }}
+              >
+                <p>Revoke {staff.name}’s portal access for this institution?</p>
+              </WorkspaceAction>,
+            ],
           }))}
         />
       )}
@@ -290,13 +345,48 @@ function InstitutionRecordView({
           title={entry.name}
           submit="Save changes"
           save={async (data) => {
-            await laravelWorkspace.renameInstitution(entry.slug, fieldValue(data, 'name'));
+            await laravelWorkspace.updateInstitution(entry.slug, {
+              name: fieldValue(data, 'name'),
+              allowed_domains: parseDomainInput(fieldValue(data, 'allowed_domains')),
+              agreement_reference: fieldValue(data, 'agreement_reference') || null,
+              contact_email: fieldValue(data, 'contact_email') || null,
+              contact_phone: fieldValue(data, 'contact_phone') || null,
+            });
             reload();
           }}
         >
           <label>
             Name{' '}
             <input name="name" required minLength={2} maxLength={120} defaultValue={entry.name} />
+          </label>
+          <label>
+            Verified student email domains (comma-separated)
+            <input
+              name="allowed_domains"
+              defaultValue={(entry.allowed_domains ?? []).join(', ')}
+              placeholder="e.g. students.kcau.ac.ke, kcau.ac.ke"
+            />
+          </label>
+          <label>
+            Agreement reference
+            <input
+              name="agreement_reference"
+              maxLength={180}
+              defaultValue={entry.agreement_reference ?? ''}
+            />
+          </label>
+          <label>
+            Contact email
+            <input
+              name="contact_email"
+              type="email"
+              maxLength={254}
+              defaultValue={entry.contact_email ?? ''}
+            />
+          </label>
+          <label>
+            Contact phone
+            <input name="contact_phone" maxLength={40} defaultValue={entry.contact_phone ?? ''} />
           </label>
         </WorkspaceAction>
       </div>
@@ -315,9 +405,16 @@ function InstitutionRecordView({
                     ['Institution name', entry.name],
                     ['Type', kindLabels[entry.kind]],
                     ['Status', entry.status],
+                    [
+                      'Verified email domains',
+                      entry.allowed_domains?.length ? entry.allowed_domains.join(', ') : '—',
+                    ],
+                    ['Agreement reference', entry.agreement_reference ?? '—'],
+                    ['Contact email', entry.contact_email ?? '—'],
+                    ['Contact phone', entry.contact_phone ?? '—'],
                   ])}
                 />
-                {entry.status !== 'active' && (
+                {entry.status !== 'active' ? (
                   <WorkspaceAction
                     action="Activate institution"
                     title={entry.name}
@@ -329,6 +426,21 @@ function InstitutionRecordView({
                   >
                     <p>Make {entry.name} available for sign-in and affiliation?</p>
                   </WorkspaceAction>
+                ) : (
+                  <WorkspaceAction
+                    action="Suspend institution"
+                    title={entry.name}
+                    submit="Suspend"
+                    save={async () => {
+                      await laravelWorkspace.deactivate(entry.slug);
+                      reload();
+                    }}
+                  >
+                    <p>
+                      Suspend {entry.name}? New student affiliations and marketplace visibility for
+                      this institution will pause until reactivated.
+                    </p>
+                  </WorkspaceAction>
                 )}
               </>
             ),
@@ -336,11 +448,13 @@ function InstitutionRecordView({
           {
             id: 'staff-contacts',
             label: 'Staff & contacts',
+            count: entry.staff_count,
             content: <InstitutionStaff slug={entry.slug} changed={reload} />,
           },
           {
             id: 'agreements',
             label: 'Agreements',
+            count: entry.agreements,
             content: (
               <InstitutionAgreements school={entry} slug={entry.slug} reference={reference} admin />
             ),
@@ -348,6 +462,10 @@ function InstitutionRecordView({
           {
             id: 'students',
             label: 'Students',
+            count:
+              entry.kind !== 'high-school' && records
+                ? records.members.length
+                : entry.students_count,
             content: (
               <>
                 {scopeNote}
@@ -374,6 +492,10 @@ function InstitutionRecordView({
           {
             id: 'ventures-products',
             label: 'Ventures & products',
+            count:
+              entry.kind !== 'high-school' && records
+                ? records.ventures.length
+                : entry.ventures_count,
             content: (
               <>
                 {scopeNote}
@@ -388,7 +510,11 @@ function InstitutionRecordView({
                     rows={records.ventures.map((venture) => ({
                       id: String(venture.id),
                       search: venture.name + ' ' + venture.sector,
-                      cells: [venture.name, venture.sector, venture.status],
+                      cells: [
+                        venture.name,
+                        venture.sector,
+                        <StatusIndicator status={venture.status} />,
+                      ],
                     }))}
                   />
                 ) : (
@@ -400,6 +526,10 @@ function InstitutionRecordView({
           {
             id: 'results-certificates',
             label: 'Results & Certificates',
+            count:
+              entry.kind !== 'high-school' && records
+                ? records.credentials.length
+                : entry.results_count,
             content: (
               <>
                 {scopeNote}
@@ -490,6 +620,7 @@ export function InstitutionPortal({
             {
               id: 'members',
               label: 'Members',
+              count: records.members.length,
               content: (
                 <WorkspaceTable
                   label="members"
@@ -512,6 +643,7 @@ export function InstitutionPortal({
             {
               id: 'progress',
               label: 'Pathway progress',
+              count: records.paths.length,
               content: (
                 <WorkspaceTable
                   label="pathway progress"
@@ -528,7 +660,12 @@ export function InstitutionPortal({
                     const venture = records.ventures.find((item) => item.id === path.venture_id);
                     const member = records.members.find((item) => item.id === venture?.owner_id);
                     const completed = records.stages.filter(
-                      (item) => item.path_id === path.id && item.graded_at,
+                      (item) =>
+                        item.path_id === path.id &&
+                        item.graded_at &&
+                        (item.passed === true ||
+                          item.passed === 1 ||
+                          (item.passed == null && (item.score ?? 0) >= passMark)),
                     );
                     const current = (Object.keys(schoolStages) as SchoolStage[]).find(
                       (key) => !completed.some((stage) => stage.stage === key),
@@ -563,6 +700,55 @@ export function InstitutionPortal({
               ),
             },
             {
+              id: 'requests',
+              label: 'Affiliation requests',
+              count: (records.applications ?? []).filter((a) => a.status === 'pending').length,
+              content: (
+                <WorkspaceTable
+                  label="affiliation requests"
+                  columns={['Applicant', 'Email', 'Details', 'Status', 'Action']}
+                  empty="No student affiliation requests for this institution yet."
+                  rows={(records.applications ?? []).map((application) => ({
+                    id: String(application.id),
+                    search: [
+                      application.applicant,
+                      application.applicant_email,
+                      application.status,
+                      application.location,
+                    ].join(' '),
+                    cells: [
+                      application.applicant,
+                      application.applicant_email,
+                      <>
+                        <p>{application.details}</p>
+                        <p>{application.location}</p>
+                      </>,
+                      <>
+                        <StatusIndicator status={application.status} />
+                        {application.decision_note && <p>{application.decision_note}</p>}
+                      </>,
+                      records.access === 'manage' && application.status === 'pending' ? (
+                        <DecisionAction
+                          name={application.applicant}
+                          decide={async (decision, note) => {
+                            await laravelWorkspace.review(
+                              'applications',
+                              application.id,
+                              decision,
+                              note,
+                            );
+                            reload();
+                          }}
+                        />
+                      ) : (
+                        '—'
+                      ),
+                    ],
+                  }))}
+                />
+              ),
+            },
+            {
               id: 'agreements',
               label: 'Agreements',
               content: (
@@ -579,6 +765,7 @@ export function InstitutionPortal({
                   {
                     id: 'invitations',
                     label: 'Invitations',
+                    count: records.invitations.length,
                     content: (
                       <WorkspaceTable
                         label="invitations"
@@ -590,10 +777,14 @@ export function InstitutionPortal({
                               create
                               submit="Send invitations"
                               save={async (data) => {
-                                await localInstitution.inviteMembers(
-                                  slug,
-                                  data.getAll('members').map(Number),
-                                );
+                                const memberIds = data
+                                  .getAll('members')
+                                  .map(Number)
+                                  .filter((id) => Number.isSafeInteger(id) && id > 0);
+                                if (!memberIds.length) {
+                                  throw new Error('Select at least one eligible guest account.');
+                                }
+                                await localInstitution.inviteMembers(slug, memberIds);
                                 reload();
                               }}
                             >
@@ -641,7 +832,7 @@ export function InstitutionPortal({
                             cells: [
                               invite.name,
                               invite.email,
-                              status,
+                              <StatusIndicator status={status} />,
                               status === 'Pending' ? (
                                 <WorkspaceAction
                                   action="Revoke invitation"
@@ -673,12 +864,5 @@ export function InstitutionPortal({
 }
 
 function InstitutionStatus({ status }: { status: string }) {
-  return status === 'active' ? (
-    <span className="institution-active-mark" title="Active">
-      <CircleCheck size={18} aria-hidden="true" />
-      <span className="sr-only">Active</span>
-    </span>
-  ) : (
-    <span className="workspace-record-status">{status}</span>
-  );
+  return <StatusIndicator status={status} />;
 }

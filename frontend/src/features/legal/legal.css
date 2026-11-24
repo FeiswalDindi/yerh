@@ -23,7 +23,7 @@
 }
 .terms-document p {
   font-size: 15px;
-  color: #444a5b;
+  color: var(--yerh-body);
   line-height: 1.9;
   margin-bottom: 14px;
 }
@@ -104,10 +104,10 @@
   gap: 14px;
   font-size: 14px;
   line-height: 1.75;
-  color: #444a5b;
+  color: var(--yerh-body);
 }
 .terms-summary li::marker {
-  color: #927613;
+  color: var(--yerh-gold-text);
 }
 .terms-dialog-actions {
   display: flex;

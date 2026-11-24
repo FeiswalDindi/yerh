@@ -19,6 +19,7 @@ Route::prefix('api/v1/engagement')->middleware('throttle:60,1')->group(function 
         Route::patch('/manage/event-categories/{id}', [EngagementEventController::class, 'category'])->whereNumber('id');
         Route::post('/opportunities/{slug}/applications', [OpportunityController::class, 'apply']);
         Route::get('/applications', [OpportunityController::class, 'submissions']);
+        Route::get('/applications/{id}/attachment', [OpportunityController::class, 'attachment'])->whereNumber('id');
         Route::post('/applications/{id}/decision', [OpportunityController::class, 'decide'])->whereNumber('id');
         Route::get('/manage/opportunities', [OpportunityController::class, 'index'])->defaults('admin', true);
         Route::post('/manage/opportunities', [OpportunityController::class, 'save']);

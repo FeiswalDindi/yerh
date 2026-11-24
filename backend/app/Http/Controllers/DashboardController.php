@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\WorkspaceNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class DashboardController extends Controller
 {
@@ -24,6 +26,13 @@ final class DashboardController extends Controller
                 'assigned' => DB::table('incubation_paths')->where('mentor_id', $actor->id)->whereNull('graduated_at')->count(),
                 'graduated' => DB::table('incubation_paths')->where('mentor_id', $actor->id)->whereNotNull('graduated_at')->count(),
             ],
+            'content_manager' => [
+                'editorial' => DB::table('editorial_content')->count(),
+                'media' => DB::table('cms_media')->count(),
+                'events' => DB::table('engagement_events')->count(),
+                'opportunities' => DB::table('engagement_opportunities')->count(),
+                'enquiries' => DB::table('contact_messages')->where('status', 'new')->count(),
+            ],
             default => [],
         };
         $staff = DB::table('institution_access as access')
@@ -38,6 +47,10 @@ final class DashboardController extends Controller
             ] : [
                 'members' => DB::table('institution_memberships')->where('institution_id', $institution->id)->count(),
                 'affiliatedVentures' => DB::table('ventures')->where('institution_id', $institution->id)->count(),
+                'pendingRequests' => DB::table('affiliation_applications')
+                    ->where('institution_id', $institution->id)
+                    ->where('status', 'pending')
+                    ->count(),
             ];
         }
 
@@ -49,11 +62,13 @@ final class DashboardController extends Controller
         $metrics = [
             'listings' => DB::table('venture_products')->where('moderation', 'pending')->count(),
             'roles' => DB::table('affiliation_applications')->where('status', 'pending')->count(),
+            'onboarding' => DB::table('institution_onboarding_applications')->where('status', 'pending')->count(),
+            'enquiries' => DB::table('contact_messages')->where('status', 'new')->count(),
             'accounts' => DB::table('users')->whereNull('suspended_at')->count(),
             'payments' => DB::table('programme_payments')->where('status', 'pending')->count(),
             'institutions' => DB::table('institutions')->count(),
         ];
-        $metrics['approvals'] = $metrics['roles'] + $metrics['listings']
+        $metrics['approvals'] = $metrics['roles'] + $metrics['listings'] + $metrics['onboarding']
             + DB::table('venture_products')->where('evidence_status', 'pending')->count()
             + DB::table('ventures')->where('status', 'pending')->count()
             + DB::table('incubation_paths')->whereNull('mentor_id')->whereNull('graduated_at')->count();
@@ -66,7 +81,7 @@ final class DashboardController extends Controller
         $actor = $request->user();
         abort_unless($actor->role === 'admin' && $actor->id !== $id, 403);
         $data = $request->validate(['suspended' => ['required', 'boolean'], 'role' => ['required', 'string']]);
-        DB::transaction(function () use ($id, $data, $actor) {
+        $outcome = DB::transaction(function () use ($id, $data, $actor) {
             // Lock both accounts in a consistent order, then recheck the actor before writing.
             $users = DB::table('users')->whereIn('id', [$actor->id, $id])->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $administrator = $users->get($actor->id);
@@ -82,10 +97,65 @@ final class DashboardController extends Controller
                     && ! DB::table('affiliation_applications')->where('pending_user_id', $id)->exists(),
                     422, 'Use the corresponding institution, affiliation or mentor workflow for this account.');
             }
-            DB::table('users')->where('id', $id)->update([
-                'role' => $data['role'], 'suspended_at' => $data['suspended'] ? ($member->suspended_at ?? now()) : null, 'updated_at' => now(),
-            ]);
+            $updates = [
+                'role' => $data['role'],
+                'suspended_at' => $data['suspended'] ? ($member->suspended_at ?? now()) : null,
+                'updated_at' => now(),
+            ];
+            if ($data['suspended']) {
+                $updates['remember_token'] = Str::random(60);
+            }
+            DB::table('users')->where('id', $id)->update($updates);
+            if ($data['suspended']) {
+                DB::table('sessions')->where('user_id', $id)->delete();
+            }
+
+            return [
+                'name' => $member->name,
+                'email' => $member->email,
+                'verified' => ! empty($member->email_verified_at),
+                'role_changed' => $data['role'] !== $member->role,
+                'new_role' => $data['role'],
+                'newly_suspended' => $data['suspended'] && $member->suspended_at === null,
+                'reactivated' => ! $data['suspended'] && $member->suspended_at !== null,
+            ];
         }, 3);
+
+        $roleLabel = match ($outcome['new_role']) {
+            'admin' => 'Platform Administrator',
+            'content_manager' => 'Content Manager',
+            default => ucwords(str_replace('_', ' ', $outcome['new_role'])),
+        };
+
+        if ($outcome['newly_suspended']) {
+            WorkspaceNotifier::notifyExternalEmail(
+                $outcome['email'],
+                $outcome['name'],
+                'Your YERH account access has been suspended',
+                'Your YERH account access has been temporarily suspended by an administrator. If you believe this is an error, please reach out via the Contact Us page.',
+                'Contact Support',
+                '/contact',
+            );
+        } elseif ($outcome['verified']) {
+            if ($outcome['reactivated']) {
+                WorkspaceNotifier::notifyUser(
+                    $id,
+                    'Your YERH account access has been restored. You can sign in again.',
+                    '/dashboard',
+                    'Your YERH account has been reactivated',
+                    'Sign in to YERH',
+                );
+            }
+            if ($outcome['role_changed']) {
+                WorkspaceNotifier::notifyUser(
+                    $id,
+                    "Your YERH account role has been updated to {$roleLabel}.",
+                    '/dashboard',
+                    'Your YERH account role was updated',
+                    'Open YERH',
+                );
+            }
+        }
 
         return response()->json(['data' => ['id' => $id]]);
     }

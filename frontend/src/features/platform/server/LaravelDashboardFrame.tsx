@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowUpRight, LogOut } from 'lucide-react';
+import { ArrowUpRight, Loader2, LogOut } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { useLaravelSession } from '../../../app/useLaravelSession';
 import { Header } from '../../../layout/Header';
 import { BreadcrumbTrail } from '../../../shared/Breadcrumb';
 import { CloseButton } from '../../../shared/CloseButton';
@@ -37,6 +38,7 @@ export function LaravelDashboardFrame({
   record?: string;
 }) {
   const { pathname, search } = useLocation();
+  const signingOut = Boolean(useLaravelSession()?.signingOut);
   const shell = useRef<HTMLDivElement>(null);
   const drawer = useRef<HTMLDialogElement>(null);
   const main = useRef<HTMLElement>(null);
@@ -173,12 +175,24 @@ export function LaravelDashboardFrame({
           <button
             className="dashboard-visit"
             type="button"
+            disabled={signingOut}
+            aria-busy={signingOut || undefined}
             onClick={() => {
+              if (signingOut) return;
               drawer.current?.close();
               void signOut();
             }}
           >
-            <LogOut size={17} aria-hidden="true" /> Sign out
+            {signingOut ? (
+              <>
+                <Loader2 size={17} className="header-action-spinner" aria-hidden="true" /> Signing
+                out…
+              </>
+            ) : (
+              <>
+                <LogOut size={17} aria-hidden="true" /> Sign out
+              </>
+            )}
           </button>
         </div>
       </dialog>

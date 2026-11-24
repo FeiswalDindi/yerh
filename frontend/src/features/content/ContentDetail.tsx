@@ -19,6 +19,7 @@ import { sessionPath } from '../../domain/community';
 import { DiscoverySidebar } from '../discovery/DiscoverySidebar';
 import { ArticleComments } from '../discovery/ArticleComments';
 import { dashboardCataloguePaths } from '../dashboard/catalogue-paths';
+import { SmartImage } from '../../shared/SmartImage';
 function ArticleBody({ blocks }: { blocks: ContentBlock[] }) {
   const groups: { list: boolean; blocks: ContentBlock[] }[] = [];
   for (const block of blocks) {
@@ -123,10 +124,13 @@ export function ContentDetail({ dashboard = false }: { dashboard?: boolean }) {
         className={`container article-layout ${dashboard ? 'dashboard-listing-detail' : 'content-with-sidebar'}`}
       >
         <div>
-          <img
+          <SmartImage
             className="article-image"
             src={item.image || media.team}
             alt={item.image ? item.imageAlt : 'Young people working together'}
+            priority
+            targetWidth={1200}
+            sizes="(max-width: 900px) 100vw, 820px"
           />
           <div className="article-body">
             <ArticleBody blocks={item.blocks} />
@@ -151,28 +155,18 @@ export function ContentDetail({ dashboard = false }: { dashboard?: boolean }) {
               >
                 <ExternalLink size={19} />
                 {download.label}
-                <small>{download.availableLocally ? 'Local document' : 'Original website'}</small>
+                <small>{download.availableLocally ? 'Local document' : 'External document'}</small>
               </a>
             ))}
             {!item.blocks.length && !item.videos.length && (
-              <p>
-                This item is part of the original YERH collection. Follow the original source below
-                to explore the full resource.
-              </p>
+              <p>Published in the Youth Entrepreneurship Resource Hub collection.</p>
             )}
             <div className="source-note">
-              {item.source.url ? (
-                <>
-                  From the YERH collection.{' '}
-                  <a href={item.source.url} target="_blank" rel="noreferrer">
-                    View original source <ExternalLink size={12} />
-                  </a>
-                </>
-              ) : item.source.path === 'mock-member' ? (
-                'Fictional member contribution from the development fixtures.'
-              ) : (
-                'Created in the local development demo. This contribution exists only in this browser.'
-              )}
+              {item.source.path === 'mock-member'
+                ? 'Fictional member contribution from the development fixtures.'
+                : item.source.path === 'local-demo'
+                  ? 'Created in the local development demo. This contribution exists only in this browser.'
+                  : 'Published in the Youth Entrepreneurship Resource Hub collection.'}
             </div>
             {!dashboard && <ArticleComments contentId={item.id} />}
           </div>

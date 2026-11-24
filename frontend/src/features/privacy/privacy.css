@@ -94,7 +94,7 @@
   margin: 0;
   font-size: 12px;
   line-height: 1.55;
-  color: #334155;
+  color: var(--yerh-body);
 }
 
 .cookie-banner-actions {
@@ -159,8 +159,8 @@
 }
 
 .cookie-control-panel {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--yerh-card-surface);
+  border: 1px solid var(--yerh-border);
   border-radius: 8px;
   padding: 24px;
   margin-bottom: 36px;
@@ -186,9 +186,9 @@
 .consent-status-box {
   margin: 16px 0 20px;
   padding: 12px 16px;
-  background: white;
+  background: var(--yerh-white);
   border-radius: 6px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--yerh-border);
   font-size: 13px;
 }
 
@@ -238,12 +238,12 @@
 .cookie-table th,
 .cookie-table td {
   padding: 12px 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--yerh-border);
   text-align: left;
 }
 
 .cookie-table th {
-  background: #f1f5f9;
+  background: var(--yerh-surface);
   font-weight: 700;
   color: var(--yerh-navy);
 }

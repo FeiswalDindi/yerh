@@ -11,6 +11,7 @@ import { FeatureCarousel } from '../home/FeatureCarousel';
 import { DemoNotice } from '../demo/DemoNotice';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { createCmsSnapshot } from '../../services/cms-snapshot';
+import { SmartImage } from '../../shared/SmartImage';
 import { CmsPreview } from './CmsPreview';
 import { cmsModule, cmsModules } from '../dashboard/dashboard-navigation';
 
@@ -534,7 +535,7 @@ export function CmsPage() {
                   .filter((url, index, all) => all.indexOf(url) === index)
                   .map((url) => (
                     <figure key={url}>
-                      <img src={url} alt="Available media asset" loading="lazy" />
+                      <SmartImage src={url} alt="Available media asset" targetWidth={480} />
                       <figcaption>{url}</figcaption>
                     </figure>
                   ))}

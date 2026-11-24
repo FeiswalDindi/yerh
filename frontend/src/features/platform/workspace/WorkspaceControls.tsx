@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { CloseButton } from '../../../shared/CloseButton';
 import { useDemo } from '../../../app/useDemo';
 import { downloadCsv } from '../../../shared/downloadCsv';
+import { StatusIndicator } from '../../../shared/StatusIndicator';
 import '../workspace.css';
 
 export function WorkspaceDialog({
@@ -298,9 +299,5 @@ export function WorkspaceTable({
 export function WorkspaceStatus({ children }: { children: string }) {
   const { account } = useDemo();
   if (account?.role !== 'admin') return null;
-  return (
-    <span className="workspace-status" data-status={children.toLowerCase()}>
-      {children.replaceAll('-', ' ')}
-    </span>
-  );
+  return <StatusIndicator status={children} />;
 }

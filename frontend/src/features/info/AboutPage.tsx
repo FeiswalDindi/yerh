@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useCatalog } from '../../app/useCatalog';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { PageIntro } from '../../shared/PageIntro';
+import { SmartImage } from '../../shared/SmartImage';
 import { PartnerStrip } from '../home/PartnerStrip';
 import { TeamSection } from './TeamSection';
 export function AboutPage() {
@@ -21,7 +22,12 @@ export function AboutPage() {
         description="A shared ambition: to help young people build sustainable, thriving enterprises."
       />
       <section className="container section about-grid">
-        <img src={media.developers} alt="Members of the YERH development team" />
+        <SmartImage
+          src={media.developers}
+          alt="Members of the YERH development team"
+          priority
+          targetWidth={1200}
+        />
         <div>
           <p className="eyebrow">OUR STORY</p>
           <h2>

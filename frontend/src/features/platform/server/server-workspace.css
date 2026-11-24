@@ -41,7 +41,7 @@
   background: var(--yerh-white);
   border: 1px solid var(--yerh-border);
   border-radius: 0.4rem;
-  color: var(--yerh-text);
+  color: var(--yerh-ink);
   font: inherit;
   min-height: 2.4rem;
   padding-inline: 0.75rem;
@@ -52,6 +52,133 @@
   gap: 0.75rem;
 }
 
+.workspace-picker-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.workspace-picker-search-wrap input {
+  width: 100%;
+  padding-right: 2.2rem;
+}
+
+.workspace-picker-clear {
+  position: absolute;
+  right: 0.45rem;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--yerh-muted);
+}
+
+.workspace-picker-clear:hover {
+  background: var(--yerh-card-surface);
+  color: var(--yerh-ink);
+}
+
+.workspace-picker-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.workspace-picker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--yerh-gold);
+  background: var(--yerh-gold-light);
+  color: var(--yerh-navy);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.workspace-picker-chip button {
+  display: grid;
+  place-items: center;
+  padding: 0.1rem;
+  background: transparent;
+  color: inherit;
+}
+
+.workspace-picker-field-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--yerh-navy);
+}
+
+.workspace-picker-list {
+  display: grid;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--yerh-border);
+  border-radius: 0.4rem;
+  background: var(--yerh-white);
+}
+
+.workspace-picker-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--yerh-border);
+  background: transparent;
+  color: var(--yerh-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.workspace-picker-option:last-child {
+  border-bottom: 0;
+}
+
+.workspace-picker-option:hover {
+  background: var(--workspace-subtle, var(--yerh-surface));
+}
+
+.workspace-picker-option[aria-selected='true'] {
+  background: var(--yerh-gold-light);
+  color: var(--yerh-navy);
+}
+
+.workspace-picker-option > span {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.workspace-picker-option small {
+  color: var(--yerh-muted);
+  font-size: 0.78rem;
+}
+
+.workspace-picker-empty {
+  margin: 0;
+  padding: 0.9rem 0.75rem;
+  color: var(--yerh-muted);
+  font-size: 0.88rem;
+}
+
+.workspace-picker-status {
+  font-size: 0.82rem;
+  color: var(--yerh-muted);
+}
+
+.workspace-picker-hint {
+  color: var(--yerh-muted);
+  font-size: 0.78rem;
+}
+
 .server-programme-stage {
   margin-block: 1.25rem;
   padding: 1rem;
@@ -60,4 +187,68 @@
 
 .server-account > * + * {
   margin-block-start: 1rem;
+}
+
+.workspace-attachment-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 550;
+}
+
+.workspace-product-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.workspace-product-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 0.35rem;
+  border: 1px solid var(--yerh-border);
+  flex-shrink: 0;
+}
+
+.workspace-product-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.workspace-product-preview img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 0.35rem;
+  border: 1px solid var(--yerh-border);
+}
+
+.marketplace-product-photo {
+  width: 100%;
+  max-height: 440px;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  border: 1px solid var(--yerh-border);
+  margin-bottom: 1.25rem;
+}
+
+.marketplace-inquiry-actions {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.marketplace-inquiry-actions .button {
+  justify-content: center;
+  width: 100%;
+}
+
+.marketplace-inquiry-actions .text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }

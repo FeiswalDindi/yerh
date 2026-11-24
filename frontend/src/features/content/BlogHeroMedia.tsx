@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { blogHeroMedia } from '../../config/media';
+import { resolveMediaUrl } from '../../shared/mediaUrl';
+import { SmartImage } from '../../shared/SmartImage';
 
 export function BlogHeroMedia() {
   const [motionAllowed, setMotionAllowed] = useState(false);
+  const [posterReady, setPosterReady] = useState(false);
   const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
@@ -16,12 +19,26 @@ export function BlogHeroMedia() {
     return () => preference.removeEventListener('change', syncMotion);
   }, []);
 
+  useEffect(() => {
+    if (!motionAllowed || posterReady) return;
+    const timer = window.setTimeout(() => setPosterReady(true), 250);
+    return () => window.clearTimeout(timer);
+  }, [motionAllowed, posterReady]);
+
   return (
     <div className="blog-hero-media" aria-hidden="true" data-playing={playing}>
-      <img src={blogHeroMedia.poster} alt="" fetchPriority="high" />
-      {motionAllowed && (
+      <SmartImage
+        src={blogHeroMedia.poster}
+        alt=""
+        priority
+        targetWidth={1200}
+        onLoad={() => setPosterReady(true)}
+        onError={() => setPosterReady(true)}
+      />
+      {motionAllowed && posterReady && (
         <video
-          src={blogHeroMedia.video}
+          src={resolveMediaUrl(blogHeroMedia.video)}
+          preload="metadata"
           autoPlay
           muted
           loop

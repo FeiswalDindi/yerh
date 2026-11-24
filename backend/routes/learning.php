@@ -13,6 +13,7 @@ Route::prefix('api/v1/learning')->middleware('throttle:60,1')->group(function ()
         Route::put('/courses/{slug}/lessons/{lesson}', [LearningEnrollmentController::class, 'complete'])->whereNumber('lesson');
         Route::get('/certificates/{document}', [LearningEnrollmentController::class, 'document'])->whereUuid('document')->name('learning.certificate');
         Route::get('/registry', [LearningEnrollmentController::class, 'registry']);
+        Route::get('/registry/{id}/receipt', [LearningEnrollmentController::class, 'receipt'])->whereNumber('id');
         Route::post('/registry/{id}/payment', [LearningEnrollmentController::class, 'reviewPayment'])->whereNumber('id');
         Route::post('/registry/{id}/certificate', [LearningEnrollmentController::class, 'issueCertificate'])->whereNumber('id');
         Route::get('/authoring', [CourseAuthoringController::class, 'index']);

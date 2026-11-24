@@ -5,19 +5,27 @@ namespace App\Http\Controllers;
 use App\Domain\Engagement\Publishing;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 final class EditorialContentController extends Controller
 {
+    private const CACHE_KEY = 'yerh.editorial.public.v1';
+
     public function publicIndex(): JsonResponse
     {
-        $published = DB::table('editorial_content')->where('status', 'published')->latest('updated_at')->get();
-        $items = $published->map(fn ($record) => json_decode($record->payload, true, flags: JSON_THROW_ON_ERROR));
-        $featured = $published->where('kind', 'story')->where('featured', true)->pluck('content_id')->values();
-        $hidden = DB::table('editorial_content')->whereIn('status', ['draft', 'archived'])
-            ->where('payload->source->path', '!=', 'laravel-editorial')->pluck('content_id');
+        $data = Cache::remember(self::CACHE_KEY, now()->addMinutes(10), function () {
+            $published = DB::table('editorial_content')->where('status', 'published')->latest('updated_at')->get();
+            $items = $published->map(fn ($record) => json_decode($record->payload, true, flags: JSON_THROW_ON_ERROR));
+            $featured = $published->where('kind', 'story')->where('featured', true)->pluck('content_id')->values();
+            $hidden = DB::table('editorial_content')->whereIn('status', ['draft', 'archived'])
+                ->where('payload->source->path', '!=', 'laravel-editorial')->pluck('content_id');
 
-        return response()->json(['data' => compact('items', 'featured', 'hidden')]);
+            return compact('items', 'featured', 'hidden');
+        });
+
+        return response()->json(['data' => $data])->header('Cache-Control', 'public, max-age=60');
     }
 
     public function index(Request $request): JsonResponse
@@ -26,6 +34,7 @@ final class EditorialContentController extends Controller
         $items = DB::table('editorial_content')->latest('updated_at')->get()
             ->map(fn ($record) => [
                 'id' => $record->id, 'status' => $record->status, 'featured' => (bool) $record->featured,
+                'updated_at' => $record->updated_at,
                 'content' => json_decode($record->payload, true, flags: JSON_THROW_ON_ERROR),
             ]);
 
@@ -40,11 +49,19 @@ final class EditorialContentController extends Controller
             'title' => ['required', 'string', 'max:160'],
             'category' => ['required', 'string', 'max:80'],
             'excerpt' => ['required', 'string', 'max:500'],
+            'image' => ['nullable', 'string', 'max:500', 'regex:/^(\/|https?:\/\/)/i'],
+            'imageAlt' => ['nullable', 'string', 'max:240'],
             'status' => ['required', 'in:draft,published,archived'],
             'featured' => ['required', 'boolean'],
             'blocks' => ['required', 'array', 'min:1', 'max:100'],
             'blocks.*.type' => ['required', 'in:heading,paragraph,list-item'],
             'blocks.*.text' => ['required', 'string', 'max:12000'],
+            'downloads' => ['sometimes', 'array', 'max:20'],
+            'downloads.*.label' => ['required', 'string', 'max:140'],
+            'downloads.*.href' => ['required', 'string', 'max:500', 'regex:/^(\/|https?:\/\/)/i'],
+            'downloads.*.availableLocally' => ['sometimes', 'boolean'],
+            'videos' => ['sometimes', 'array', 'max:10'],
+            'videos.*' => ['required', 'url:http,https', 'max:500'],
         ]);
         $id = DB::transaction(function () use ($request, $data, $id) {
             $query = DB::table('editorial_content')->where('id', $id);
@@ -57,11 +74,31 @@ final class EditorialContentController extends Controller
                 'image' => null, 'imageAlt' => '', 'downloads' => [], 'videos' => [],
                 'source' => ['path' => 'laravel-editorial', 'url' => '', 'sha256' => ''],
             ];
-            $payload = array_replace($payload, [
-                'title' => $data['title'], 'category' => $data['category'], 'excerpt' => $data['excerpt'],
+            $updates = [
+                'title' => $data['title'],
+                'category' => $data['category'],
+                'excerpt' => $data['excerpt'],
                 'publishedAt' => $payload['publishedAt'] ?? ($data['status'] === 'published' ? now()->toIso8601String() : null),
                 'blocks' => array_values($data['blocks']),
-            ]);
+            ];
+            if (array_key_exists('image', $data)) {
+                $image = $data['image'] !== null ? trim($data['image']) : '';
+                $updates['image'] = $image !== '' ? $image : null;
+            }
+            if (array_key_exists('imageAlt', $data)) {
+                $updates['imageAlt'] = trim((string) ($data['imageAlt'] ?? ''));
+            }
+            if (array_key_exists('downloads', $data)) {
+                $updates['downloads'] = array_values(array_map(fn ($dl) => [
+                    'label' => $dl['label'],
+                    'href' => $dl['href'],
+                    'availableLocally' => (bool) ($dl['availableLocally'] ?? str_starts_with($dl['href'], '/')),
+                ], $data['downloads']));
+            }
+            if (array_key_exists('videos', $data)) {
+                $updates['videos'] = array_values($data['videos']);
+            }
+            $payload = array_replace($payload, $updates);
             unset($payload['status']);
             $values = [
                 'payload' => json_encode($payload, JSON_THROW_ON_ERROR),
@@ -79,6 +116,18 @@ final class EditorialContentController extends Controller
             ]);
         });
 
+        Cache::forget(self::CACHE_KEY);
+
         return response()->json(['data' => ['id' => $id]]);
+    }
+
+    public function destroy(Request $request, int $id): Response
+    {
+        abort_unless(in_array($request->user()->role, ['admin', 'content_manager'], true), 403);
+        $deleted = DB::table('editorial_content')->where('id', $id)->delete();
+        abort_unless($deleted === 1, 404);
+        Cache::forget(self::CACHE_KEY);
+
+        return response()->noContent();
     }
 }

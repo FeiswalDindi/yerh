@@ -17,7 +17,7 @@ export function HomePage() {
           <FeatureCarousel />
           {site.homeSections.stories !== false && <StoriesSection />}
           {site.homeSections.businesses !== false && <BusinessesSection />}
-          <UpcomingEventsSection />
+          {site.homeSections.events !== false && <UpcomingEventsSection />}
           {site.homeSections.updates !== false && <UpdatesSection />}
         </div>
         <HomeSidebar />

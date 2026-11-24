@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Home } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useContext, useEffect } from 'react';
 import {
@@ -42,7 +42,10 @@ export function BreadcrumbTrail({
     <nav className="breadcrumb" aria-label="Breadcrumb">
       <ol className="container">
         <li>
-          <Link to={homeHref}>Home</Link>
+          <Link className="breadcrumb-home" to={homeHref} aria-label="Home" title="Home">
+            <Home size={40} strokeWidth={1.85} aria-hidden="true" />
+            <span className="sr-only">Home</span>
+          </Link>
         </li>
         {parents
           .filter(({ to }) => to !== homeHref)

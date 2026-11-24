@@ -1,4 +1,5 @@
 import { useCatalog } from '../../app/useCatalog';
+import { SmartImage } from '../../shared/SmartImage';
 export function PartnerStrip() {
   const { media } = useCatalog();
   return (
@@ -10,7 +11,7 @@ export function PartnerStrip() {
       <div className="partner-logos">
         {media.partners.map((partner) => (
           <a key={partner.name} href={partner.url} target="_blank" rel="noreferrer">
-            <img src={partner.image} alt={partner.name} loading="lazy" />
+            <SmartImage src={partner.image} alt={partner.name} targetWidth={320} />
           </a>
         ))}
       </div>

@@ -21,6 +21,7 @@ final class MarketplaceVisibility
     public function publicProducts(): Builder
     {
         return $this->products()
+            ->join('users as founder', 'founder.id', '=', 'venture.owner_id')
             ->where('product.moderation', 'approved')
             ->where('venture.status', 'approved')
             ->where('institution.status', 'active')
@@ -30,6 +31,23 @@ final class MarketplaceVisibility
                     $pathway->whereNotNull('path.graduated_at')->where('product.evidence_status', 'approved');
                 });
             })
-            ->select('product.slug', 'product.name', 'product.description', 'product.price', 'venture.name as venture', 'venture.sector');
+            ->select(
+                'product.id',
+                'product.slug',
+                'product.name',
+                'product.description',
+                'product.price',
+                'product.image_path',
+                'product.contact_email',
+                'product.contact_phone',
+                'product.whatsapp',
+                'venture.name as venture',
+                'venture.sector',
+                'venture.location',
+                'institution.name as institution',
+                'founder.name as seller_name',
+                'founder.email as founder_email',
+            )
+            ->distinct();
     }
 }

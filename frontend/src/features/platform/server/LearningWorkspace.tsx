@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { laravelWorkspace } from '../../../services/laravel-workspace-repository';
 import { laravelProgramme } from '../../../services/laravel-programme-repository';
+import { MpesaInstructionsBox } from './ProgrammeFinance';
 import { WorkspaceDialog, WorkspaceTable } from '../workspace/WorkspaceControls';
 import { useLaravelSession } from '../../../app/useLaravelSession';
 import {
@@ -9,6 +10,7 @@ import {
   type CourseOffer,
 } from '../../../services/laravel-learning-repository';
 import { PageIntro } from '../../../shared/PageIntro';
+import { StatusIndicator } from '../../../shared/StatusIndicator';
 import { AccountLink } from '../../accounts/AccountLink';
 import {
   fieldValue,
@@ -175,9 +177,11 @@ function CoursePage({ slug }: { slug: string }) {
                   action={charge(records.course) ? 'Submit payment reference' : 'Enrol'}
                   submit="Confirm enrolment"
                   save={async (form) => {
+                    const receipt = form.get('receipt');
                     await learningRepository.enrol(
                       slug,
                       fieldValue(form, 'reference') || undefined,
+                      receipt instanceof File && receipt.size > 0 ? receipt : null,
                     );
                     reload();
                   }}
@@ -185,13 +189,23 @@ function CoursePage({ slug }: { slug: string }) {
                   {records.enrolment?.payment_note && <p>{records.enrolment.payment_note}</p>}
                   {charge(records.course) > 0 ? (
                     <>
-                      <p>
-                        Course fee {shillings(charge(records.course))}. Access opens after the
-                        administrator confirms your reference.
-                      </p>
+                      <MpesaInstructionsBox amount={charge(records.course)} />
                       <label>
-                        Transaction reference
-                        <input name="reference" required maxLength={120} />
+                        M-Pesa confirmation code / transaction reference
+                        <input
+                          name="reference"
+                          required
+                          maxLength={120}
+                          placeholder="e.g. SLK89XYZ12"
+                        />
+                      </label>
+                      <label>
+                        Payment receipt (optional · JPG, PNG, WebP or PDF, max 5 MB)
+                        <input
+                          name="receipt"
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,application/pdf"
+                        />
                       </label>
                     </>
                   ) : (
@@ -288,7 +302,7 @@ function CoursePage({ slug }: { slug: string }) {
                       )}
                     </div>
                     {records.completed.includes(lesson.id) ? (
-                      <span className="status-pill">Completed</span>
+                      <StatusIndicator status="completed" />
                     ) : (
                       records.enrolment?.payment_status === 'confirmed' && (
                         <WorkspaceAction

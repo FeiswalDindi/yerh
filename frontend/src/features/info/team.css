@@ -80,8 +80,8 @@
   border: 4px solid var(--yerh-white);
   border-radius: 50%;
   box-shadow: 0 3px 12px #192c5726;
-  background: var(--yerh-navy);
-  color: var(--yerh-gold-light);
+  background: var(--yerh-navy-surface);
+  color: #f5f0e0;
   font-size: 32px;
   font-weight: 650;
 }
@@ -99,7 +99,7 @@
 
 .team-role {
   margin-top: 7px;
-  color: #796215;
+  color: var(--yerh-gold-text);
   font-size: 12px;
   font-weight: 680;
   letter-spacing: 0.07em;

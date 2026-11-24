@@ -9,7 +9,13 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $defaults = json_decode(file_get_contents(base_path('../frontend/src/mocks/data/marketplace-sectors.json')), true, flags: JSON_THROW_ON_ERROR);
+        $defaults = config('yerh.default_sectors', [
+            ['name' => 'Agribusiness', 'image' => '/media/comfort-worms-e046b580.jpg'],
+            ['name' => 'Creative enterprise', 'image' => '/media/mowrah-designs-900x599-cb3e579d.jpg'],
+            ['name' => 'creatives', 'image' => null],
+            ['name' => 'Fashion & design', 'image' => '/media/sued-d02d98cf.webp'],
+            ['name' => 'Healthcare', 'image' => '/media/health-c8d73354.png'],
+        ]);
         Schema::create('marketplace_sectors', function (Blueprint $table) {
             $table->id();
             $table->string('name', 120)->unique();

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\WorkspaceNotifier;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -55,6 +56,13 @@ final class CourseAuthoringController extends Controller
             throw $exception;
         }
 
+        if ($user->role === 'mentor') {
+            WorkspaceNotifier::notifyAdmins(
+                "{$user->name} proposed a new course: {$data['title']}.",
+                '/dashboard/workspace?tab=courses',
+            );
+        }
+
         return response()->json(['data' => ['id' => $id]], 201);
     }
 
@@ -73,10 +81,22 @@ final class CourseAuthoringController extends Controller
             'decision' => ['required', 'in:approved,rejected'],
             'note' => ['required_if:decision,rejected', 'nullable', 'string', 'max:1500'],
         ]);
+        $course = DB::table('learning_courses')->where('id', $id)->where('status', 'proposed')->first(['author_id', 'title']);
+        abort_unless($course, 409, 'The proposal has already been reviewed.');
+
         $changed = DB::table('learning_courses')->where('id', $id)->where('status', 'proposed')->update([
             'status' => $data['decision'], 'review_notes' => $data['note'] ?? null, 'updated_at' => now(),
         ]);
         abort_unless($changed, 409, 'The proposal has already been reviewed.');
+
+        if ($course->author_id) {
+            $noteSuffix = ! empty($data['note']) ? ' Note: '.$data['note'] : '';
+            WorkspaceNotifier::notifyUser(
+                (int) $course->author_id,
+                "Your course proposal \"{$course->title}\" was {$data['decision']}.{$noteSuffix}",
+                '/dashboard/workspace?tab=courses',
+            );
+        }
 
         return response()->json(['data' => ['saved' => true]]);
     }
@@ -110,7 +130,7 @@ final class CourseAuthoringController extends Controller
             'discount' => ['required', 'integer', 'min:0', 'lte:price'],
             'royalty_rate' => ['required', 'integer', 'between:0,100'],
         ]);
-        DB::transaction(function () use ($id, $data) {
+        $course = DB::transaction(function () use ($id, $data) {
             $course = DB::table('learning_courses')->where('id', $id)->lockForUpdate()->first() ?? abort(404);
             abort_unless(in_array($course->status, ['approved', 'published'], true), 409, 'Approve this course first.');
             abort_unless(DB::table('learning_lessons')->where('course_id', $id)->exists(), 409, 'Add a lesson before publishing.');
@@ -118,7 +138,17 @@ final class CourseAuthoringController extends Controller
                 $data['royalty_rate'] = 0;
             }
             DB::table('learning_courses')->where('id', $id)->update($data + ['status' => 'published', 'updated_at' => now()]);
+
+            return $course;
         });
+
+        if ($course->author_id) {
+            WorkspaceNotifier::notifyUser(
+                (int) $course->author_id,
+                "Your course \"{$course->title}\" has been published.",
+                '/dashboard/workspace?tab=courses',
+            );
+        }
 
         return response()->json(['data' => ['published' => true]]);
     }

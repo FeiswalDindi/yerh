@@ -77,7 +77,7 @@
 .faq-list summary span {
   font-size: 24px;
   font-weight: 400;
-  color: #897518;
+  color: var(--yerh-gold-text);
 }
 .faq-list details[open] summary span {
   transform: rotate(45deg);
@@ -107,7 +107,7 @@
 }
 .pathway-options {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 25px;
 }
 .pathway-options button {

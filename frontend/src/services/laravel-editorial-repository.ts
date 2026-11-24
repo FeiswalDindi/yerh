@@ -5,6 +5,7 @@ export interface EditorialRecord {
   id: number;
   status: 'draft' | 'published' | 'archived';
   featured: boolean;
+  updated_at?: string;
   content: ContentItem;
 }
 
@@ -22,5 +23,8 @@ export const editorialRepository = {
   },
   save(data: object, id?: number) {
     return laravelRequest(id ? path + '/' + id : path, { method: id ? 'PATCH' : 'POST', data });
+  },
+  remove(id: number) {
+    return laravelRequest(path + '/' + id, { method: 'DELETE' });
   },
 };

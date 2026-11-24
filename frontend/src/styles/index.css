@@ -1,6 +1,7 @@
 @import '@fontsource-variable/jost';
 @import './tokens.css';
 @import './base.css';
+@import './loader.css';
 @import './layout.css';
 @import '../features/privacy/privacy.css';
 @import './home.css';

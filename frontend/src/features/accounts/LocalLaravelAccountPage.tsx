@@ -1,5 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { localLaravelIdentity } from '../../services/laravel-identity-repository';
+import { triggerCardErrorFeedback } from '../../shared/error-feedback';
 import { PasswordField } from './PasswordField';
 import './LocalLaravelAccountPage.css';
 
@@ -19,6 +20,7 @@ export function LocalLaravelAccountPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const panelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -44,6 +46,7 @@ export function LocalLaravelAccountPage() {
       await action();
     } catch (failure) {
       setError(message(failure));
+      triggerCardErrorFeedback(panelRef.current);
     } finally {
       setBusy(false);
     }
@@ -72,7 +75,11 @@ export function LocalLaravelAccountPage() {
 
   return (
     <div className="local-account">
-      <section className="local-account__panel" aria-labelledby="local-account-heading">
+      <section
+        ref={panelRef}
+        className="local-account__panel"
+        aria-labelledby="local-account-heading"
+      >
         <p className="local-account__label">Local development</p>
         <h1 id="local-account-heading">YERH Laravel accounts</h1>
         <p>
@@ -149,7 +156,11 @@ export function LocalLaravelAccountPage() {
                 Register
               </button>
             </div>
-            <form key={mode} onSubmit={submit}>
+            <form
+              key={mode}
+              onSubmit={submit}
+              onInvalidCapture={() => triggerCardErrorFeedback(panelRef.current)}
+            >
               {mode === 'register' && (
                 <label>
                   Name

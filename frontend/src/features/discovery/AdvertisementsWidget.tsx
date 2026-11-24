@@ -1,6 +1,7 @@
 import { ArrowUpRight, Megaphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCatalog } from '../../app/useCatalog';
+import { SmartImage } from '../../shared/SmartImage';
 
 export function AdvertisementsWidget() {
   const { sidebar } = useCatalog();
@@ -16,7 +17,9 @@ export function AdvertisementsWidget() {
       </h2>
       {sidebar.advertisements.map((ad) => (
         <div className="discovery-ad" key={ad.id}>
-          {ad.image && <img src={ad.image} alt={ad.imageAlt} loading="lazy" />}
+          {ad.image && (
+            <SmartImage src={ad.image} alt={ad.imageAlt} targetWidth={320} sizes="120px" />
+          )}
           <div>
             <span className="discovery-category">Hub promotion</span>
             <h3>{ad.title}</h3>

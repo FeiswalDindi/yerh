@@ -113,7 +113,8 @@ final class WorkspaceLifecycleTest extends TestCase
     public function test_only_admin_can_promote_an_eligible_mentor_by_id(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $guest = User::factory()->create(['name' => 'Candidate mentor']);
+        $guest = User::factory()->create(['name' => 'Candidate mentor', 'email' => 'mentor.candidate@example.test']);
+        $otherGuest = User::factory()->create(['name' => 'Another verified guest', 'email' => 'another.guest@example.test']);
         $unverified = User::factory()->unverified()->create(['name' => 'Candidate unverified']);
         $path = '/api/v1/workspace/mentors';
 
@@ -121,6 +122,12 @@ final class WorkspaceLifecycleTest extends TestCase
         $this->postJson($path, ['user_id' => $guest->id])->assertForbidden();
         $this->actingAs($admin)->getJson($path.'/candidates?q=Candidate')
             ->assertExactJson(['data' => [['id' => $guest->id, 'name' => 'Candidate mentor']]]);
+        $this->getJson($path.'/candidates?q=mentor.candidate')
+            ->assertExactJson(['data' => [['id' => $guest->id, 'name' => 'Candidate mentor']]]);
+        $this->getJson($path.'/candidates?q=NoSuchAccount999')
+            ->assertExactJson(['data' => []]);
+        $this->getJson($path.'/candidates?q=Another')
+            ->assertExactJson(['data' => [['id' => $otherGuest->id, 'name' => 'Another verified guest']]]);
         $this->postJson($path, ['email' => $guest->email])->assertUnprocessable()->assertJsonValidationErrors('user_id');
         $this->postJson($path, ['user_id' => $unverified->id])->assertUnprocessable()->assertJsonValidationErrors('user_id');
         $this->postJson($path, ['user_id' => $guest->id])->assertCreated()->assertJsonPath('data.role', 'mentor');

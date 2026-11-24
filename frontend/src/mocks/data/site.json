@@ -55,7 +55,7 @@
       "children": [
         {
           "id": "marketplace",
-          "label": "Market Place",
+          "label": "Shop",
           "href": "/marketplace"
         },
         {
@@ -84,16 +84,6 @@
               "href": "/entrepreneurship/funding"
             }
           ]
-        },
-        {
-          "id": "workshops",
-          "label": "Workshops",
-          "href": "/workshops"
-        },
-        {
-          "id": "webinars",
-          "label": "Webinars",
-          "href": "/webinars"
         },
         {
           "id": "forums",

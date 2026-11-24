@@ -5,6 +5,7 @@ import {
 } from '../../../services/laravel-marketplace-sectors';
 import { WorkspaceTable } from '../workspace/WorkspaceControls';
 import { useWorkspaceRecords, RecordsFeedback, WorkspaceAction } from './WorkspaceActions';
+import { SmartImage } from '../../../shared/SmartImage';
 
 export function SectorSelect({ value }: { value?: string }) {
   const { records, error } = useWorkspaceRecords(marketplaceSectors);
@@ -77,12 +78,13 @@ export function MarketplaceSectorAdmin() {
             cells: [
               category.name,
               category.image ? (
-                <img
+                <SmartImage
                   className="sector-thumbnail"
                   src={category.image}
                   alt=""
                   width={72}
                   height={48}
+                  targetWidth={320}
                 />
               ) : (
                 'Default icon'

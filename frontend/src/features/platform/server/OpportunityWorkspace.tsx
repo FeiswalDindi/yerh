@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Paperclip } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useLaravelSession } from '../../../app/useLaravelSession';
 import {
@@ -8,6 +8,8 @@ import {
 } from '../../../services/laravel-engagement-repository';
 import { laravelWorkspace } from '../../../services/laravel-workspace-repository';
 import { PageIntro } from '../../../shared/PageIntro';
+import { SmartImage } from '../../../shared/SmartImage';
+import { StatusIndicator } from '../../../shared/StatusIndicator';
 import { WorkspaceTable, WorkspaceTabs } from '../workspace/WorkspaceControls';
 import {
   fieldValue,
@@ -43,7 +45,7 @@ function OpportunityCatalogue() {
               item.organiser,
               item.category,
               deadline(item),
-              publicStatus(item),
+              <StatusIndicator status={publicStatus(item)} />,
               <Link to={opportunityPath(item.slug)}>View</Link>,
             ],
           }))}
@@ -122,7 +124,11 @@ function PublicOpportunityCatalogue() {
                 return (
                   <article className="benefit-card" key={item.id}>
                     <Link to={path} tabIndex={-1} aria-hidden="true">
-                      <img src="/media/be-part-of-the-team-3382b8d1.jpg" alt="" loading="lazy" />
+                      <SmartImage
+                        src="/media/be-part-of-the-team-3382b8d1.webp"
+                        alt=""
+                        targetWidth={640}
+                      />
                     </Link>
                     <div>
                       <div className="tag-list">
@@ -165,6 +171,15 @@ function ApplyForOpportunity({ slug }: { slug: string }) {
             action="Apply"
             submit="Submit application"
             save={async (form) => {
+              const file = form.get('attachment');
+              if (file instanceof File && file.size > 0) {
+                const payload = new FormData();
+                payload.append('venture_id', fieldValue(form, 'venture_id'));
+                payload.append('motivation', fieldValue(form, 'motivation'));
+                payload.append('attachment', file);
+                await engagementRepository.apply(slug, payload);
+                return;
+              }
               await engagementRepository.apply(slug, {
                 venture_id: fieldValue(form, 'venture_id'),
                 motivation: fieldValue(form, 'motivation'),
@@ -184,6 +199,14 @@ function ApplyForOpportunity({ slug }: { slug: string }) {
             <label>
               Why are you applying?
               <textarea name="motivation" minLength={10} maxLength={5000} required />
+            </label>
+            <label>
+              Pitch deck or supporting file (optional: PDF, Office, image, max 8 MB)
+              <input
+                name="attachment"
+                type="file"
+                accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp"
+              />
             </label>
           </WorkspaceAction>
         ) : (
@@ -352,7 +375,7 @@ function OpportunityRegistry() {
               item.organiser,
               item.category,
               deadline(item),
-              item.status,
+              <StatusIndicator status={item.status} />,
               <OpportunityEditor item={item} reload={reload} />,
             ],
           }))}
@@ -387,9 +410,24 @@ function Applications({ admin }: { admin: boolean }) {
                 item.opportunity,
                 item.venture,
                 ...(admin ? [item.applicant] : []),
-                item.motivation,
                 <>
-                  {item.status}
+                  <div>{item.motivation}</div>
+                  {item.has_attachment && (
+                    <p>
+                      <a
+                        className="workspace-attachment-link"
+                        href={engagementRepository.applicationAttachmentUrl(item.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <Paperclip size={14} aria-hidden="true" />{' '}
+                        {item.attachment_name || 'Download attached file'}
+                      </a>
+                    </p>
+                  )}
+                </>,
+                <>
+                  <StatusIndicator status={item.status} />
                   {item.review_notes && <div>{item.review_notes}</div>}
                 </>,
                 actionable && (
@@ -434,7 +472,16 @@ function Applications({ admin }: { admin: boolean }) {
   );
 }
 
-export function OpportunityWorkspace({ admin }: { admin: boolean }) {
+export function OpportunityWorkspace({
+  admin,
+  canReviewSubmissions = admin,
+}: {
+  admin: boolean;
+  canReviewSubmissions?: boolean;
+}) {
+  if (admin && !canReviewSubmissions) {
+    return <OpportunityRegistry />;
+  }
   return (
     <WorkspaceTabs
       label="Opportunity sections"

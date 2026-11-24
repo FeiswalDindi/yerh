@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Domain\Incubation\Curriculum;
 use App\Domain\Incubation\PathAccess;
 use App\Domain\Incubation\ProgrammeFees;
+use App\Models\User;
+use App\Notifications\WorkspaceAlert;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -24,7 +26,14 @@ final class VentureCertificateController extends Controller
         $actor = $request->user();
         abort_unless(in_array($actor->role, ['entrepreneur', 'admin'], true), 403);
         $paths = $this->access->visible($actor)->whereNotNull('path.mentor_id')->latest('path.id')->get();
-        $stages = DB::table('incubation_stages')->whereIn('path_id', $paths->pluck('id'))->whereNotNull('graded_at')
+        $stages = DB::table('incubation_stages')->whereIn('path_id', $paths->pluck('id'))
+            ->whereNotNull('graded_at')
+            ->where(function ($query): void {
+                $query->where('passed', true)
+                    ->orWhere(function ($fallback): void {
+                        $fallback->whereNull('passed')->where('score', '>=', Curriculum::PASS_MARK);
+                    });
+            })
             ->get(['path_id', 'stage'])->groupBy('path_id');
         $issued = DB::table('venture_credentials')->whereIn('path_id', $paths->pluck('id'))->get()->groupBy('path_id');
         $payments = DB::table('programme_payments')->whereIn('path_id', $paths->pluck('id'))->get()->groupBy('path_id');
@@ -55,12 +64,12 @@ final class VentureCertificateController extends Controller
     public function issue(Request $request, int $id, string $kind): JsonResponse
     {
         abort_unless($request->user()->role === 'admin', 403);
-        $document = DB::transaction(function () use ($request, $id, $kind) {
+        [$document, $recipientId, $issued] = DB::transaction(function () use ($request, $id, $kind) {
             $path = $this->access->find($request->user(), $id, lock: true);
-            abort_unless($this->access->completed($id, $this->curriculum->credentialStages($kind)), 409, 'Earlier required assessments must be complete.');
+            abort_unless($this->access->completed($id, $this->curriculum->credentialStages($kind)), 409, 'Earlier required assessments must be passed first.');
             $existing = DB::table('venture_credentials')->where('path_id', $id)->where('kind', $kind)->first();
             if ($existing) {
-                return $existing->document_id;
+                return [$existing->document_id, (int) $path->owner_id, false];
             }
             $paid = $this->fees->for($kind)['amount'] === 0 || DB::table('programme_payments')
                 ->where('path_id', $id)->where('purpose', $kind)->where('status', 'confirmed')->exists();
@@ -71,8 +80,15 @@ final class VentureCertificateController extends Controller
                 'recipient_id' => $path->owner_id, 'issuer_id' => $request->user()->id, 'issued_at' => now(),
             ]);
 
-            return $document;
+            return [$document, (int) $path->owner_id, true];
         }, 3);
+
+        if ($issued) {
+            User::query()->find($recipientId)?->notify(new WorkspaceAlert(
+                'Your '.$this->title($kind).' is ready to view.',
+                '/dashboard/certificates',
+            ));
+        }
 
         return response()->json(['data' => ['document_id' => $document]], 201);
     }

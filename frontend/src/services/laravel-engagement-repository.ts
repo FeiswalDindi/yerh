@@ -1,4 +1,4 @@
-import { laravelRequest } from './laravel-api';
+import { apiUrl, laravelRequest } from './laravel-api';
 
 export type Presenter = {
   name: string;
@@ -13,6 +13,9 @@ export type EventRecord = {
   title: string;
   summary: string;
   venue: string;
+  venue_type: 'physical' | 'virtual';
+  meeting_link?: string | null;
+  has_meeting_link?: boolean;
   category: string;
   category_id: number;
   starts_at: string;
@@ -46,6 +49,8 @@ export type ApplicationRecord = {
   applicant: string;
   venture: string;
   motivation: string;
+  has_attachment?: boolean;
+  attachment_name?: string | null;
   status: 'submitted' | 'shortlisted' | 'accepted' | 'rejected' | 'withdrawn';
   review_notes: string | null;
 };
@@ -80,9 +85,10 @@ export const engagementRepository = {
     read<OpportunityRecord>('/opportunities/' + encodeURIComponent(slug), signal),
   saveOpportunity: (data: object, id?: number) =>
     write(item('opportunities', id), data, id ? 'PATCH' : 'POST'),
-  apply: (slug: string, data: object) =>
+  apply: (slug: string, data: object | FormData) =>
     write('/opportunities/' + encodeURIComponent(slug) + '/applications', data),
   applications: (signal?: AbortSignal) => read<ApplicationRecord[]>('/applications', signal),
+  applicationAttachmentUrl: (id: number) => apiUrl(`/engagement/applications/${id}/attachment`),
   decide: (id: number, decision: string, note?: string) =>
     write('/applications/' + id + '/decision', { decision, note }),
 };

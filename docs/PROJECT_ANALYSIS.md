@@ -34,7 +34,7 @@ Contact information uses Feiso’s `src/config/site-contact.ts` fallback values.
 
 ## 3. Reference layout and resulting design
 
-The live [YERH Kenya website](https://yerh-kenya.kcau.ac.ke/) was inspected in a browser alongside its local mirror. Its desktop home page pairs a large rotating feature area with a numbered entrepreneurship news feed. Lower sections include My Story, Featured Businesses, Updates, Important Links, partners, social embeds, and a footer. [yerh.org](https://yerh.org/) could not be fetched by the web retrieval tool; the local Feiso checkout was the available source for that application’s structure and brand.
+The live [YERH Kenya website](https://yerh-kenya.kcau.ac.ke/) was inspected in a browser alongside its local mirror. Its desktop home page pairs a large rotating feature area with a numbered entrepreneurship news feed. Lower sections include My Story, Featured Businesses, Updates, Important Links, partners, social embeds, and a footer; the local Feiso checkout was the available source for the application’s structure and brand.
 
 The new design retains the reference’s editorial hierarchy and resource focus:
 

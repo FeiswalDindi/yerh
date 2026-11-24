@@ -2,6 +2,7 @@ import { ArrowUpRight, Bookmark, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { contentPath, type ContentItem } from '../../domain/content';
 import { useCatalog } from '../../app/useCatalog';
+import { SmartImage } from '../../shared/SmartImage';
 import { useSavedItems } from '../../shared/useSavedItems';
 import { MemberLink } from '../community/CommunityCards';
 
@@ -13,7 +14,12 @@ export function ContentCard({ item, portrait = false }: { item: ContentItem; por
     <article className={`content-card ${portrait ? 'portrait-card' : ''}`}>
       <div className="card-media">
         <Link to={contentPath(item)} tabIndex={-1} aria-hidden="true">
-          <img src={item.image || media.team} alt="" loading="lazy" />
+          <SmartImage
+            src={item.image || media.team}
+            alt=""
+            targetWidth={640}
+            sizes="(max-width: 600px) 100vw, (max-width: 1000px) 50vw, 380px"
+          />
         </Link>
         <span className="image-tag">{item.category}</span>
         <button

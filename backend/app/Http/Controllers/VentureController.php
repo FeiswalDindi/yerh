@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\WorkspaceNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -54,6 +55,11 @@ final class VentureController extends Controller
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
+        WorkspaceNotifier::notifyAdmins(
+            "{$actor->name} submitted a new venture for approval: {$data['name']}.",
+            '/dashboard/workspace?tab=approvals&view=ventures',
+        );
+
         return response()->json(['data' => ['id' => $id]], 201);
     }
 
@@ -69,6 +75,11 @@ final class VentureController extends Controller
         ]);
         abort_unless($changed === 1, 409, 'Only a rejected venture can be resubmitted.');
 
+        WorkspaceNotifier::notifyAdmins(
+            "{$request->user()->name} resubmitted venture {$data['name']} for approval.",
+            '/dashboard/workspace?tab=approvals&view=ventures',
+        );
+
         return response()->json(['data' => ['status' => 'pending']]);
     }
 
@@ -81,12 +92,21 @@ final class VentureController extends Controller
             'note' => ['required_if:decision,rejected', 'nullable', 'string', 'max:1500'],
         ]);
         $venture = DB::table('ventures')->where('id', $id);
-        abort_unless((clone $venture)->exists(), 404);
+        $record = (clone $venture)->first(['owner_id', 'name']) ?? abort(404);
         $changed = $venture->where('status', $data['expected_status'] ?? 'pending')->update([
             'status' => $data['decision'], 'decision_note' => $data['note'] ?? null,
             'reviewer_id' => $request->user()->id, 'reviewed_at' => now(), 'updated_at' => now(),
         ]);
         abort_unless($changed === 1, 409, 'The venture has changed. Refresh the registry before reviewing again.');
+
+        if ($data['decision'] !== 'pending') {
+            $noteSuffix = ! empty($data['note']) ? ' Note: '.$data['note'] : '';
+            WorkspaceNotifier::notifyUser(
+                (int) $record->owner_id,
+                "Your venture {$record->name} was {$data['decision']}.{$noteSuffix}",
+                '/dashboard/workspace?tab=ventures',
+            );
+        }
 
         return response()->json(['data' => ['status' => $data['decision']]]);
     }

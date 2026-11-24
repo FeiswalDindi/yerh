@@ -2,14 +2,17 @@
    Keep the named HEX values stable across browsers (the source's OKLCH override differs). */
 :root {
   --yerh-navy: #192c57;
+  --yerh-navy-surface: #192c57;
   --yerh-navy-dark: #11203e;
   --yerh-gold: #cbae2d;
   --yerh-gold-light: #f5f0e0;
+  --yerh-gold-text: #8a6f10;
   --yerh-surface: #f8f8fc;
   --yerh-nav-surface: #f0f1f5;
   --yerh-card-surface: #f3f4f6;
   --yerh-white: #fff;
   --yerh-ink: #1a1a2e;
+  --yerh-body: #3d4456;
   --yerh-muted: #626678;
   --yerh-border: #e5e5ef;
   --yerh-font: 'Jost Variable', 'Segoe UI', sans-serif;

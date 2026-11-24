@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Incubation\MarketplaceVisibility;
+use App\Services\ImageOptimizer;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 final class MarketplaceSectorController extends Controller
 {
@@ -31,17 +32,26 @@ final class MarketplaceSectorController extends Controller
         return response()->json(['data' => $sectors]);
     }
 
-    public function image(int $id): StreamedResponse
+    public function image(Request $request, int $id, ImageOptimizer $optimizer): Response
     {
         $path = DB::table('marketplace_sectors')->where('id', $id)->value('uploaded_image');
         abort_unless($path && Storage::disk('local')->exists($path), 404);
 
-        return Storage::disk('local')->response($path, null, ['X-Content-Type-Options' => 'nosniff']);
+        $preferWebp = str_contains(strtolower((string) $request->header('Accept', '')), 'image/webp');
+        $requestedWidth = $request->integer('w') ?: null;
+        $variant = $optimizer->prepareVariant('local', $path, 'sector-'.sha1($path), $requestedWidth, $preferWebp);
+
+        return $optimizer->serveFile(
+            $request,
+            Storage::disk('local')->path($variant['path']),
+            $variant['mime'],
+            true,
+        );
     }
 
-    public function save(Request $request, ?int $id = null): JsonResponse
+    public function save(Request $request, ImageOptimizer $optimizer, ?int $id = null): JsonResponse
     {
-        abort_unless($request->user()->role === 'admin', 403);
+        abort_unless(in_array($request->user()->role, ['admin', 'content_manager'], true), 403);
         $rules = ['photo' => [$id === null ? 'nullable' : 'required', 'image', 'mimes:jpeg,png,webp', 'max:2048']];
         if ($id === null) {
             $rules['name'] = ['required', 'string', 'max:100', 'unique:marketplace_sectors,name'];
@@ -74,6 +84,7 @@ final class MarketplaceSectorController extends Controller
         }
         if ($previous) {
             $disk->delete($previous);
+            $optimizer->purgeCache('local', 'sector-'.sha1($previous));
         }
 
         return response()->json(['data' => ['id' => $saved]], $id === null ? 201 : 200);

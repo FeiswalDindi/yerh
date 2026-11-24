@@ -3,6 +3,7 @@ import {
   type CourseDraft,
 } from '../../../services/laravel-learning-repository';
 import { WorkspaceTable, WorkspaceTabs } from '../workspace/WorkspaceControls';
+import { StatusIndicator } from '../../../shared/StatusIndicator';
 import { shillings } from './LearningWorkspace';
 import {
   DecisionAction,
@@ -144,7 +145,7 @@ function CourseAuthoring({ admin }: { admin: boolean }) {
                   <div>{record.description}</div>
                 </>,
                 <>
-                  {record.status}
+                  <StatusIndicator status={record.status} />
                   {record.review_notes && <div>{record.review_notes}</div>}
                 </>,
                 count,
@@ -200,10 +201,22 @@ export function CourseEnrolmentRegistry() {
               record.learner,
               record.course,
               <>
-                {shillings(record.price_paid)} · {record.payment_status}
+                <span className="status-indicator-group">
+                  <span>{shillings(record.price_paid)}</span>
+                  <StatusIndicator status={record.payment_status} />
+                </span>
                 <div>{record.payment_reference}</div>
+                {record.has_receipt && (
+                  <a
+                    href={learningRepository.receiptUrl(record.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View receipt
+                  </a>
+                )}
               </>,
-              record.completed_at ? 'Completed' : 'In progress',
+              <StatusIndicator status={record.completed_at ? 'completed' : 'in progress'} />,
               record.certificate_id ? (
                 <a
                   href={learningRepository.certificate(record.certificate_id)}

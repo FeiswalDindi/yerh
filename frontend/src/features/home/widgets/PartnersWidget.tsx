@@ -1,4 +1,5 @@
 import { useCatalog } from '../../../app/useCatalog';
+import { SmartImage } from '../../../shared/SmartImage';
 export function PartnersWidget() {
   const { media } = useCatalog();
   const partners = media.partners;
@@ -19,7 +20,7 @@ export function PartnersWidget() {
                 className="partner-card"
                 title={p.name}
               >
-                <img src={p.image} alt={p.name} loading="lazy" />
+                <SmartImage src={p.image} alt={p.name} targetWidth={320} />
               </a>
             ))}
             {/* Duplicate set for seamless continuous marquee loop */}
@@ -34,7 +35,7 @@ export function PartnersWidget() {
                 className="partner-card"
                 title={p.name}
               >
-                <img src={p.image} alt={p.name} loading="lazy" />
+                <SmartImage src={p.image} alt={p.name} targetWidth={320} />
               </a>
             ))}
           </div>

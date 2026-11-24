@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Star } from 'lucide-react';
 import { useCatalog } from '../../app/useCatalog';
 import { contentPath } from '../../domain/content';
+import { SmartImage } from '../../shared/SmartImage';
 export function BusinessesSection() {
   const { items, homepage } = useCatalog();
   const businesses = homepage.featuredBusinesses.flatMap((id) =>
@@ -24,11 +25,12 @@ export function BusinessesSection() {
               <article key={biz.id} className="business-item-card">
                 <div className="business-thumb-wrap">
                   {biz.image && (
-                    <img
+                    <SmartImage
                       src={biz.image}
                       alt={biz.title}
                       className="business-thumb"
-                      loading="lazy"
+                      targetWidth={640}
+                      sizes="(max-width: 800px) 100vw, 360px"
                     />
                   )}
                 </div>

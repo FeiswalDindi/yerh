@@ -30,5 +30,16 @@ final class MarketplaceSectorTest extends TestCase
         $record = collect($this->getJson('/api/v1/marketplace-sectors')->json('data'))->firstWhere('id', $id);
         $this->assertSame(0, $record['count']);
         $this->get($record['image'])->assertOk()->assertHeader('content-type', 'image/png');
+
+        $webp = $this->get($record['image'], ['Accept' => 'image/webp,image/*,*/*;q=0.8'])
+            ->assertOk()
+            ->assertHeader('content-type', 'image/webp')
+            ->assertHeader('Vary', 'Accept');
+
+        $etag = (string) $webp->headers->get('ETag');
+        $this->assertNotSame('', $etag);
+
+        $this->get($record['image'], ['Accept' => 'image/webp', 'If-None-Match' => $etag])
+            ->assertStatus(304);
     }
 }

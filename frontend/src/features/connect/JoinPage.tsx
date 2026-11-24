@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, ArrowUpRight, Check, Lightbulb, Sprout, Users } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Building2, Check, Lightbulb, Sprout, Users } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PageIntro } from '../../shared/PageIntro';
 import { usePageTitle } from '../../shared/usePageTitle';
@@ -28,6 +28,14 @@ const pathways = [
     text: 'Share your experience as a mentor.',
     next: '/contact?topic=Mentorship',
     action: 'Talk to the YERH team',
+  },
+  {
+    id: 'institution',
+    icon: Building2,
+    title: 'I represent a school, university or hub',
+    text: 'Partner with us so your students can join and launch ventures.',
+    next: '/institutions/apply',
+    action: 'Apply for partner institution onboarding',
   },
 ];
 export function JoinPage({ login = false }: { login?: boolean }) {

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { dashboardCatalogueItemPath, type DashboardCatalogueKind } from './catalogue-paths';
 import { amount } from '../platform/incubation/TrainingForms';
 import { CourseEntryLink } from '../resources/CourseEntryLink';
+import { SmartImage } from '../../shared/SmartImage';
 
 export type CatalogueEntry = {
   id: string;
@@ -33,7 +34,7 @@ export function DashboardCatalogueCards({
         const content = (
           <>
             {item.image ? (
-              <img src={item.image} alt="" loading="lazy" />
+              <SmartImage src={item.image} alt="" targetWidth={480} />
             ) : (
               <Icon size={22} className="dashboard-entry-icon" aria-hidden="true" />
             )}
