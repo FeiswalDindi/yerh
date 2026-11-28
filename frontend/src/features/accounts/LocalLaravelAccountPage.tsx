@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { localLaravelIdentity } from '../../services/laravel-identity-repository';
 import { triggerCardErrorFeedback } from '../../shared/error-feedback';
 import { PasswordField } from './PasswordField';
+import { LoadingDots } from '../../shared/SiteLoader';
 import './LocalLaravelAccountPage.css';
 
 type Mode = 'login' | 'register';
@@ -58,13 +59,18 @@ export function LocalLaravelAccountPage() {
     const field = (name: string) => String(data.get(name) ?? '');
     const values = { email: field('email'), password: field('password') };
     void act(async () => {
+      const firstName = field('first_name').trim();
+      const lastName = field('last_name').trim();
       const account = await localLaravelIdentity.authenticate(
         mode,
         mode === 'register'
           ? {
               ...values,
-              name: field('name'),
+              first_name: firstName,
+              last_name: lastName,
+              name: `${firstName} ${lastName}`.trim(),
               password_confirmation: field('password_confirmation'),
+              terms: true,
             }
           : values,
       );
@@ -89,7 +95,9 @@ export function LocalLaravelAccountPage() {
         {error && <p role="alert">{error}</p>}
         {notice && <p role="status">{notice}</p>}
         {loading ? (
-          <p role="status">Checking your Laravel session…</p>
+          <p role="status" className="yerh-status-loading">
+            <LoadingDots label="Checking your Laravel session" />
+          </p>
         ) : profile ? (
           <>
             <h2>Signed in as {profile.name}</h2>
@@ -162,10 +170,28 @@ export function LocalLaravelAccountPage() {
               onInvalidCapture={() => triggerCardErrorFeedback(panelRef.current)}
             >
               {mode === 'register' && (
-                <label>
-                  Name
-                  <input name="name" autoComplete="name" maxLength={120} required />
-                </label>
+                <>
+                  <label>
+                    First name
+                    <input
+                      name="first_name"
+                      autoComplete="given-name"
+                      minLength={1}
+                      maxLength={80}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Last name
+                    <input
+                      name="last_name"
+                      autoComplete="family-name"
+                      minLength={1}
+                      maxLength={80}
+                      required
+                    />
+                  </label>
+                </>
               )}
               <label>
                 Email

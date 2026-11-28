@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
   const laravelBuild = mode === 'laravel';
-  const { LARAVEL_DEV_URL = 'http://127.0.0.1:8000' } = loadEnv(mode, process.cwd(), 'LARAVEL_');
+  const { LARAVEL_DEV_URL = 'http://localhost:8000' } = loadEnv(mode, process.cwd(), 'LARAVEL_');
 
   return {
     plugins: [react()],

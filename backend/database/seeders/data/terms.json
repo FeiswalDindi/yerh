@@ -1,0 +1,72 @@
+{
+  "title": "Terms of service",
+  "effectiveDate": "2026-08-19",
+  "intro": "By creating an account or using the Youth Entrepreneurship Resource Hub, you agree to these terms.",
+  "summary": [
+    "Give accurate registration information and keep your account credentials private.",
+    "Applications for entrepreneur, mentor, investor or partner roles require administrator review.",
+    "You are responsible for what you publish. Do not harass, defraud, spam, or post false, infringing or unlawful content.",
+    "YERH does not guarantee the outcome of marketplace deals, mentorship relationships or opportunities."
+  ],
+  "sections": [
+    {
+      "title": "Who this is for",
+      "paragraphs": [
+        "YERH is delivered by the KCA University IIED Directorate for youth entrepreneurs, mentors, investors and partners, and content managers and administrators who support them. You must give accurate information when you register and when you apply for a role, and keep your account credentials to yourself."
+      ]
+    },
+    {
+      "title": "Applying for a role",
+      "paragraphs": [
+        "Registering gives you a browse-only guest account. Access as an entrepreneur, mentor, investor or partner requires an application that an administrator reviews and approves — we may decline an application, ask for more information, or later suspend an account that breaches these terms or misrepresents who you are."
+      ]
+    },
+    {
+      "title": "What you post and publish",
+      "paragraphs": [
+        "You're responsible for the accuracy of what you publish — venture and marketplace listings, opportunity postings, mentorship notes, forum posts, and course or event content. You keep ownership of what you create; publishing it on YERH gives us the right to display and, where you've consented, report on it as described in our Privacy Notice. Don't post anything false, infringing, or unlawful, and don't use the platform to harass, defraud, or spam other users.",
+        "Reported content and conduct go into a moderation queue for an administrator to review. We can remove content or suspend accounts that violate these terms."
+      ]
+    },
+    {
+      "title": "Marketplace, mentorship and opportunities",
+      "paragraphs": [
+        "YERH is a venue for entrepreneurs, mentors, investors and partners to find and work with each other — we don't broker, guarantee, or take a position on the outcome of any deal, mentorship relationship, or opportunity arranged through the platform. You're responsible for your own due diligence and for any agreement you enter into with another user."
+      ]
+    },
+    {
+      "title": "Certificates",
+      "paragraphs": [
+        "Certificates issued through YERH confirm completion of a specific course, bootcamp, or incubation programme on this platform, verifiable by their public QR link. They are not a KCA University degree, diploma, or other formal academic accreditation unless the certificate says so explicitly."
+      ]
+    },
+    {
+      "title": "Suspension and termination",
+      "paragraphs": [
+        "We may suspend or close an account that breaches these terms, misuses the platform, or on request from the account holder. You can request deletion of your account and data at any time, subject to the retention described in our Privacy Notice."
+      ]
+    },
+    {
+      "title": "No warranty, limitation of liability",
+      "paragraphs": [
+        "YERH is provided \"as is.\" We work to keep it accurate and available, but we don't guarantee it will be uninterrupted or error-free, and we aren't liable for decisions made or agreements entered into based on content or connections made through the platform, to the fullest extent the law allows."
+      ]
+    },
+    {
+      "title": "Changes to these terms",
+      "paragraphs": [
+        "We may update these terms as the programme evolves. Continuing to use YERH after a change means you accept the updated terms; material changes will be announced on the platform."
+      ]
+    },
+    {
+      "title": "Governing law",
+      "paragraphs": ["These terms are governed by the laws of Kenya."]
+    },
+    {
+      "title": "Contact",
+      "paragraphs": ["Questions about these terms go to:"]
+    }
+  ],
+  "contactEmail": "yerhdev@gmail.com",
+  "source": "feiso/youth-venture-spark/src/pages/TermsOfService.tsx"
+}

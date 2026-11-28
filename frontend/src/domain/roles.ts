@@ -51,3 +51,27 @@ export function canonicalRole(role: string): Role {
   if (role === 'editor') return 'content_manager';
   return Object.hasOwn(roleLabels, role) ? (role as Role) : 'guest';
 }
+
+export function displayRoleLabel(role: string): string {
+  switch (role) {
+    case 'admin':
+    case 'content_manager':
+    case 'editor':
+      return 'YERH Team';
+    case 'entrepreneur':
+    case 'mentee':
+      return 'Entrepreneur';
+    case 'mentor':
+      return 'Mentor';
+    case 'partner':
+      return 'Partner';
+    case 'investor':
+      return 'Investor';
+    case 'school_admin':
+      return 'Institution Staff';
+    case 'guest':
+      return 'Member';
+    default:
+      return roleLabels[role as Role] ?? role;
+  }
+}

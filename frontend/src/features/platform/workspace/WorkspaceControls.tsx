@@ -189,6 +189,7 @@ export function WorkspaceTable({
   empty = 'There are no records yet.',
   exportName,
   exportLabel = 'Export CSV',
+  hideSearch = false,
 }: {
   label: string;
   columns: string[];
@@ -197,12 +198,13 @@ export function WorkspaceTable({
   empty?: ReactNode;
   exportName?: string;
   exportLabel?: string;
+  hideSearch?: boolean;
 }) {
   const [search, setSearch] = useState('');
   const filters = search.trim().toLocaleLowerCase().split(/\s+/);
-  const matches = rows.filter((row) =>
-    filters.every((word) => row.search.toLocaleLowerCase().includes(word)),
-  );
+  const matches = hideSearch
+    ? rows
+    : rows.filter((row) => filters.every((word) => row.search.toLocaleLowerCase().includes(word)));
   function exportRows() {
     if (!exportName) return;
     const dataColumns = columns
@@ -222,33 +224,37 @@ export function WorkspaceTable({
   }
   return (
     <div className="workspace-data">
-      <div className="workspace-data-toolbar">
-        <label className="workspace-search">
-          <Search size={17} aria-hidden="true" />
-          <input
-            type="search"
-            aria-label={`Search ${label}`}
-            placeholder={`Search ${label}`}
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
-        {(actions || exportName) && (
-          <div className="workspace-toolbar-actions">
-            {actions}
-            {exportName && (
-              <button
-                type="button"
-                className="button button-outline workspace-action"
-                disabled={!matches.length}
-                onClick={exportRows}
-              >
-                {exportLabel}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+      {(!hideSearch || actions || exportName) && (
+        <div className="workspace-data-toolbar">
+          {!hideSearch && (
+            <label className="workspace-search">
+              <Search size={17} aria-hidden="true" />
+              <input
+                type="search"
+                aria-label={`Search ${label}`}
+                placeholder={`Search ${label}`}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+          )}
+          {(actions || exportName) && (
+            <div className="workspace-toolbar-actions">
+              {actions}
+              {exportName && (
+                <button
+                  type="button"
+                  className="button button-outline workspace-action"
+                  disabled={!matches.length}
+                  onClick={exportRows}
+                >
+                  {exportLabel}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       <div
         className="workspace-data-scroll"
         role="region"

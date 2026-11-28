@@ -1,9 +1,10 @@
-/* Story Video Modal */
+/* Story / Site Video Preview Modal */
 .story-video-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(4px);
+  background: rgba(11, 20, 38, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   z-index: 1000;
   display: grid;
   place-items: center;
@@ -11,32 +12,62 @@
   animation: fadeIn 0.2s ease-out;
 }
 
+dialog.story-video-modal-backdrop::backdrop {
+  background: rgba(11, 20, 38, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
 .story-video-modal-content {
   position: relative;
   width: 100%;
-  max-width: 800px;
-  background: #000000;
-  border-radius: 8px;
+  max-width: 900px;
+  background: #0b1426;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.58);
   animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.story-video-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px;
+  background: #0b1426;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.story-video-modal-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .story-video-modal-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: static;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   color: #ffffff;
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   cursor: pointer;
-  z-index: 10;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.story-video-modal-close:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .story-video-iframe-wrap {

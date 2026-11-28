@@ -18,6 +18,7 @@ require __DIR__.'/programme.php';
 require __DIR__.'/schools.php';
 require __DIR__.'/learning.php';
 require __DIR__.'/engagement.php';
+require __DIR__.'/community.php';
 require __DIR__.'/cms.php';
 
 Route::prefix('api/v1/notifications')->middleware(['auth', VerifiedWorkspaceAccount::class, 'throttle:60,1'])->group(function () {

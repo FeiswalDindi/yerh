@@ -15,6 +15,8 @@ Route::prefix('api/v1/engagement')->middleware('throttle:60,1')->group(function 
         Route::get('/manage/events', [EngagementEventController::class, 'index'])->defaults('admin', true);
         Route::post('/manage/events', [EngagementEventController::class, 'save']);
         Route::patch('/manage/events/{id}', [EngagementEventController::class, 'save'])->whereNumber('id');
+        Route::post('/manage/events/{id}/review', [EngagementEventController::class, 'review'])->whereNumber('id');
+        Route::get('/manage/events/{id}/attendees', [EngagementEventController::class, 'attendees'])->whereNumber('id');
         Route::post('/manage/event-categories', [EngagementEventController::class, 'category']);
         Route::patch('/manage/event-categories/{id}', [EngagementEventController::class, 'category'])->whereNumber('id');
         Route::post('/opportunities/{slug}/applications', [OpportunityController::class, 'apply']);

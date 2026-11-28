@@ -65,9 +65,12 @@ final class VentureProgrammeTest extends TestCase
         $document = $this->postJson(self::API."/incubation/$id/certificates/venture")->assertCreated()->json('data.document_id');
         $this->actingAs($outsider)->get(self::API."/venture-certificates/$document/document")->assertNotFound();
         $this->actingAs($founder)->get(self::API."/venture-certificates/$document/document")->assertOk()->assertSee('Achievements');
-        $payment = $this->postJson(self::API.'/programme-payments', [
-            'purpose' => 'getting-started', 'target_id' => $id, 'reference' => 'Test-stage-reference',
-        ])->assertCreated()->json('data.id');
+        $payment = $this->post(self::API.'/programme-payments', [
+            'purpose' => 'getting-started',
+            'target_id' => $id,
+            'reference' => 'Test-stage-reference',
+            'receipt' => \Illuminate\Http\UploadedFile::fake()->image('stage-receipt.png'),
+        ], ['Accept' => 'application/json'])->assertCreated()->json('data.id');
         $this->actingAs($admin)->postJson(self::API."/programme-payments/$payment/review", ['decision' => 'confirmed'])->assertOk();
         $this->postJson(self::API."/incubation/$id/certificates/getting-started")->assertCreated();
 
@@ -86,12 +89,18 @@ final class VentureProgrammeTest extends TestCase
         $this->actingAs($admin)->putJson(self::API.'/programme-fees/marketplace', [
             'amount' => 1200, 'enabled' => false,
         ])->assertOk();
-        $proof = ['target_id' => $product, 'purpose' => 'marketplace', 'reference' => 'LISTING-TEST', 'amount' => 0];
-        $this->actingAs($founder)->postJson(self::API.'/programme-payments', $proof)->assertConflict();
+        $proof = [
+            'target_id' => $product,
+            'purpose' => 'marketplace',
+            'reference' => 'LISTING-TEST',
+            'amount' => 0,
+            'receipt' => \Illuminate\Http\UploadedFile::fake()->image('listing-receipt.png'),
+        ];
+        $this->actingAs($founder)->post(self::API.'/programme-payments', $proof, ['Accept' => 'application/json'])->assertConflict();
         $this->actingAs($admin)->putJson(self::API.'/programme-fees/marketplace', [
             'amount' => 1200, 'enabled' => true,
         ])->assertOk();
-        $payment = $this->actingAs($founder)->postJson(self::API.'/programme-payments', $proof)->assertCreated()->json('data.id');
+        $payment = $this->actingAs($founder)->post(self::API.'/programme-payments', $proof, ['Accept' => 'application/json'])->assertCreated()->json('data.id');
         $this->assertDatabaseHas('programme_payments', ['id' => $payment, 'amount' => 1200, 'status' => 'pending']);
         $this->actingAs($admin)->postJson(self::API."/programme-payments/$payment/review", ['decision' => 'confirmed'])->assertOk();
         $this->getJson('/api/v1/marketplace')->assertJsonCount(0, 'data');

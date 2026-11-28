@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Facebook, Instagram } from 'lucide-react';
+import { Facebook, Instagram, Play } from 'lucide-react';
 import { WhatsAppIcon } from '../../../shared/WhatsAppIcon';
-import { VideoPlayer } from '../../media/VideoPlayer';
+import { VideoDialog } from '../../media/VideoDialog';
+import { youtubeVideoId } from '../../../domain/media';
 import { useCatalog } from '../../../app/useCatalog';
 export function SocialsWidget() {
   const { homepage, site } = useCatalog();
@@ -9,6 +10,8 @@ export function SocialsWidget() {
   const [socialTab, setSocialTab] = useState<'youtube' | 'whatsapp' | 'facebook' | 'instagram'>(
     'youtube',
   );
+  const [playingVideo, setPlayingVideo] = useState(false);
+  const videoId = youtubeVideoId(homepage.socialVideo.url);
   return (
     <>
       {/* 5. Visit our Socials (Twitter removed, replaced with WhatsApp) */}
@@ -59,22 +62,53 @@ export function SocialsWidget() {
         <div className="social-tab-pane">
           {socialTab === 'youtube' && (
             <div className="social-embed youtube-embed">
-              <VideoPlayer
-                url={homepage.socialVideo.url}
-                title={homepage.socialVideo.title}
-                className="youtube-iframe"
-              />
+              {videoId ? (
+                <button
+                  type="button"
+                  className="youtube-preview-trigger"
+                  aria-label={`Play ${homepage.socialVideo.title}`}
+                  onClick={() => setPlayingVideo(true)}
+                >
+                  <img
+                    src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+                    alt={homepage.socialVideo.title}
+                    className="youtube-preview-thumb"
+                    loading="lazy"
+                  />
+                  <span className="youtube-preview-play" aria-hidden="true">
+                    <Play size={22} fill="currentColor" />
+                  </span>
+                </button>
+              ) : null}
               <div className="embed-caption">
                 <small>{homepage.socialVideo.title}</small>
-                <a
-                  href={socialLinks.youtube}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="watch-link"
-                >
-                  Watch on YouTube →
-                </a>
+                <div className="embed-caption-actions">
+                  {videoId && (
+                    <button
+                      type="button"
+                      className="watch-preview-btn"
+                      onClick={() => setPlayingVideo(true)}
+                    >
+                      Play preview
+                    </button>
+                  )}
+                  <a
+                    href={socialLinks.youtube}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="watch-link"
+                  >
+                    Visit channel →
+                  </a>
+                </div>
               </div>
+              {playingVideo && (
+                <VideoDialog
+                  url={homepage.socialVideo.url}
+                  title={homepage.socialVideo.title}
+                  onClose={() => setPlayingVideo(false)}
+                />
+              )}
             </div>
           )}
 

@@ -17,6 +17,16 @@ return [
     'moodle' => [
         'url' => env('MOODLE_URL'),
         'token' => env('MOODLE_TOKEN'),
+        'sso_secret' => env('MOODLE_SSO_SECRET'),
+        'user_auth' => env('MOODLE_USER_AUTH', 'manual'),
+        'student_role_id' => (int) env('MOODLE_STUDENT_ROLE_ID', 5),
+        'mentor_role_id' => (int) env('MOODLE_MENTOR_ROLE_ID', 4),
+    ],
+
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', rtrim((string) env('APP_URL', 'http://localhost:8000'), '/').'/api/v1/auth/google/callback'),
     ],
 
     'postmark' => [

@@ -10,11 +10,13 @@ import {
 } from '../../domain/sidebar';
 
 export function ForumCalendar({
-  threads,
+  threads = [],
+  activityDays,
   selectedDay = '',
   onSelect,
 }: {
-  threads: Thread[];
+  threads?: Thread[];
+  activityDays?: Record<string, number>;
   selectedDay?: string;
   onSelect: (day: string) => void;
 }) {
@@ -24,7 +26,7 @@ export function ForumCalendar({
   useEffect(() => {
     if (selected) setMonth(selected.slice(0, 7));
   }, [selected]);
-  const counts = discussionDayCounts(threads);
+  const counts = activityDays ?? discussionDayCounts(threads);
   const cells = calendarCells(month);
   const label = new Date(`${month}-01T12:00:00Z`).toLocaleDateString('en-KE', {
     month: 'long',

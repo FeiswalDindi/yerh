@@ -6,6 +6,7 @@ import type {
   SchoolCohortDetail,
   SchoolStudent,
 } from '../../../services/laravel-school-repository';
+import { learningRepository } from '../../../services/laravel-learning-repository';
 import { schoolRepository } from '../../../services/laravel-school-repository';
 import { WorkspaceTable, WorkspaceTabs } from '../workspace/WorkspaceControls';
 import { SchoolCertificates, SchoolResults } from './SchoolResults';
@@ -377,84 +378,147 @@ export function SchoolPortal({
             manage={manage}
           />
         ) : (
-          <WorkspaceTabs
-            label="School portal"
-            views={[
-              {
-                id: 'cohorts',
-                label: 'Cohorts',
-                count: records.cohorts.length,
-                content: (
-                  <WorkspaceTable
-                    label="cohorts"
-                    columns={['Cohort', 'Starts', 'Ends', 'Action']}
-                    actions={manage && <AddCohort slug={slug} reload={reload} />}
-                    rows={records.cohorts.map((entry) => {
-                      const next = new URLSearchParams(params);
-                      next.set('cohort', String(entry.id));
-                      return {
-                        id: String(entry.id),
-                        search: [entry.name, entry.starts_on, entry.ends_on].join(' '),
+          <>
+            {records.moodle_guide && (
+              <div className="school-guide-banner" role="region" aria-label="Facilitator guide">
+                <div>
+                  <p className="eyebrow">Facilitator LMS Guide</p>
+                  <h2>{records.moodle_guide.title}</h2>
+                  <p className="source-note">
+                    {records.moodle_guide.progress}% completed · Synced with Moodle
+                  </p>
+                </div>
+                <a
+                  className="button"
+                  href={learningRepository.toMoodleHandoffUrl(records.moodle_guide.launch_url)}
+                >
+                  Open Facilitator Guide in Moodle
+                </a>
+              </div>
+            )}
+            <WorkspaceTabs
+              label="School portal"
+              views={[
+                {
+                  id: 'cohorts',
+                  label: 'Cohorts',
+                  count: records.cohorts.length,
+                  content: (
+                    <WorkspaceTable
+                      label="cohorts"
+                      columns={['Cohort', 'Starts', 'Ends', 'Action']}
+                      actions={manage && <AddCohort slug={slug} reload={reload} />}
+                      rows={records.cohorts.map((entry) => {
+                        const next = new URLSearchParams(params);
+                        next.set('cohort', String(entry.id));
+                        return {
+                          id: String(entry.id),
+                          search: [entry.name, entry.starts_on, entry.ends_on].join(' '),
+                          cells: [
+                            entry.name,
+                            entry.starts_on,
+                            entry.ends_on,
+                            <Link aria-label={'View ' + entry.name} to={'?' + next}>
+                              View
+                            </Link>,
+                          ],
+                        };
+                      })}
+                    />
+                  ),
+                },
+                {
+                  id: 'students',
+                  label: 'Students',
+                  count: records.students.length,
+                  content: (
+                    <WorkspaceTable
+                      label="students"
+                      columns={[
+                        'Student',
+                        'Admission number',
+                        'Grade or form',
+                        'Age',
+                        'Gender',
+                        ...(manage ? ['Action'] : []),
+                      ]}
+                      actions={manage && <StudentEditor slug={slug} reload={reload} />}
+                      rows={records.students.map((student) => ({
+                        id: String(student.id),
+                        search: [student.name, student.reference, student.grade].join(' '),
                         cells: [
-                          entry.name,
-                          entry.starts_on,
-                          entry.ends_on,
-                          <Link aria-label={'View ' + entry.name} to={'?' + next}>
-                            View
-                          </Link>,
+                          student.name,
+                          student.reference,
+                          student.grade,
+                          student.age ?? '—',
+                          student.gender ?? '—',
+                          ...(manage
+                            ? [<StudentEditor slug={slug} student={student} reload={reload} />]
+                            : []),
                         ],
-                      };
-                    })}
-                  />
-                ),
-              },
-              {
-                id: 'students',
-                label: 'Students',
-                count: records.students.length,
-                content: (
-                  <WorkspaceTable
-                    label="students"
-                    columns={[
-                      'Student',
-                      'Admission number',
-                      'Grade or form',
-                      'Age',
-                      'Gender',
-                      ...(manage ? ['Action'] : []),
-                    ]}
-                    actions={manage && <StudentEditor slug={slug} reload={reload} />}
-                    rows={records.students.map((student) => ({
-                      id: String(student.id),
-                      search: [student.name, student.reference, student.grade].join(' '),
-                      cells: [
-                        student.name,
-                        student.reference,
-                        student.grade,
-                        student.age ?? '—',
-                        student.gender ?? '—',
-                        ...(manage
-                          ? [<StudentEditor slug={slug} student={student} reload={reload} />]
-                          : []),
-                      ],
-                    }))}
-                  />
-                ),
-              },
-              {
-                id: 'agreements',
-                label: 'Agreements',
-                content: (
-                  <InstitutionAgreements
-                    school={{ name, kind: 'high-school' }}
-                    slug={slug}
-                    reference={agreement}
-                    admin={admin}
-                  />
-                ),
-              },
-            ]}
-          />
+                      }))}
+                    />
+                  ),
+                },
+                ...(records.moodle_guide
+                  ? [
+                      {
+                        id: 'guide',
+                        label: 'Facilitator guide',
+                        count: records.moodle_guide.sections.length,
+                        content: (
+                          <>
+                            <div className="profile-panel">
+                              <p>{records.moodle_guide.description}</p>
+                              <div className="course-progress-row">
+                                <span className="eyebrow">Guide completion</span>
+                                <strong>{records.moodle_guide.progress}%</strong>
+                              </div>
+                              <progress
+                                className="course-progress-bar"
+                                max={100}
+                                value={records.moodle_guide.progress}
+                              />
+                            </div>
+                            <div className="school-guide-list">
+                              {records.moodle_guide.sections.map((section, idx) => (
+                                <article className="course-syllabus-item" key={idx}>
+                                  <div className="course-syllabus-head">
+                                    <h3>{section.title}</h3>
+                                  </div>
+                                  {section.summary && <p>{section.summary}</p>}
+                                  {section.activities.length > 0 && (
+                                    <ul className="course-syllabus-activities">
+                                      {section.activities.map((activity, actIdx) => (
+                                        <li key={actIdx}>
+                                          {activity.name} · {activity.type}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </article>
+                              ))}
+                            </div>
+                          </>
+                        ),
+                      },
+                    ]
+                  : []),
+                {
+                  id: 'agreements',
+                  label: 'Agreements',
+                  content: (
+                    <InstitutionAgreements
+                      school={{ name, kind: 'high-school' }}
+                      slug={slug}
+                      reference={agreement}
+                      admin={admin}
+                    />
+                  ),
+                },
+              ]}
+            />
+          </>
         ))}
     </>
   );

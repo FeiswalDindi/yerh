@@ -8,9 +8,7 @@ import { laravelModeEnabled } from '../../config/laravel';
 import { laravelWorkspace } from '../../services/laravel-workspace-repository';
 import { errorText } from '../platform/server/WorkspaceActions';
 
-export function InstitutionOnboardingPage() {
-  usePageTitle('Partner institution onboarding');
-
+export function InstitutionOnboardingForm() {
   const [institutionName, setInstitutionName] = useState('');
   const [kind, setKind] = useState<'university' | 'hub' | 'high-school'>('university');
   const [contactName, setContactName] = useState('');
@@ -53,6 +51,188 @@ export function InstitutionOnboardingPage() {
     }
   }
 
+  if (!laravelModeEnabled) {
+    return (
+      <div className="contact-form">
+        <h2>Online onboarding requires the live server</h2>
+        <p className="form-note">
+          Institution partnership applications are submitted directly to administrators on the live
+          platform, or via our contact page.
+        </p>
+        <Link className="button" to="/contact?topic=Partnership">
+          Contact partnership team <ArrowRight size={17} />
+        </Link>
+      </div>
+    );
+  }
+
+  if (submitted) {
+    return (
+      <div className="contact-form" role="status">
+        <div className="form-success">
+          <strong>
+            <CheckCircle2 size={18} aria-hidden="true" /> Onboarding application received
+          </strong>
+          <p>
+            Thank you. Your application for <strong>{submitted.name}</strong> (reference #
+            {submitted.id}) has been sent to our administrators for review. We will email{' '}
+            <strong>{contactEmail}</strong> once your institution is provisioned.
+          </p>
+        </div>
+        <Link className="button" to="/">
+          Return home <ArrowRight size={17} />
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      ref={formRef}
+      className="contact-form"
+      onSubmit={(e) => void handleSubmit(e)}
+      onInvalidCapture={() => triggerCardErrorFeedback(formRef.current)}
+    >
+      <h2>Institution details</h2>
+      <div className="form-row">
+        <label>
+          Institution name
+          <input
+            name="institution_name"
+            required
+            minLength={2}
+            maxLength={160}
+            value={institutionName}
+            onChange={(e) => setInstitutionName(e.target.value)}
+            placeholder="e.g. Strathmore University"
+          />
+        </label>
+        <label>
+          Institution type
+          <select
+            name="kind"
+            value={kind}
+            onChange={(e) => setKind(e.target.value as 'university' | 'hub' | 'high-school')}
+          >
+            <option value="university">University</option>
+            <option value="hub">Innovation Hub</option>
+            <option value="high-school">High School</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="form-row">
+        <label>
+          Focal coordinator name
+          <input
+            name="contact_name"
+            required
+            minLength={2}
+            maxLength={120}
+            value={contactName}
+            onChange={(e) => setContactName(e.target.value)}
+          />
+        </label>
+        <label>
+          Official coordinator email
+          <input
+            name="contact_email"
+            type="email"
+            required
+            maxLength={254}
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+            placeholder="coordinator@university.ac.ke"
+          />
+        </label>
+      </div>
+
+      <div className="form-row">
+        <label>
+          Contact phone
+          <input
+            name="contact_phone"
+            required
+            minLength={6}
+            maxLength={40}
+            value={contactPhone}
+            onChange={(e) => setContactPhone(e.target.value)}
+            placeholder="+254700000000"
+          />
+        </label>
+        <label>
+          Institution website (optional)
+          <input
+            name="website"
+            type="url"
+            maxLength={300}
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+            placeholder="https://..."
+          />
+        </label>
+      </div>
+
+      <label>
+        Verified student email domains (optional, comma-separated)
+        <input
+          name="allowed_domains"
+          value={allowedDomains}
+          onChange={(e) => setAllowedDomains(e.target.value)}
+          placeholder="e.g. students.example.ac.ke, example.ac.ke"
+        />
+      </label>
+
+      <div className="form-row">
+        <label>
+          Agreement / MOU reference (optional)
+          <input
+            name="agreement_reference"
+            maxLength={180}
+            value={agreementReference}
+            onChange={(e) => setAgreementReference(e.target.value)}
+          />
+        </label>
+        <label>
+          Agreement / authorization letter PDF (optional, max 5 MB)
+          <input
+            name="agreement"
+            type="file"
+            accept="application/pdf,.pdf"
+            onChange={(e) => setAgreementFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+      </div>
+
+      <label>
+        Additional notes (optional)
+        <textarea
+          name="notes"
+          rows={4}
+          maxLength={2000}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Share expected student cohort size or coordinator details..."
+        />
+      </label>
+
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
+        </p>
+      )}
+
+      <button className="button" type="submit" disabled={busy}>
+        {busy ? 'Submitting application…' : 'Submit onboarding application'}
+        <ArrowRight size={17} />
+      </button>
+    </form>
+  );
+}
+
+export function InstitutionOnboardingPage() {
+  usePageTitle('Partner institution onboarding');
+
   return (
     <>
       <PageIntro
@@ -88,175 +268,7 @@ export function InstitutionOnboardingPage() {
           </div>
         </div>
 
-        {!laravelModeEnabled ? (
-          <div className="contact-form">
-            <h2>Online onboarding requires the live server</h2>
-            <p className="form-note">
-              Institution partnership applications are submitted directly to administrators on the
-              live platform, or via our contact page.
-            </p>
-            <Link className="button" to="/contact?topic=Partnership">
-              Contact partnership team <ArrowRight size={17} />
-            </Link>
-          </div>
-        ) : submitted ? (
-          <div className="contact-form" role="status">
-            <div className="form-success">
-              <strong>
-                <CheckCircle2 size={18} aria-hidden="true" /> Onboarding application received
-              </strong>
-              <p>
-                Thank you. Your application for <strong>{submitted.name}</strong> (reference #
-                {submitted.id}) has been sent to our administrators for review. We will email{' '}
-                <strong>{contactEmail}</strong> once your institution is provisioned.
-              </p>
-            </div>
-            <Link className="button" to="/">
-              Return home <ArrowRight size={17} />
-            </Link>
-          </div>
-        ) : (
-          <form
-            ref={formRef}
-            className="contact-form"
-            onSubmit={(e) => void handleSubmit(e)}
-            onInvalidCapture={() => triggerCardErrorFeedback(formRef.current)}
-          >
-            <h2>Institution details</h2>
-            <div className="form-row">
-              <label>
-                Institution name
-                <input
-                  name="institution_name"
-                  required
-                  minLength={2}
-                  maxLength={160}
-                  value={institutionName}
-                  onChange={(e) => setInstitutionName(e.target.value)}
-                  placeholder="e.g. Strathmore University"
-                />
-              </label>
-              <label>
-                Institution type
-                <select
-                  name="kind"
-                  value={kind}
-                  onChange={(e) => setKind(e.target.value as 'university' | 'hub' | 'high-school')}
-                >
-                  <option value="university">University</option>
-                  <option value="hub">Innovation Hub</option>
-                  <option value="high-school">High School</option>
-                </select>
-              </label>
-            </div>
-
-            <div className="form-row">
-              <label>
-                Focal coordinator name
-                <input
-                  name="contact_name"
-                  required
-                  minLength={2}
-                  maxLength={120}
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
-                />
-              </label>
-              <label>
-                Official coordinator email
-                <input
-                  name="contact_email"
-                  type="email"
-                  required
-                  maxLength={254}
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                  placeholder="coordinator@university.ac.ke"
-                />
-              </label>
-            </div>
-
-            <div className="form-row">
-              <label>
-                Contact phone
-                <input
-                  name="contact_phone"
-                  required
-                  minLength={6}
-                  maxLength={40}
-                  value={contactPhone}
-                  onChange={(e) => setContactPhone(e.target.value)}
-                  placeholder="+254700000000"
-                />
-              </label>
-              <label>
-                Institution website (optional)
-                <input
-                  name="website"
-                  type="url"
-                  maxLength={300}
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="https://..."
-                />
-              </label>
-            </div>
-
-            <label>
-              Verified student email domains (optional, comma-separated)
-              <input
-                name="allowed_domains"
-                value={allowedDomains}
-                onChange={(e) => setAllowedDomains(e.target.value)}
-                placeholder="e.g. students.example.ac.ke, example.ac.ke"
-              />
-            </label>
-
-            <div className="form-row">
-              <label>
-                Agreement / MOU reference (optional)
-                <input
-                  name="agreement_reference"
-                  maxLength={180}
-                  value={agreementReference}
-                  onChange={(e) => setAgreementReference(e.target.value)}
-                />
-              </label>
-              <label>
-                Agreement / authorization letter PDF (optional, max 5 MB)
-                <input
-                  name="agreement"
-                  type="file"
-                  accept="application/pdf,.pdf"
-                  onChange={(e) => setAgreementFile(e.target.files?.[0] ?? null)}
-                />
-              </label>
-            </div>
-
-            <label>
-              Additional notes (optional)
-              <textarea
-                name="notes"
-                rows={4}
-                maxLength={2000}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Share expected student cohort size or coordinator details..."
-              />
-            </label>
-
-            {error && (
-              <p role="alert" className="form-error">
-                {error}
-              </p>
-            )}
-
-            <button className="button" type="submit" disabled={busy}>
-              {busy ? 'Submitting application…' : 'Submit onboarding application'}
-              <ArrowRight size={17} />
-            </button>
-          </form>
-        )}
+        <InstitutionOnboardingForm />
       </section>
     </>
   );

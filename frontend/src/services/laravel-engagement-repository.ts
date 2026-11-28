@@ -24,9 +24,20 @@ export type EventRecord = {
   capacity: number | null;
   bookings: number;
   presenters: Presenter[];
-  status: 'draft' | 'published';
+  organizer_id?: number | null;
+  organizer_name?: string | null;
+  review_notes?: string | null;
+  status: 'draft' | 'pending_review' | 'published' | 'rejected';
   archived: boolean;
   booked?: boolean;
+};
+export type EventAttendee = {
+  id: number;
+  user_id: number;
+  name: string;
+  email: string;
+  location: string | null;
+  booked_at: string;
 };
 export type EventFeed = { events: EventRecord[]; categories: EventCategory[] };
 export type OpportunityRecord = {
@@ -70,6 +81,10 @@ export const engagementRepository = {
   event: (slug: string, signal?: AbortSignal) =>
     read<EventRecord>('/events/' + encodeURIComponent(slug), signal),
   saveEvent: (data: object, id?: number) => write(item('events', id), data, id ? 'PATCH' : 'POST'),
+  reviewEvent: (id: number, decision: 'published' | 'rejected', note?: string) =>
+    write(item('events', id) + '/review', { decision, note }),
+  eventAttendees: (id: number, signal?: AbortSignal) =>
+    read<EventAttendee[]>(item('events', id) + '/attendees', signal),
   saveCategory: (name: string, id?: number) =>
     write(item('event-categories', id), { name }, id ? 'PATCH' : 'POST'),
   reserve: (slug: string, cancel = false) =>

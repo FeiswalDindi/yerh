@@ -42,6 +42,7 @@ const STATUS_MAP: Readonly<Record<string, { tone: StatusTone; icon: StatusIconKe
   pending: { tone: 'pending', icon: 'clock' },
   new: { tone: 'pending', icon: 'clock' },
   review: { tone: 'pending', icon: 'clock' },
+  'pending review': { tone: 'pending', icon: 'clock' },
   'review requested': { tone: 'pending', icon: 'clock' },
   proposed: { tone: 'pending', icon: 'clock' },
   submitted: { tone: 'pending', icon: 'clock' },

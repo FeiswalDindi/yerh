@@ -21,6 +21,28 @@ export interface InstitutionOnboardingApplication {
   created_at: string;
 }
 
+export interface CareerApplication {
+  id: number;
+  track: 'partnership' | 'mentorship' | 'investor';
+  applicant_name: string;
+  applicant_email: string;
+  applicant_phone: string;
+  organization: string | null;
+  website: string | null;
+  linkedin_url: string | null;
+  focus_area: string | null;
+  message: string;
+  user_id: number | null;
+  matched_user_id: number | null;
+  matched_user_role: string | null;
+  can_promote: boolean;
+  status: 'pending' | 'approved' | 'rejected';
+  decision_note: string | null;
+  reviewer_name: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
 export interface ContactMessage {
   id: number;
   name: string;
@@ -45,6 +67,8 @@ export interface AffiliationApplication {
   status: 'pending' | 'approved' | 'rejected' | 'withdrawn';
   location: string;
   details: string;
+  has_document?: boolean;
+  document_name?: string | null;
   decision_note: string | null;
 }
 
@@ -90,6 +114,8 @@ export interface InstitutionPortalData {
     status: 'pending' | 'approved' | 'rejected' | 'withdrawn';
     location: string;
     details: string;
+    has_document?: boolean;
+    document_name?: string | null;
     decision_note: string | null;
     applicant: string;
     applicant_email: string;
@@ -139,10 +165,22 @@ export const laravelWorkspace = {
       {
         id: number;
         name: string;
+        first_name?: string | null;
+        last_name?: string | null;
         email: string;
         role: import('../domain/roles').Role;
+        location?: string | null;
         email_verified_at: string | null;
         suspended_at: string | null;
+        google_connected?: boolean;
+        has_password?: boolean;
+        moodle_linked?: boolean;
+        institution_id?: number | null;
+        institution_name?: string | null;
+        venture_count?: number;
+        venture_status?: string;
+        incubation_status?: string;
+        created_at?: string | null;
       }[]
     >('users', signal),
   applications: (signal?: AbortSignal, institution?: string) =>
@@ -150,8 +188,13 @@ export const laravelWorkspace = {
       'applications' + (institution ? '?' + new URLSearchParams({ institution }) : ''),
       signal,
     ),
-  apply: (data: { institution: string; location: string; details: string; consent: boolean }) =>
-    post('applications', data),
+  apply: (
+    data: FormData | { institution: string; location: string; details?: string; consent: boolean },
+  ) =>
+    post('applications', data) as Promise<{
+      data: { id: number | null; auto_approved?: boolean; institution?: string };
+    }>,
+  applicationDocumentUrl: (id: number) => apiUrl(`/workspace/applications/${id}/document`),
   ventures: (signal?: AbortSignal) => get<Venture[]>('ventures', signal),
   institutionVentures: (signal?: AbortSignal) =>
     get<
@@ -235,6 +278,33 @@ export const laravelWorkspace = {
     laravelRequest<{ data: { id: number } }>('/contact', {
       method: 'POST',
       data,
+    }),
+  submitCareerApplication: (data: {
+    track: 'partnership' | 'mentorship' | 'investor';
+    applicant_name: string;
+    applicant_email: string;
+    applicant_phone: string;
+    organization?: string;
+    website?: string;
+    linkedin_url?: string;
+    focus_area?: string;
+    message: string;
+  }) =>
+    laravelRequest<{ data: { id: number; track: string; status: string } }>('/careers/apply', {
+      method: 'POST',
+      data,
+    }),
+  careerApplications: (signal?: AbortSignal) => get<CareerApplication[]>('career-applications', signal),
+  reviewCareerApplication: (
+    id: number,
+    decision: 'approved' | 'rejected',
+    note: string,
+    promote_account = false,
+  ) =>
+    post(`career-applications/${id}/review`, {
+      decision,
+      note: note || null,
+      promote_account,
     }),
   contactMessages: (signal?: AbortSignal) => get<ContactMessage[]>('contact-messages', signal),
   updateContactMessage: (id: number, status: ContactMessage['status'], admin_notes?: string) =>

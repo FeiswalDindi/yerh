@@ -43,6 +43,14 @@ final class PathAccess
 
     public function completed(int $pathId, array $stages): bool
     {
+        if ($stages === Curriculum::STAGES && DB::table('incubation_paths')
+            ->where('id', $pathId)
+            ->whereNotNull('moodle_completed_at')
+            ->whereNotNull('graduated_at')
+            ->exists()) {
+            return true;
+        }
+
         return $stages === [] || DB::table('incubation_stages')
             ->where('path_id', $pathId)
             ->whereIn('stage', $stages)

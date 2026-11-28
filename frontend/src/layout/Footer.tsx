@@ -2,6 +2,7 @@ import { WhatsAppIcon } from '../shared/WhatsAppIcon';
 import { useId } from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Youtube, Rss, ArrowRight } from 'lucide-react';
+import { laravelModeEnabled } from '../config/laravel';
 import { useCatalog } from '../app/useCatalog';
 import { SmartImage } from '../shared/SmartImage';
 
@@ -84,22 +85,21 @@ export function Footer({ onTerms }: { onTerms?: () => void }) {
             <h3>About Us</h3>
             <ul className="footer-links-list">
               <li>
-                <Link to="/forums">Forum</Link>
+                <Link to="/forums">Forums</Link>
               </li>
               <li>
-                <Link to="/webinars">Webinars</Link>
+                <Link to="/events">Events</Link>
               </li>
               <li>
-                <Link to="/yem/mentors">Mentorship</Link>
+                <Link to={laravelModeEnabled ? '/join?role=mentor' : '/yem/mentors'}>
+                  {laravelModeEnabled ? 'Become a Mentor' : 'Mentorship'}
+                </Link>
+              </li>
+              <li>
+                <Link to={laravelModeEnabled ? '/groups' : '/network'}>Groups</Link>
               </li>
               <li>
                 <Link to="/learn">Our Courses</Link>
-              </li>
-              <li>
-                <Link to="/workshops">Workshop</Link>
-              </li>
-              <li>
-                <Link to="/network">Groups</Link>
               </li>
             </ul>
           </div>

@@ -35,19 +35,28 @@ final class ProgrammePaymentController extends Controller
 
     public function instructions(): JsonResponse
     {
-        $defaults = config('yerh.payment_instructions', [
+        return response()->json([
+            'data' => self::resolvedInstructions(),
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
+    /**
+     * @return array{provider: string, paybill_number: string, account_number: string, recipient_name: string, instructions: string, refund_notice: string}
+     */
+    public static function resolvedInstructions(): array
+    {
+        $defaults = array_merge([
             'provider' => 'M-Pesa Paybill',
             'paybill_number' => '522522',
             'account_number' => 'YERH',
             'recipient_name' => 'Youth Entrepreneurship Resource Hub',
-            'instructions' => 'Send the exact fee via M-Pesa Paybill, then enter your confirmation code and upload a screenshot or PDF receipt.',
-        ]);
+            'instructions' => 'Send the exact fee via M-Pesa Paybill using the Paybill and Account number above, then enter your confirmation code and upload your payment screenshot or PDF receipt.',
+            'refund_notice' => 'If an administrator has not reviewed and approved your payment within 24 hours of submission, you are eligible for a full refund plus 10% compensation.',
+        ], config('yerh.payment_instructions', []));
         $stored = DB::table('platform_settings')->where('key', self::INSTRUCTIONS_KEY)->value('value');
         $parsed = is_string($stored) ? json_decode($stored, true) : null;
 
-        return response()->json([
-            'data' => is_array($parsed) ? array_merge($defaults, $parsed) : $defaults,
-        ])->header('Cache-Control', 'private, no-store');
+        return is_array($parsed) ? array_merge($defaults, $parsed) : $defaults;
     }
 
     public function updateInstructions(Request $request): JsonResponse
@@ -59,7 +68,11 @@ final class ProgrammePaymentController extends Controller
             'account_number' => ['required', 'string', 'min:2', 'max:80'],
             'recipient_name' => ['required', 'string', 'min:2', 'max:140'],
             'instructions' => ['required', 'string', 'min:10', 'max:1500'],
+            'refund_notice' => ['nullable', 'string', 'min:10', 'max:1000'],
         ]);
+        if (empty($data['refund_notice'])) {
+            $data['refund_notice'] = self::resolvedInstructions()['refund_notice'];
+        }
 
         DB::table('platform_settings')->upsert([[
             'key' => self::INSTRUCTIONS_KEY,
@@ -117,7 +130,7 @@ final class ProgrammePaymentController extends Controller
             'purpose' => ['required', Rule::in(Curriculum::FEE_PURPOSES)],
             'target_id' => ['required', 'integer'],
             'reference' => ['required', 'string', 'min:3', 'max:120'],
-            'receipt' => ['nullable', 'file', 'mimes:jpeg,jpg,png,webp,pdf', 'max:5120'],
+            'receipt' => ['required', 'file', 'mimes:jpeg,jpg,png,webp,pdf', 'max:5120'],
         ]);
         $actor = $request->user();
         $receiptFile = $request->file('receipt');

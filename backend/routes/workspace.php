@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AffiliationApplicationController;
+use App\Http\Controllers\CareerApplicationController;
 use App\Http\Controllers\CommunicationsController;
 use App\Http\Controllers\ContactMessageController;
 use App\Http\Controllers\DashboardController;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/api/v1/institutions', [InstitutionDirectoryController::class, 'choices'])->middleware('throttle:60,1');
 Route::post('/api/v1/institutions/apply', [InstitutionOnboardingController::class, 'apply'])->middleware('throttle:10,1');
+Route::post('/api/v1/careers/apply', [CareerApplicationController::class, 'apply'])->middleware('throttle:10,1');
 Route::post('/api/v1/contact', [ContactMessageController::class, 'store'])->middleware('throttle:10,1');
 
 Route::prefix('api/v1/workspace')
@@ -25,10 +27,13 @@ Route::prefix('api/v1/workspace')
         Route::patch('/users/{id}', [DashboardController::class, 'updateAccess'])->whereNumber('id');
         Route::get('/applications', [AffiliationApplicationController::class, 'index']);
         Route::post('/applications', [AffiliationApplicationController::class, 'store']);
+        Route::get('/applications/{id}/document', [AffiliationApplicationController::class, 'document'])->whereNumber('id');
         Route::post('/applications/{id}/review', [AffiliationApplicationController::class, 'review'])->whereNumber('id');
         Route::get('/institution-applications', [InstitutionOnboardingController::class, 'index']);
         Route::get('/institution-applications/{id}/document', [InstitutionOnboardingController::class, 'document'])->whereNumber('id');
         Route::post('/institution-applications/{id}/review', [InstitutionOnboardingController::class, 'review'])->whereNumber('id');
+        Route::get('/career-applications', [CareerApplicationController::class, 'index']);
+        Route::post('/career-applications/{id}/review', [CareerApplicationController::class, 'review'])->whereNumber('id');
         Route::get('/contact-messages', [ContactMessageController::class, 'index']);
         Route::patch('/contact-messages/{id}', [ContactMessageController::class, 'update'])->whereNumber('id');
         Route::prefix('communications')->group(function () {

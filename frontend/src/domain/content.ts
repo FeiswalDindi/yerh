@@ -28,6 +28,7 @@ export interface ContentItem {
   blocks: ContentBlock[];
   downloads: { label: string; href: string; availableLocally: boolean }[];
   videos: string[];
+  linkedinUrl?: string;
   source: { path: string; url: string; sha256: string };
 }
 export interface Catalog {

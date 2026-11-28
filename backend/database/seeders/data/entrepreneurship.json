@@ -1,0 +1,54 @@
+[
+  {
+    "id": "startups",
+    "title": "New Start-Ups",
+    "description": "Start with the essentials: validate an idea, understand customers, keep records, and plan your business.",
+    "lessonTrack": "startups",
+    "guideIds": ["businessplanwriting", "market-research-as-tool-for-business-success"],
+    "checklist": [
+      "Write down the problem you want to solve.",
+      "Talk with potential customers about their current alternatives.",
+      "Draft a simple business plan."
+    ],
+    "sourceNote": "Learning videos and articles are from the original YERH resource collection."
+  },
+  {
+    "id": "advanced",
+    "title": "Intermediate / Advanced Business",
+    "description": "Strengthen operations and explore the skills needed for a growing enterprise.",
+    "lessonTrack": "advanced",
+    "guideIds": ["businessplanwriting"],
+    "checklist": [
+      "Review your current customer feedback.",
+      "Identify one operational bottleneck.",
+      "Choose a measurable improvement to test."
+    ],
+    "sourceNote": "Advanced videos were recovered from the original Intermediate / Advanced Business page."
+  },
+  {
+    "id": "wellbeing",
+    "title": "General and Well-Being",
+    "description": "Build sustainable working habits alongside your business skills.",
+    "lessonTrack": "none",
+    "guideIds": [],
+    "checklist": [
+      "Set realistic priorities for the week.",
+      "Leave space for breaks and time away from work.",
+      "Reach out to a trusted peer when you need support."
+    ],
+    "sourceNote": "The old navigation linked this category to the general resources page. This checklist is new illustrative demo content, not a recovered course or health advice."
+  },
+  {
+    "id": "funding",
+    "title": "Funding",
+    "description": "Explore the original funding video, planning guide, and Youth Enterprise Development Fund links.",
+    "lessonTrack": "funding",
+    "guideIds": ["how-to-get-funding-for-your-business-startup", "businessplanwriting"],
+    "checklist": [
+      "Prepare a clear business plan and budget.",
+      "Check current eligibility and terms with the funding provider.",
+      "Compare the costs and responsibilities before making a decision."
+    ],
+    "sourceNote": "Funding articles are historical resources. Confirm current terms directly with each provider."
+  }
+]

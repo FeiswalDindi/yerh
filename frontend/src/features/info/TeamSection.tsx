@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { ArrowRight, ArrowUpRight, Linkedin } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { TeamContent, TeamMember } from '../../domain/site';
 import { CloseButton } from '../../shared/CloseButton';
 import { SmartImage } from '../../shared/SmartImage';
 import './team.css';
 
-function TeamPortrait({ member }: { member: TeamMember }) {
+export function TeamPortrait({ member }: { member: TeamMember }) {
   const [failedImage, setFailedImage] = useState('');
   const initials = member.name
     .replace(/^Dr\.\s+/i, '')
@@ -73,9 +74,18 @@ function TeamProfileDialog({ member, onClose }: { member: TeamMember; onClose: (
             </a>
           )}
         </div>
-        <form method="dialog">
-          <button className="button team-profile-close">Close profile</button>
-        </form>
+        <div className="team-profile-actions">
+          <Link
+            className="button button-gold"
+            to={`/about/team/${encodeURIComponent(member.id)}`}
+            onClick={onClose}
+          >
+            View full profile <ArrowUpRight size={16} aria-hidden="true" />
+          </Link>
+          <form method="dialog">
+            <button className="button button-outline team-profile-close">Close</button>
+          </form>
+        </div>
       </div>
     </dialog>
   );

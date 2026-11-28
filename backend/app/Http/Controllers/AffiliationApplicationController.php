@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Identity\AffiliationResolver;
 use App\Models\User;
 use App\Notifications\WorkspaceAlert;
 use App\Support\WorkspaceNotifier;
@@ -9,8 +10,12 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 final class AffiliationApplicationController extends Controller
 {
@@ -28,6 +33,8 @@ final class AffiliationApplicationController extends Controller
                 'application.id',
                 'application.status',
                 'application.details',
+                'application.document_path',
+                'application.document_name',
                 'application.location',
                 'application.decision_note',
                 'institution.name as institution',
@@ -59,7 +66,14 @@ final class AffiliationApplicationController extends Controller
             }
         }
 
-        return response()->json(['data' => $query->get()])->header('Cache-Control', 'no-store');
+        $rows = $query->get()->map(function ($row) {
+            $row->has_document = ! empty($row->document_path);
+            unset($row->document_path);
+
+            return $row;
+        });
+
+        return response()->json(['data' => $rows])->header('Cache-Control', 'no-store');
     }
 
     public function store(Request $request): JsonResponse
@@ -67,32 +81,103 @@ final class AffiliationApplicationController extends Controller
         $data = $request->validate([
             'institution' => ['required', 'string', 'max:120'],
             'location' => ['required', 'string', 'max:120'],
-            'details' => ['required', 'string', 'min:10', 'max:2000'],
+            'details' => ['nullable', 'string', 'max:2000'],
+            'document' => ['nullable', 'file', 'mimes:pdf,jpeg,jpg,png,webp', 'max:5120'],
             'consent' => ['accepted'],
         ]);
 
-        [$id, $actor, $institution] = DB::transaction(function () use ($request, $data) {
-            $actor = User::query()->lockForUpdate()->findOrFail($request->user()->id);
-            abort_unless($actor->role === 'guest' && $actor->isActive() && $actor->hasVerifiedEmail(), 403);
-            $institution = DB::table('institutions')->where('slug', $data['institution'])
-                ->where('status', 'active')->whereIn('kind', ['university', 'hub'])->first();
-            if (! $institution) {
-                throw ValidationException::withMessages(['institution' => 'Choose an active university or hub.']);
-            }
-            if (DB::table('affiliation_applications')->where('pending_user_id', $actor->id)->exists()
-                || DB::table('institution_memberships')->where('user_id', $actor->id)->exists()
-                || DB::table('institution_access')->where('user_id', $actor->id)->exists()) {
-                throw ValidationException::withMessages(['institution' => 'You already have a pending application or institution affiliation.']);
-            }
+        $documentFile = $request->file('document');
+        $storedPath = $documentFile?->store('affiliation-documents', 'local');
+        abort_if($storedPath === false, 500, 'Could not store your institutional verification document.');
+        $documentName = $documentFile ? mb_substr($documentFile->getClientOriginalName(), 0, 180) : null;
+        $detailsText = trim((string) ($data['details'] ?? ''));
 
-            $id = DB::table('affiliation_applications')->insertGetId([
-                'user_id' => $actor->id, 'pending_user_id' => $actor->id, 'institution_id' => $institution->id,
-                'location' => $data['location'], 'details' => $data['details'], 'consented_at' => now(),
-                'created_at' => now(), 'updated_at' => now(),
-            ]);
+        try {
+            $outcome = DB::transaction(function () use ($request, $data, $storedPath, $documentName, $detailsText) {
+                $actor = User::query()->lockForUpdate()->findOrFail($request->user()->id);
+                abort_unless($actor->role === 'guest' && $actor->isActive() && $actor->hasVerifiedEmail(), 403);
+                $institution = DB::table('institutions')->where('slug', $data['institution'])
+                    ->where('status', 'active')->whereIn('kind', ['university', 'hub'])->first();
+                if (! $institution) {
+                    throw ValidationException::withMessages(['institution' => 'Choose an active university or hub.']);
+                }
+                if (DB::table('affiliation_applications')->where('pending_user_id', $actor->id)->exists()
+                    || DB::table('institution_memberships')->where('user_id', $actor->id)->exists()
+                    || DB::table('institution_access')->where('user_id', $actor->id)->exists()) {
+                    throw ValidationException::withMessages(['institution' => 'You already have a pending application or institution affiliation.']);
+                }
 
-            return [$id, $actor, $institution];
-        }, 3);
+                $domains = AffiliationResolver::parseDomains($institution->allowed_domains ?? null);
+                $emailDomain = Str::after(Str::lower($actor->email), '@');
+
+                if ($domains !== [] && in_array($emailDomain, $domains, true)) {
+                    DB::table('institution_memberships')->insert([
+                        'user_id' => $actor->id,
+                        'institution_id' => $institution->id,
+                        'location' => $data['location'],
+                        'consented_at' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    $actor->forceFill([
+                        'role' => 'entrepreneur',
+                        'requested_institution_id' => null,
+                        'location' => $actor->location ?: $data['location'],
+                    ])->save();
+
+                    return ['auto_approved' => true, 'id' => null, 'actor' => $actor, 'institution' => $institution];
+                }
+
+                if ($storedPath === null && mb_strlen($detailsText) < 10) {
+                    throw ValidationException::withMessages([
+                        'document' => 'Upload an official document from the selected institution showing you are a student or member.',
+                    ]);
+                }
+
+                $id = DB::table('affiliation_applications')->insertGetId([
+                    'user_id' => $actor->id,
+                    'pending_user_id' => $actor->id,
+                    'institution_id' => $institution->id,
+                    'location' => $data['location'],
+                    'details' => $detailsText !== '' ? $detailsText : ('Institutional proof uploaded: '.$documentName),
+                    'document_path' => $storedPath,
+                    'document_name' => $documentName,
+                    'consented_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                return ['auto_approved' => false, 'id' => $id, 'actor' => $actor, 'institution' => $institution];
+            }, 3);
+        } catch (Throwable $exception) {
+            if ($storedPath) {
+                Storage::disk('local')->delete($storedPath);
+            }
+            throw $exception;
+        }
+
+        if ($outcome['auto_approved'] && $storedPath) {
+            Storage::disk('local')->delete($storedPath);
+        }
+
+        /** @var User $actor */
+        $actor = $outcome['actor'];
+        $institution = $outcome['institution'];
+
+        if ($outcome['auto_approved']) {
+            $actor->notify(new WorkspaceAlert(
+                "Your {$institution->name} email was verified automatically. Your Entrepreneur dashboard is now unlocked.",
+                '/dashboard',
+            ));
+
+            return response()->json([
+                'data' => [
+                    'id' => null,
+                    'auto_approved' => true,
+                    'institution' => $institution->name,
+                ],
+            ], 201);
+        }
 
         $coordinators = User::query()
             ->whereNull('suspended_at')
@@ -114,7 +199,12 @@ final class AffiliationApplicationController extends Controller
             );
         }
 
-        return response()->json(['data' => ['id' => $id]], 201);
+        return response()->json([
+            'data' => [
+                'id' => $outcome['id'],
+                'auto_approved' => false,
+            ],
+        ], 201);
     }
 
     public function review(Request $request, int $id): JsonResponse
@@ -179,5 +269,28 @@ final class AffiliationApplicationController extends Controller
         ));
 
         return response()->json(['data' => ['status' => $data['decision']]]);
+    }
+
+    public function document(Request $request, int $id): StreamedResponse
+    {
+        $actor = $request->user();
+        $row = DB::table('affiliation_applications')
+            ->where('id', $id)
+            ->first(['user_id', 'institution_id', 'document_path', 'document_name']) ?? abort(404);
+
+        $canView = $actor->role === 'admin'
+            || (int) $row->user_id === $actor->id
+            || DB::table('institution_access')
+                ->where('institution_id', $row->institution_id)
+                ->where('user_id', $actor->id)
+                ->whereIn('access', ['view', 'manage'])
+                ->exists();
+        abort_unless($canView, 403);
+        abort_unless($row->document_path && Storage::disk('local')->exists($row->document_path), 404);
+
+        return Storage::disk('local')->response($row->document_path, $row->document_name ?: 'affiliation-proof', [
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store',
+        ]);
     }
 }

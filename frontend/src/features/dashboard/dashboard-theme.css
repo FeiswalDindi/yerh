@@ -35,6 +35,114 @@
   filter: brightness(0) saturate(100%) invert(93%) sepia(15%) saturate(738%) hue-rotate(181deg);
 }
 
+[data-dashboard-theme='dark'] :is(.account-brand img, .account-institution-form > img, .reset-password-logo) {
+  border: 2px solid var(--yerh-border);
+  box-shadow: 0 6px 22px rgb(0 0 0 / 48%);
+}
+
+[data-dashboard-theme='dark'] .account-google-button {
+  background: #24334b;
+  border-color: #4a6289;
+  color: #f4f7fd;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 35%);
+}
+
+[data-dashboard-theme='dark'] .account-google-button:hover:not(:disabled) {
+  background: #304566;
+  border-color: var(--yerh-gold);
+  color: #ffffff;
+  box-shadow:
+    0 8px 22px rgb(0 0 0 / 48%),
+    0 0 0 1px rgb(203 174 45 / 35%);
+  transform: translateY(-1px);
+}
+
+:root[data-dashboard-theme='dark'] .account-google-button:active:not(:disabled) {
+  transform: translateY(0);
+  background: #293c59;
+}
+
+:root[data-dashboard-theme='dark'] :is(.guest-identity-card, .guest-card, .guest-signedout-card) {
+  background: var(--yerh-white);
+  border-color: var(--yerh-border);
+}
+
+:root[data-dashboard-theme='dark'] .guest-quick-link,
+:root[data-dashboard-theme='dark'] .guest-journey-steps li {
+  background: var(--workspace-subtle);
+  border-color: var(--yerh-border);
+  color: var(--yerh-ink);
+}
+
+:root[data-dashboard-theme='dark'] .guest-quick-link:hover {
+  background: var(--workspace-hover);
+  border-color: var(--yerh-gold);
+}
+
+:root[data-dashboard-theme='dark'] .guest-instant-match {
+  background: rgba(203, 174, 45, 0.14);
+  border-color: rgba(203, 174, 45, 0.45);
+}
+
+:root[data-dashboard-theme='dark'] .guest-pill--verified {
+  background: rgba(16, 185, 129, 0.18);
+  color: #86efac;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+:root[data-dashboard-theme='dark'] .guest-pill--pending {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+:root[data-dashboard-theme='dark'] .affiliation-upload-box {
+  background: var(--workspace-subtle);
+  border-color: var(--yerh-border);
+}
+
+:root[data-dashboard-theme='dark'] .affiliation-upload-trigger {
+  background: var(--yerh-card-surface);
+  border-color: #4a6289;
+  color: var(--yerh-ink);
+}
+
+:root[data-dashboard-theme='dark'] .affiliation-upload-trigger:hover {
+  border-color: var(--yerh-gold);
+}
+
+[data-dashboard-theme='dark'] .header-avatar-trigger {
+  background: var(--yerh-card-surface);
+  border-color: var(--yerh-border);
+  color: var(--yerh-ink);
+}
+
+[data-dashboard-theme='dark'] .header-avatar-menu {
+  background: var(--yerh-card-surface);
+  border-color: var(--yerh-border);
+  box-shadow: 0 18px 46px rgb(0 0 0 / 55%);
+}
+
+[data-dashboard-theme='dark'] .header-avatar-item {
+  color: var(--yerh-ink);
+}
+
+[data-dashboard-theme='dark'] .header-avatar-item:hover {
+  background: var(--workspace-subtle);
+}
+
+[data-dashboard-theme='dark'] .header-avatar-item--danger {
+  color: #fca5a5;
+}
+
+[data-dashboard-theme='dark'] .header-avatar-item--danger:hover {
+  background: rgb(153 27 27 / 28%);
+}
+
+[data-dashboard-theme='dark'] .header-avatar-role {
+  color: var(--yerh-gold-text) !important;
+}
+
 [data-dashboard-theme='dark'] :is(.header-actions, .header-login) {
   border-color: var(--yerh-border);
 }

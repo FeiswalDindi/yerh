@@ -57,10 +57,14 @@ final class CmsMediaController extends Controller
 
     public function store(Request $request, ImageOptimizer $optimizer): JsonResponse
     {
-        $this->requireEditor($request);
+        $user = $request->user();
+        $isPartner = $user->role === 'partner';
+        abort_unless($isPartner || in_array($user->role, ['admin', 'content_manager'], true), 403);
 
         $data = $request->validate([
-            'file' => ['required', 'file', 'mimes:jpeg,jpg,png,webp,gif,pdf', 'max:8192'],
+            'file' => $isPartner
+                ? ['required', 'file', 'mimes:jpeg,jpg,png,webp,gif', 'max:5120']
+                : ['required', 'file', 'mimes:jpeg,jpg,png,webp,gif,pdf', 'max:8192'],
             'alt_text' => ['nullable', 'string', 'max:240'],
             'folder' => ['nullable', 'string', 'max:60', 'regex:/^[a-z0-9_-]+$/i'],
             'in_site_library' => ['nullable', 'boolean'],
@@ -78,9 +82,11 @@ final class CmsMediaController extends Controller
         $dimensions = $optimizer->inspectDimensions(Storage::disk($disk)->path($path));
         $width = $dimensions['width'] ?? null;
         $height = $dimensions['height'] ?? null;
-        $folder = Str::lower(trim((string) ($data['folder'] ?? 'general'))) ?: 'general';
+        $folder = $isPartner
+            ? 'events'
+            : (Str::lower(trim((string) ($data['folder'] ?? 'general'))) ?: 'general');
         $altText = isset($data['alt_text']) ? trim($data['alt_text']) : '';
-        $inSiteLibrary = $request->boolean('in_site_library', false);
+        $inSiteLibrary = $isPartner ? false : $request->boolean('in_site_library', false);
 
         try {
             $id = DB::table('cms_media')->insertGetId([

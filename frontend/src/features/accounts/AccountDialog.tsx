@@ -25,8 +25,9 @@ import './account.css';
 
 export function AccountDialog({ mode, search, onClose }: AccountRequest & { onClose: () => void }) {
   const { state } = useDemo();
+  const useLaravel = laravelModeEnabled;
   const [register, setRegister] = useState(mode === 'register');
-  const [selecting, setSelecting] = useState(mode !== 'register');
+  const [selecting, setSelecting] = useState(!useLaravel && mode !== 'register');
   const [liveInstitutions, setLiveInstitutions] = useState<InstitutionChoice[]>([]);
   const [institutionError, setInstitutionError] = useState('');
   const session = useLaravelSession();
@@ -48,11 +49,10 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
       });
     return () => request.abort();
   }, [selecting, session?.profile]);
-  const institutions = state.platform.training.institutions.filter(
-    (school) => school.status === 'active',
-  );
-  const yerh = state.platform.training.yerhSignIn !== false;
-  const useLaravel = laravelModeEnabled;
+  const institutions = useLaravel
+    ? []
+    : state.platform.training.institutions.filter((school) => school.status === 'active');
+  const yerh = useLaravel || state.platform.training.yerhSignIn !== false;
   const [institution, setInstitution] = useState(() => {
     const requested = new URLSearchParams(search).get('institution');
     if (requested) {
@@ -61,7 +61,8 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
       if (match) return match.id;
       if (useLaravel) return requested;
     }
-    return useLaravel || yerh ? 'yerh' : '';
+    if (useLaravel) return '';
+    return yerh ? 'yerh' : '';
   });
   const dialog = useRef<HTMLDialogElement>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -88,7 +89,7 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
   const title = register ? 'Create your account' : 'Sign in';
   const selectedInstitutionName =
     institution === 'yerh'
-      ? 'No institution (Guest / YERH)'
+      ? 'No Institution'
       : ((useLaravel
           ? liveInstitutions.find((row) => row.slug === institution)?.name
           : institutions.find((school) => school.id === institution)?.name) ?? institution);
@@ -153,7 +154,7 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
                   Choose an institution
                 </option>
                 {(useLaravel || yerh) && (
-                  <option value="yerh">No institution (Guest / YERH)</option>
+                  <option value="yerh">No Institution</option>
                 )}
                 {(useLaravel
                   ? liveInstitutions.map((row) => ({ id: row.slug, name: row.name }))
@@ -200,13 +201,14 @@ export function AccountDialog({ mode, search, onClose }: AccountRequest & { onCl
               register={register}
               institution={institution}
               institutionLabel={selectedInstitutionName}
+              search={search}
               verification={new URLSearchParams(search).get('verification')}
               onComplete={close}
-              onChangeInstitution={() => setSelecting(true)}
+              onClearInstitution={() => setInstitution('')}
               onErrorFeedback={signalError}
               onSwitch={() => {
                 setRegister(!register);
-                setSelecting(register);
+                setSelecting(false);
               }}
             />
           ) : (

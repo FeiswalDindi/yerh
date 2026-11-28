@@ -1,0 +1,62 @@
+[
+  {
+    "id": "copyek-innovation-and-entrepreneurship-awards",
+    "slug": "copyek-innovation-and-entrepreneurship-awards",
+    "kind": "event",
+    "title": "KCA University Innovation Week and Industry Summit",
+    "category": "Past event",
+    "excerpt": "KCA University, in partnership with COPYEK Projects, is proud to announce the upcoming Innovation Week and Industry Summit. This collaborative event aims to unite academia and industry…",
+    "image": null,
+    "imageAlt": "KCA University Innovation Week and Industry Summit",
+    "publishedAt": null,
+    "blocks": [
+      {
+        "type": "heading",
+        "text": "KCA University Innovation Week and Industry Summit"
+      },
+      {
+        "type": "paragraph",
+        "text": "KCA University, in partnership with COPYEK Projects, is proud to announce the upcoming Innovation Week and Industry Summit. This collaborative event aims to unite academia and industry players, aligning with COPYEK Projects’ objective of bridging the gap between academic knowledge and the practical skills required in the industry."
+      },
+      {
+        "type": "list-item",
+        "text": "Date : October 30, 2023 - November 3, 2023"
+      },
+      {
+        "type": "list-item",
+        "text": "Time : 9:00 am - 4:00 pm (Africa/Nairobi)"
+      }
+    ],
+    "downloads": [],
+    "videos": [],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/etn/copyek-innovation-and-entrepreneurship-awards/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/etn/copyek-innovation-and-entrepreneurship-awards/",
+      "sha256": "3f6df0e7178f9f100370fe6e2eb722f2efcc4ef87c4f4d17cfabe2d14bfef135"
+    }
+  },
+  {
+    "id": "innovation-and-entrepreneurship-bootcamp",
+    "slug": "innovation-and-entrepreneurship-bootcamp",
+    "kind": "event",
+    "title": "Innovation and Entrepreneurship Bootcamp",
+    "category": "Past event",
+    "excerpt": "Explore this resource from the Youth Entrepreneurship Resource Hub.",
+    "image": null,
+    "imageAlt": "Innovation and Entrepreneurship Bootcamp",
+    "publishedAt": null,
+    "blocks": [
+      {
+        "type": "heading",
+        "text": "Innovation and Entrepreneurship Bootcamp"
+      }
+    ],
+    "downloads": [],
+    "videos": [],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/etn/innovation-and-entrepreneurship-bootcamp/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/etn/innovation-and-entrepreneurship-bootcamp/",
+      "sha256": "1e160dbf7452c9b591ca8509eff9302b2a491e7f131e95f7d4fcac91f1310e70"
+    }
+  }
+]

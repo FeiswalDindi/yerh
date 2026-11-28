@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Identity\AffiliationResolver;
+use App\Integrations\Moodle\MoodleClient;
 use App\Models\User;
-use App\Notifications\WorkspaceAlert;
 use App\Support\WorkspaceNotifier;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
@@ -16,7 +17,6 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -27,17 +27,29 @@ final class IdentityController extends Controller
 {
     private const PENDING_VERIFICATION = 'email_verification.pending';
 
-    public function register(Request $request): JsonResponse
+    public function register(Request $request, MoodleClient $moodle): JsonResponse
     {
         $this->normalizeEmail($request);
         $data = $request->validate([
-            'name' => ['required', 'string', 'min:2', 'max:120'],
+            'first_name' => ['required_without:name', 'nullable', 'string', 'min:1', 'max:80'],
+            'last_name' => ['required_without:name', 'nullable', 'string', 'min:1', 'max:80'],
+            'name' => ['required_without_all:first_name,last_name', 'nullable', 'string', 'min:1', 'max:120'],
             'email' => ['required', 'email', 'max:254', 'unique:users,email'],
             'password' => ['required', 'string', 'max:128', 'confirmed', Password::min(6)],
             'institution' => ['nullable', 'string', 'max:120'],
             'location' => ['nullable', 'string', 'min:2', 'max:120'],
+            'terms' => ['sometimes', 'accepted'],
             'role' => ['prohibited'],
         ]);
+
+        $first = trim((string) ($data['first_name'] ?? ''));
+        $last = trim((string) ($data['last_name'] ?? ''));
+        if ($first === '' || $last === '') {
+            [$splitFirst, $splitLast] = User::splitFullName((string) ($data['name'] ?? ''));
+            $first = $first !== '' ? $first : $splitFirst;
+            $last = $last !== '' ? $last : $splitLast;
+        }
+        $fullName = trim($first.' '.$last);
 
         $requestedInstitution = null;
         $slug = isset($data['institution']) ? trim($data['institution']) : '';
@@ -56,15 +68,24 @@ final class IdentityController extends Controller
 
         try {
             $user = User::query()->create([
-                'name' => trim($data['name']),
+                'name' => $fullName,
+                'first_name' => $first,
+                'last_name' => $last,
                 'email' => $data['email'],
                 'password' => $data['password'],
             ]);
-            if ($requestedInstitution || ! empty($data['location'])) {
-                $user->forceFill([
-                    'requested_institution_id' => $requestedInstitution?->id,
-                    'location' => isset($data['location']) ? trim($data['location']) : null,
-                ])->save();
+            $extra = [];
+            if ($requestedInstitution) {
+                $extra['requested_institution_id'] = $requestedInstitution->id;
+            }
+            if (! empty($data['location'])) {
+                $extra['location'] = trim($data['location']);
+            }
+            if ($request->has('terms')) {
+                $extra['terms_accepted_at'] = now();
+            }
+            if ($extra !== []) {
+                $user->forceFill($extra)->save();
             }
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages(['email' => __('validation.unique', ['attribute' => 'email'])]);
@@ -74,16 +95,19 @@ final class IdentityController extends Controller
         $request->session()->regenerate();
         event(new Registered($user));
 
-        return $this->profile($user->refresh(), 201);
+        $fresh = $user->refresh();
+        $moodle->syncUserAccount($fresh, $data['password']);
+
+        return $this->profile($fresh->refresh(), 201);
     }
 
-    public function login(Request $request): JsonResponse
+    public function login(Request $request, MoodleClient $moodle): JsonResponse
     {
         $this->normalizeEmail($request);
         $data = $request->validate([
             'email' => ['required', 'email', 'max:254'],
             'password' => ['required', 'string', 'max:128'],
-            'institution' => ['sometimes', 'required', 'string', 'max:120'],
+            'institution' => ['sometimes', 'nullable', 'string', 'max:120'],
             'remember' => ['sometimes', 'boolean'],
         ]);
         $credentials = ['email' => $data['email'], 'password' => $data['password']];
@@ -95,29 +119,36 @@ final class IdentityController extends Controller
         $request->session()->regenerate();
 
         $user = $request->user();
-        $affiliation = $this->affiliation($user);
-        $staff = $this->staff($user);
-        $allowed = [];
-        if ($affiliation && $affiliation->status === 'active') {
-            $allowed[] = $affiliation->slug;
-        }
-        if ($staff->isNotEmpty()) {
-            $allowed = [...$allowed, ...$staff->pluck('slug')->all()];
-        }
-        if ($user->role === 'admin' || $allowed === []) {
-            $allowed[] = 'yerh';
-        }
-        $requested = $this->requestedInstitution($user);
-        if ($requested) {
-            $allowed[] = $requested->slug;
-        }
-        $allowed = array_values(array_unique($allowed));
+        $explicitInstitution = is_string($data['institution'] ?? null) ? trim($data['institution']) : '';
+        if ($explicitInstitution !== '') {
+            $affiliation = $this->affiliation($user);
+            $staff = $this->staff($user);
+            $allowed = [];
+            if ($affiliation && $affiliation->status === 'active') {
+                $allowed[] = $affiliation->slug;
+            }
+            if ($staff->isNotEmpty()) {
+                $allowed = [...$allowed, ...$staff->pluck('slug')->all()];
+            }
+            if ($user->role === 'admin' || $allowed === []) {
+                $allowed[] = 'yerh';
+            }
+            $requested = $this->requestedInstitution($user);
+            if ($requested) {
+                $allowed[] = $requested->slug;
+            }
+            $allowed = array_values(array_unique($allowed));
 
-        if (! in_array($data['institution'] ?? 'yerh', $allowed, true)) {
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-            throw ValidationException::withMessages(['institution' => 'Sign in using the institution associated with this account.']);
+            if (! in_array($explicitInstitution, $allowed, true)) {
+                $pendingVerification = $request->session()->get(self::PENDING_VERIFICATION);
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+                if ($pendingVerification) {
+                    $request->session()->put(self::PENDING_VERIFICATION, $pendingVerification);
+                }
+                throw ValidationException::withMessages(['institution' => 'Sign in using the institution associated with this account.']);
+            }
         }
 
         $pending = $request->session()->pull(self::PENDING_VERIFICATION);
@@ -125,6 +156,8 @@ final class IdentityController extends Controller
             && $this->matchesVerification($user, $pending['id'], $pending['hash'])) {
             $this->verifyEmail($user);
         }
+
+        $moodle->syncUserAccount($user, $data['password']);
 
         return $this->profile($user->refresh());
     }
@@ -148,7 +181,7 @@ final class IdentityController extends Controller
         ])->header('Cache-Control', 'no-store');
     }
 
-    public function resetPassword(Request $request): JsonResponse
+    public function resetPassword(Request $request, MoodleClient $moodle): JsonResponse
     {
         $this->normalizeEmail($request);
         $data = $request->validate([
@@ -157,9 +190,10 @@ final class IdentityController extends Controller
             'password' => ['required', 'string', 'max:128', 'confirmed', Password::min(6)],
         ]);
 
+        $resetUser = null;
         $status = PasswordBroker::broker()->reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (User $user, string $password): void {
+            function (User $user, string $password) use (&$resetUser): void {
                 abort_unless($user->isActive(), 403, 'This account is unavailable.');
                 $user->forceFill([
                     'password' => $password,
@@ -167,6 +201,7 @@ final class IdentityController extends Controller
                 ])->save();
                 DB::table('sessions')->where('user_id', $user->id)->delete();
                 event(new PasswordReset($user));
+                $resetUser = $user;
             }
         );
 
@@ -176,6 +211,10 @@ final class IdentityController extends Controller
             ]);
         }
 
+        if ($resetUser instanceof User) {
+            $moodle->syncUserAccount($resetUser, $data['password']);
+        }
+
         return response()->json([
             'data' => [
                 'message' => 'Your password has been reset. You can now sign in with your new password.',
@@ -183,14 +222,17 @@ final class IdentityController extends Controller
         ])->header('Cache-Control', 'no-store');
     }
 
-    public function changePassword(Request $request): JsonResponse
+    public function changePassword(Request $request, MoodleClient $moodle): JsonResponse
     {
         $actor = $request->user();
         abort_unless($actor->isActive(), 403, 'This account is unavailable.');
 
-        $data = $request->validate([
+        $hadPassword = $actor->hasPassword();
+        $data = $request->validate($hadPassword ? [
             'current_password' => ['required', 'string', 'current_password'],
             'password' => ['required', 'string', 'max:128', 'confirmed', 'different:current_password', Password::min(6)],
+        ] : [
+            'password' => ['required', 'string', 'max:128', 'confirmed', Password::min(6)],
         ]);
 
         $actor->forceFill([
@@ -203,9 +245,13 @@ final class IdentityController extends Controller
             ->where('id', '!=', $request->session()->getId())
             ->delete();
 
+        $moodle->syncUserAccount($actor, $data['password']);
+
         return response()->json([
             'data' => [
-                'message' => 'Your password has been updated.',
+                'message' => $hadPassword
+                    ? 'Your password has been updated.'
+                    : 'Your password has been set.',
             ],
         ])->header('Cache-Control', 'no-store');
     }
@@ -271,7 +317,7 @@ final class IdentityController extends Controller
             event(new Verified($user));
         }
 
-        $this->resolveRequestedAffiliation($user);
+        AffiliationResolver::resolve($user);
 
         if ($newlyVerified && ! $hadRequestedInstitution) {
             WorkspaceNotifier::notifyUser(
@@ -282,131 +328,6 @@ final class IdentityController extends Controller
                 'Open YERH Account',
             );
         }
-    }
-
-    private function resolveRequestedAffiliation(User $user): void
-    {
-        if (! $user->requested_institution_id) {
-            return;
-        }
-
-        $outcome = DB::transaction(function () use ($user) {
-            $actor = User::query()->lockForUpdate()->find($user->id);
-            if (! $actor || ! $actor->requested_institution_id || ! $actor->hasVerifiedEmail() || ! $actor->isActive()) {
-                return null;
-            }
-
-            $institution = DB::table('institutions')
-                ->where('id', $actor->requested_institution_id)
-                ->where('status', 'active')
-                ->whereIn('kind', ['university', 'hub'])
-                ->first();
-
-            $actor->forceFill(['requested_institution_id' => null])->save();
-
-            if (! $institution || $actor->role !== 'guest'
-                || DB::table('institution_memberships')->where('user_id', $actor->id)->exists()
-                || DB::table('institution_access')->where('user_id', $actor->id)->exists()
-                || DB::table('affiliation_applications')->where('pending_user_id', $actor->id)->exists()) {
-                return null;
-            }
-
-            $domains = $this->parseDomains($institution->allowed_domains ?? null);
-            $emailDomain = Str::after(Str::lower($actor->email), '@');
-            $location = trim((string) ($actor->location ?? '')) ?: 'Not specified';
-
-            if ($domains !== [] && in_array($emailDomain, $domains, true)) {
-                DB::table('institution_memberships')->insert([
-                    'user_id' => $actor->id,
-                    'institution_id' => $institution->id,
-                    'location' => $location,
-                    'consented_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                $actor->forceFill(['role' => 'entrepreneur'])->save();
-
-                return ['type' => 'approved', 'actor' => $actor, 'institution' => $institution];
-            }
-
-            DB::table('affiliation_applications')->insert([
-                'user_id' => $actor->id,
-                'pending_user_id' => $actor->id,
-                'institution_id' => $institution->id,
-                'location' => $location,
-                'details' => 'Requested institution affiliation during account registration.',
-                'consented_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            return ['type' => 'pending', 'actor' => $actor, 'institution' => $institution];
-        }, 3);
-
-        if (! $outcome) {
-            return;
-        }
-
-        /** @var User $actor */
-        $actor = $outcome['actor'];
-        $institution = $outcome['institution'];
-
-        if ($outcome['type'] === 'approved') {
-            $actor->notify(new WorkspaceAlert(
-                "Your {$institution->name} email was verified automatically. Your Entrepreneur dashboard is now unlocked.",
-                '/dashboard',
-            ));
-
-            return;
-        }
-
-        $actor->notify(new WorkspaceAlert(
-            "Your affiliation request for {$institution->name} has been sent to the institution coordinator and YERH admin for review.",
-            '/account',
-        ));
-
-        $coordinators = User::query()
-            ->whereNull('suspended_at')
-            ->whereNotNull('email_verified_at')
-            ->whereIn('id', DB::table('institution_access')
-                ->where('institution_id', $institution->id)
-                ->where('access', 'manage')
-                ->select('user_id'))
-            ->get();
-        if ($coordinators->isNotEmpty()) {
-            Notification::send($coordinators, new WorkspaceAlert(
-                "{$actor->name} requested affiliation with {$institution->name}.",
-                '/dashboard/workspace?tab=school&institution='.rawurlencode($institution->slug).'&view=requests',
-            ));
-        }
-
-        $admins = User::query()->where('role', 'admin')->whereNull('suspended_at')->whereNotNull('email_verified_at')->get();
-        if ($admins->isNotEmpty()) {
-            Notification::send($admins, new WorkspaceAlert(
-                "{$actor->name} requested affiliation with {$institution->name}.",
-                '/dashboard/workspace?tab=approvals&view=roles',
-            ));
-        }
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function parseDomains(mixed $raw): array
-    {
-        if (is_string($raw)) {
-            $decoded = json_decode($raw, true);
-            $raw = is_array($decoded) ? $decoded : [];
-        }
-
-        if (! is_array($raw)) {
-            return [];
-        }
-
-        return array_values(array_filter(array_map(
-            static fn ($domain) => is_string($domain) ? Str::lower(ltrim(trim($domain), '@')) : '',
-            $raw
-        )));
     }
 
     private function verificationRedirect(string $path): RedirectResponse
@@ -486,34 +407,66 @@ final class IdentityController extends Controller
             ->get(['institution.slug', 'institution.name', 'institution.kind', 'staff.access']);
     }
 
-    public function updateProfile(Request $request): JsonResponse
+    public function updateProfile(Request $request, MoodleClient $moodle): JsonResponse
     {
         $actor = $request->user();
         abort_unless($actor->isActive() && $actor->hasVerifiedEmail(), 403);
-        $actor->forceFill($request->validate([
-            'name' => ['required', 'string', 'min:2', 'max:80'],
+        $data = $request->validate([
+            'first_name' => ['sometimes', 'nullable', 'string', 'min:1', 'max:80'],
+            'last_name' => ['sometimes', 'nullable', 'string', 'min:1', 'max:80'],
+            'name' => ['required_without_all:first_name,last_name', 'nullable', 'string', 'min:1', 'max:80'],
             'location' => ['required', 'string', 'min:2', 'max:80'],
             'headline' => ['required', 'string', 'min:3', 'max:120'],
             'bio' => ['required', 'string', 'min:10', 'max:600'],
-        ]))->save();
+        ]);
 
-        return $this->profile($actor->refresh());
+        $first = trim((string) ($data['first_name'] ?? ''));
+        $last = trim((string) ($data['last_name'] ?? ''));
+        if ($first !== '' && $last !== '') {
+            $name = trim($first.' '.$last);
+        } else {
+            $name = trim((string) ($data['name'] ?? $actor->name));
+            [$splitFirst, $splitLast] = User::splitFullName($name);
+            $first = $first !== '' ? $first : $splitFirst;
+            $last = $last !== '' ? $last : $splitLast;
+        }
+
+        $actor->forceFill([
+            'name' => $name,
+            'first_name' => $first,
+            'last_name' => $last,
+            'location' => $data['location'],
+            'headline' => $data['headline'],
+            'bio' => $data['bio'],
+        ])->save();
+
+        $fresh = $actor->refresh();
+        $moodle->syncUserProfile($fresh);
+
+        return $this->profile($fresh);
     }
 
     private function profile(User $user, int $status = 200): JsonResponse
     {
         abort_unless($user->isActive(), 403);
+        $names = $user->moodleNames();
 
         return response()->json(['data' => [
             'id' => $user->getKey(),
             'name' => $user->name,
+            'first_name' => $user->first_name ?? $names['firstname'],
+            'last_name' => $user->last_name ?? $names['lastname'],
             'email' => $user->email,
             'location' => $user->location ?? '',
             'headline' => $user->headline ?? '',
             'bio' => $user->bio ?? '',
             'email_verified' => $user->hasVerifiedEmail(),
             'local_verification_available' => ! $user->hasVerifiedEmail() && $this->allowsLocalVerification(request()),
+            'has_password' => $user->hasPassword(),
+            'google_connected' => ! empty($user->google_id),
+            'avatar' => $user->avatar,
             'role' => $user->role,
+            'moodle_user_id' => $user->moodle_user_id ? (int) $user->moodle_user_id : null,
             'affiliation' => $this->affiliation($user),
             'requested_institution' => $this->requestedInstitution($user),
             'staff' => $this->staff($user),

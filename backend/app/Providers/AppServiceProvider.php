@@ -3,10 +3,14 @@
 namespace App\Providers;
 
 use App\Contracts\Learning\CourseCatalog;
+use App\Integrations\Moodle\MoodleClient;
 use App\Integrations\Moodle\MoodleCourseCatalog;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSent;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -21,10 +25,35 @@ class AppServiceProvider extends ServiceProvider
             siteUrl: (string) config('services.moodle.url'),
             token: (string) config('services.moodle.token'),
         ));
+
+        $this->app->bind(MoodleClient::class, fn () => new MoodleClient(
+            siteUrl: (string) config('services.moodle.url'),
+            token: (string) config('services.moodle.token'),
+            userAuth: (string) config('services.moodle.user_auth', 'manual'),
+            studentRoleId: (int) config('services.moodle.student_role_id', 5),
+            mentorRoleId: (int) config('services.moodle.mentor_role_id', 4),
+            ssoSecret: (string) config('services.moodle.sso_secret', ''),
+        ));
     }
 
     public function boot(): void
     {
+        RateLimiter::for('auth-login', function (Request $request): Limit {
+            $email = Str::lower(trim((string) $request->input('email', '')));
+
+            return Limit::perMinute(8)->by($email.'|'.$request->ip());
+        });
+
+        RateLimiter::for('auth-register', fn (Request $request): Limit => Limit::perMinute(5)->by((string) $request->ip()));
+
+        RateLimiter::for('auth-password-reset', function (Request $request): Limit {
+            $email = Str::lower(trim((string) $request->input('email', '')));
+
+            return Limit::perMinute(5)->by($email.'|'.$request->ip());
+        });
+
+        RateLimiter::for('auth-oauth', fn (Request $request): Limit => Limit::perMinute(15)->by((string) $request->ip()));
+
         Event::listen(MessageSent::class, function (MessageSent $event): void {
             try {
                 if (! Schema::hasTable('sent_emails')) {

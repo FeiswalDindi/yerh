@@ -33,6 +33,11 @@ type DraftState = {
   imageAlt: string;
   status: 'draft' | 'published' | 'archived';
   featured: boolean;
+  videos: string[];
+  linkedinUrl: string;
+  storyGroups: ('Entrepreneur' | 'Startups')[];
+  displayLine1: string;
+  displayLine2: string;
   blocks: ContentBlock[];
   downloads: { label: string; href: string; availableLocally: boolean }[];
 };
@@ -48,6 +53,11 @@ function toDraft(record?: EditorialRecord | null): DraftState {
       imageAlt: '',
       status: 'draft',
       featured: false,
+      videos: [''],
+      linkedinUrl: '',
+      storyGroups: ['Entrepreneur'],
+      displayLine1: '',
+      displayLine2: '',
       blocks: [{ type: 'paragraph', text: '' }],
       downloads: [],
     };
@@ -64,6 +74,12 @@ function toDraft(record?: EditorialRecord | null): DraftState {
     imageAlt: c.imageAlt ?? '',
     status: record.status,
     featured: record.featured,
+    videos: c.videos && c.videos.length > 0 ? [...c.videos] : [''],
+    linkedinUrl: c.linkedinUrl ?? '',
+    storyGroups:
+      c.storyGroups && c.storyGroups.length > 0 ? [...c.storyGroups] : ['Entrepreneur'],
+    displayLine1: c.displayLines?.line1 ?? '',
+    displayLine2: c.displayLines?.line2 ?? '',
     blocks: c.blocks.length ? c.blocks : [{ type: 'paragraph', text: '' }],
     downloads: c.downloads ?? [],
   };
@@ -140,6 +156,9 @@ export function EditorialStudio({
     setError('');
     setNotice('');
     try {
+      const cleanedVideos = draft.videos.map((v) => v.trim()).filter(Boolean);
+      const cleanedLine1 = draft.displayLine1.trim();
+      const cleanedLine2 = draft.displayLine2.trim();
       const result = (await editorialRepository.save(
         {
           kind: draft.kind,
@@ -150,6 +169,14 @@ export function EditorialStudio({
           imageAlt: draft.imageAlt.trim(),
           status: targetStatus,
           featured: draft.kind === 'story' ? draft.featured : false,
+          videos: cleanedVideos,
+          linkedinUrl: draft.linkedinUrl.trim() || null,
+          ...(draft.kind === 'story'
+            ? {
+                storyGroups: draft.storyGroups,
+                displayLines: { line1: cleanedLine1, line2: cleanedLine2 },
+              }
+            : {}),
           blocks: draft.blocks.map((b) => ({ type: b.type, text: b.text.trim() })),
           downloads: draft.downloads.filter((d) => d.label.trim() && d.href.trim()),
         },
@@ -215,7 +242,16 @@ export function EditorialStudio({
     publishedAt: new Date().toISOString().slice(0, 10),
     blocks: draft.blocks,
     downloads: draft.downloads,
-    videos: [],
+    videos: draft.videos.map((v) => v.trim()).filter(Boolean),
+    linkedinUrl: draft.linkedinUrl.trim() || undefined,
+    storyGroups: draft.kind === 'story' ? draft.storyGroups : undefined,
+    displayLines:
+      draft.kind === 'story' && (draft.displayLine1.trim() || draft.displayLine2.trim())
+        ? {
+            line1: draft.displayLine1.trim() || draft.title || 'Untitled story',
+            line2: draft.displayLine2.trim() || draft.excerpt || '',
+          }
+        : undefined,
     source: { path: 'laravel-editorial', url: '', sha256: '' },
   };
 
@@ -318,6 +354,7 @@ export function EditorialStudio({
                     <div style={{ fontSize: '0.8rem', color: 'var(--yerh-muted)' }}>
                       {kinds[entry.content.kind as keyof typeof kinds] ?? entry.content.kind} ·{' '}
                       {entry.content.category}
+                      {entry.content.kind === 'story' && entry.featured ? ' · On My Story' : ''}
                     </div>
                   </div>
                   <StatusIndicator status={entry.status} />
@@ -433,15 +470,134 @@ export function EditorialStudio({
             />
           </label>
 
+          <div className="cms-item-card">
+            <div className="cms-item-toolbar">
+              <strong style={{ fontSize: '0.88rem' }}>Video &amp; social links</strong>
+              <button
+                type="button"
+                className="cms-icon-btn"
+                onClick={() => setDraft({ ...draft, videos: [...draft.videos, ''] })}
+              >
+                <Plus size={13} /> Add video link
+              </button>
+            </div>
+            <div className="cms-field-grid">
+              <label className="cms-field-label">
+                YouTube video URL
+                <input
+                  type="url"
+                  maxLength={500}
+                  value={draft.videos[0] ?? ''}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      videos: [e.target.value, ...draft.videos.slice(1)],
+                    })
+                  }
+                  placeholder="https://www.youtube.com/watch?v=..."
+                />
+              </label>
+              <label className="cms-field-label">
+                LinkedIn profile / post URL
+                <input
+                  type="url"
+                  maxLength={500}
+                  value={draft.linkedinUrl}
+                  onChange={(e) => setDraft({ ...draft, linkedinUrl: e.target.value })}
+                  placeholder="https://www.linkedin.com/in/..."
+                />
+              </label>
+            </div>
+            {draft.videos.slice(1).map((vid, extraIdx) => {
+              const videoIndex = extraIdx + 1;
+              return (
+                <div className="cms-inline-link-row" key={videoIndex}>
+                  <label className="cms-field-label" style={{ flex: 1 }}>
+                    Additional YouTube URL #{videoIndex + 1}
+                    <input
+                      type="url"
+                      maxLength={500}
+                      value={vid}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          videos: draft.videos.map((v, i) =>
+                            i === videoIndex ? e.target.value : v,
+                          ),
+                        })
+                      }
+                      placeholder="https://www.youtube.com/watch?v=..."
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="cms-icon-btn is-danger"
+                    onClick={() =>
+                      setDraft({
+                        ...draft,
+                        videos: draft.videos.filter((_, i) => i !== videoIndex),
+                      })
+                    }
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
           {draft.kind === 'story' && (
-            <label className="inline-checkbox">
-              <input
-                type="checkbox"
-                checked={draft.featured}
-                onChange={(e) => setDraft({ ...draft, featured: e.target.checked })}
-              />{' '}
-              Feature this story on the homepage
-            </label>
+            <div className="cms-item-card">
+              <strong style={{ fontSize: '0.88rem' }}>Homepage &ldquo;My Story&rdquo; display</strong>
+              <label className="inline-checkbox">
+                <input
+                  type="checkbox"
+                  checked={draft.featured}
+                  onChange={(e) => setDraft({ ...draft, featured: e.target.checked })}
+                />{' '}
+                Show this story on the front homepage under &ldquo;My Story&rdquo;
+              </label>
+              <div className="cms-icon-row">
+                <span className="cms-helper-text">My Story filter tabs:</span>
+                {(['Entrepreneur', 'Startups'] as const).map((group) => (
+                  <label key={group} className="inline-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={draft.storyGroups.includes(group)}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          storyGroups: e.target.checked
+                            ? [...new Set([...draft.storyGroups, group])]
+                            : draft.storyGroups.filter((g) => g !== group),
+                        })
+                      }
+                    />{' '}
+                    {group}
+                  </label>
+                ))}
+              </div>
+              <div className="cms-field-grid">
+                <label className="cms-field-label">
+                  Homepage card line 1 (name / role)
+                  <input
+                    maxLength={120}
+                    value={draft.displayLine1}
+                    onChange={(e) => setDraft({ ...draft, displayLine1: e.target.value })}
+                    placeholder={draft.title || 'e.g. Debbie Gitonga - Entrepreneur'}
+                  />
+                </label>
+                <label className="cms-field-label">
+                  Homepage card line 2 (venture / subtitle)
+                  <input
+                    maxLength={160}
+                    value={draft.displayLine2}
+                    onChange={(e) => setDraft({ ...draft, displayLine2: e.target.value })}
+                    placeholder={draft.excerpt || 'e.g. DWG Sole Proprietor'}
+                  />
+                </label>
+              </div>
+            </div>
           )}
 
           <ImageField

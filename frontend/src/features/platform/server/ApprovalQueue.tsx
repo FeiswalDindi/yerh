@@ -1,9 +1,13 @@
 import { Link } from 'react-router-dom';
 import { Download } from 'lucide-react';
+import { displayRoleLabel } from '../../../domain/roles';
+import { engagementRepository } from '../../../services/laravel-engagement-repository';
+import { learningRepository } from '../../../services/laravel-learning-repository';
 import { laravelWorkspace } from '../../../services/laravel-workspace-repository';
 import { laravelProgramme } from '../../../services/laravel-programme-repository';
 import { StatusIndicator } from '../../../shared/StatusIndicator';
 import { WorkspaceTable, WorkspaceTabs } from '../workspace/WorkspaceControls';
+import { CourseEnrolmentRegistry } from './CourseAdministration';
 import {
   DecisionAction,
   fieldValue,
@@ -15,14 +19,38 @@ import { MentorAssignment } from './IncubationProgramme';
 import { formatKsh } from './ProgrammeFinance';
 
 async function loadQueue(signal: AbortSignal) {
-  const [products, paths, applications, ventures, onboarding] = await Promise.all([
+  const [
+    products,
+    paths,
+    applications,
+    ventures,
+    onboarding,
+    careerRequests,
+    courseEnrolments,
+    eventsFeed,
+    authoring,
+  ] = await Promise.all([
     laravelProgramme.products(signal),
     laravelProgramme.paths(signal),
     laravelWorkspace.applications(signal),
     laravelWorkspace.ventures(signal),
     laravelWorkspace.institutionApplications(signal),
+    laravelWorkspace.careerApplications(signal),
+    learningRepository.registry(signal),
+    engagementRepository.manageEvents(signal),
+    learningRepository.authoring(signal),
   ]);
-  return { products, paths, applications, ventures, onboarding };
+  return {
+    products,
+    paths,
+    applications,
+    ventures,
+    onboarding,
+    careerRequests,
+    courseEnrolments,
+    eventsFeed,
+    authoring,
+  };
 }
 
 export function ApprovalQueue() {
@@ -32,9 +60,19 @@ export function ApprovalQueue() {
   const evidence = records.products.filter((p) => p.evidence_status === 'pending');
   const requests = records.applications.filter((a) => a.status === 'pending');
   const onboarding = records.onboarding.filter((a) => a.status === 'pending');
+  const pendingCareerRequests = records.careerRequests.filter((a) => a.status === 'pending');
   const ventures = records.ventures.filter((v) => v.status === 'pending');
   const unassigned = records.paths.filter((p) => !p.mentor_id && !p.graduated_at);
   const active = records.paths.filter((p) => p.mentor_id && !p.graduated_at);
+  const pendingCoursePayments = records.courseEnrolments.filter(
+    (entry) => entry.payment_status === 'pending',
+  );
+  const pendingPartnerEvents = records.eventsFeed.events.filter(
+    (event) => event.status === 'pending_review',
+  );
+  const pendingCourseProposals = records.authoring.rows.filter(
+    (course) => course.status === 'proposed',
+  );
   function review(name: string, save: (decision: string, note: string) => Promise<unknown>) {
     return (
       <DecisionAction
@@ -52,6 +90,77 @@ export function ApprovalQueue() {
       <WorkspaceTabs
         label="Approval queue"
         views={[
+          {
+            id: 'course-payments',
+            label: 'Course payments',
+            count: pendingCoursePayments.length,
+            content: <CourseEnrolmentRegistry pendingOnly />,
+          },
+          {
+            id: 'events',
+            label: 'Partner events',
+            count: pendingPartnerEvents.length,
+            content: (
+              <WorkspaceTable
+                label="partner events"
+                columns={['Event', 'Partner', 'Format & venue', 'Starts (EAT)', 'Action']}
+                empty="No partner events are awaiting review."
+                rows={pendingPartnerEvents.map((event) => ({
+                  id: String(event.id),
+                  search: [event.title, event.organizer_name ?? '', event.venue].join(' '),
+                  cells: [
+                    <>
+                      <strong>{event.title}</strong>
+                      <div className="workspace-detail-copy">{event.summary}</div>
+                    </>,
+                    event.organizer_name || 'Partner',
+                    event.venue,
+                    event.starts_at.replace('T', ' '),
+                    review(event.title, (d, n) =>
+                      engagementRepository.reviewEvent(
+                        event.id,
+                        d === 'approved' ? 'published' : 'rejected',
+                        n,
+                      ),
+                    ),
+                  ],
+                }))}
+              />
+            ),
+          },
+          {
+            id: 'courses',
+            label: 'Course proposals',
+            count: pendingCourseProposals.length,
+            content: (
+              <WorkspaceTable
+                label="course proposals"
+                columns={['Course', 'Proposed by', 'Level', 'Syllabus', 'Action']}
+                empty="No course proposals are awaiting review."
+                rows={pendingCourseProposals.map((course) => ({
+                  id: String(course.id),
+                  search: [course.title, course.author_name ?? '', course.level].join(' '),
+                  cells: [
+                    <>
+                      <strong>{course.title}</strong>
+                      <div className="workspace-detail-copy">{course.description}</div>
+                    </>,
+                    <>
+                      {course.author_name || 'Mentor'}
+                      {course.author_role ? ` (${displayRoleLabel(course.author_role)})` : ''}
+                    </>,
+                    course.level,
+                    course.has_attachment ? (
+                      <a href={learningRepository.attachment(course.id)}>Download PDF</a>
+                    ) : (
+                      '—'
+                    ),
+                    review(course.title, (d, n) => learningRepository.review(course.id, d, n)),
+                  ],
+                }))}
+              />
+            ),
+          },
           {
             id: 'products',
             label: 'Product listings',
@@ -248,6 +357,109 @@ export function ApprovalQueue() {
                       </Link>
                     ) : (
                       '—'
+                    ),
+                  ],
+                }))}
+              />
+            ),
+          },
+          {
+            id: 'careers',
+            label: 'Careers & Partners',
+            count: pendingCareerRequests.length,
+            content: (
+              <WorkspaceTable
+                label="career, partnership, mentorship and investor requests"
+                columns={['Applicant', 'Pathway', 'Organization & focus', 'Message', 'Status', 'Action']}
+                empty="No partnership, mentorship, or investor requests yet."
+                rows={records.careerRequests.map((req) => ({
+                  id: String(req.id),
+                  search: [
+                    req.applicant_name,
+                    req.applicant_email,
+                    req.track,
+                    req.organization ?? '',
+                    req.focus_area ?? '',
+                    req.status,
+                  ].join(' '),
+                  cells: [
+                    <>
+                      <strong>{req.applicant_name}</strong>
+                      <div>{req.applicant_email}</div>
+                      <div>{req.applicant_phone}</div>
+                    </>,
+                    <span className="users-badge">
+                      {req.track === 'partnership'
+                        ? 'Partnership'
+                        : req.track === 'mentorship'
+                          ? 'Mentorship'
+                          : 'Investor'}
+                    </span>,
+                    <>
+                      <div>{req.organization || 'Independent'}</div>
+                      {req.focus_area && (
+                        <div className="workspace-detail-copy">{req.focus_area}</div>
+                      )}
+                      <div className="workspace-row-actions">
+                        {req.website && (
+                          <a href={req.website} target="_blank" rel="noreferrer">
+                            Website
+                          </a>
+                        )}
+                        {req.linkedin_url && (
+                          <a href={req.linkedin_url} target="_blank" rel="noreferrer">
+                            LinkedIn
+                          </a>
+                        )}
+                      </div>
+                    </>,
+                    <div className="workspace-detail-copy">{req.message}</div>,
+                    <>
+                      <StatusIndicator status={req.status} />
+                      {req.decision_note && <p>{req.decision_note}</p>}
+                    </>,
+                    req.status === 'pending' ? (
+                      <WorkspaceAction
+                        action="Review request"
+                        title={`${req.applicant_name} · ${req.track}`}
+                        submit="Save decision"
+                        save={async (data) => {
+                          await laravelWorkspace.reviewCareerApplication(
+                            req.id,
+                            fieldValue(data, 'decision') as 'approved' | 'rejected',
+                            fieldValue(data, 'note'),
+                            data.get('promote_account') === 'on',
+                          );
+                          reload();
+                        }}
+                      >
+                        <label>
+                          Decision
+                          <select name="decision" defaultValue="approved">
+                            <option value="approved">Approve request</option>
+                            <option value="rejected">Decline request</option>
+                          </select>
+                        </label>
+                        {req.can_promote && (
+                          <label className="inline-checkbox">
+                            <input type="checkbox" name="promote_account" defaultChecked /> Unlock{' '}
+                            <strong>
+                              {req.track === 'partnership'
+                                ? 'Partner'
+                                : req.track === 'mentorship'
+                                  ? 'Mentor'
+                                  : 'Investor'}
+                            </strong>{' '}
+                            role on verified YERH account immediately
+                          </label>
+                        )}
+                        <label>
+                          Note (required to decline)
+                          <textarea name="note" maxLength={1500} />
+                        </label>
+                      </WorkspaceAction>
+                    ) : (
+                      req.reviewer_name || 'Reviewed'
                     ),
                   ],
                 }))}

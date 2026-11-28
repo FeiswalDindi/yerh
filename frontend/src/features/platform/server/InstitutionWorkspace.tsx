@@ -1,4 +1,5 @@
 import { ExistingUserPicker } from './ExistingUserPicker';
+import { ReceiptPreviewModal } from './ReceiptPreviewModal';
 import { StatusIndicator } from '../../../shared/StatusIndicator';
 import { useCallback, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -706,7 +707,7 @@ export function InstitutionPortal({
               content: (
                 <WorkspaceTable
                   label="affiliation requests"
-                  columns={['Applicant', 'Email', 'Details', 'Status', 'Action']}
+                  columns={['Applicant', 'Email', 'Proof & location', 'Status', 'Action']}
                   empty="No student affiliation requests for this institution yet."
                   rows={(records.applications ?? []).map((application) => ({
                     id: String(application.id),
@@ -720,7 +721,15 @@ export function InstitutionPortal({
                       application.applicant,
                       application.applicant_email,
                       <>
-                        <p>{application.details}</p>
+                        {application.has_document ? (
+                          <ReceiptPreviewModal
+                            url={laravelWorkspace.applicationDocumentUrl(application.id)}
+                            label={application.document_name || 'View proof document'}
+                            title={`Institutional proof — ${application.applicant}`}
+                          />
+                        ) : (
+                          <p>{application.details}</p>
+                        )}
                         <p>{application.location}</p>
                       </>,
                       <>

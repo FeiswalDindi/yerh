@@ -8,14 +8,22 @@ import { laravelModeEnabled } from '../config/laravel';
 import { laravelContentRepository } from '../services/laravel-content-repository';
 const router = createBrowserRouter(createYerhRoutes());
 export function App() {
-  const app = (
+  if (laravelModeEnabled) {
+    return (
+      <LaravelSessionProvider>
+        <ContentProvider repository={laravelContentRepository}>
+          <RouterProvider router={router} />
+        </ContentProvider>
+      </LaravelSessionProvider>
+    );
+  }
+  return (
     <DemoProvider>
-      <ContentProvider repository={laravelModeEnabled ? laravelContentRepository : undefined}>
+      <ContentProvider>
         <DemoCatalogOverlay>
           <RouterProvider router={router} />
         </DemoCatalogOverlay>
       </ContentProvider>
     </DemoProvider>
   );
-  return laravelModeEnabled ? <LaravelSessionProvider>{app}</LaravelSessionProvider> : app;
 }

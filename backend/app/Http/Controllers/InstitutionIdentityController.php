@@ -82,8 +82,15 @@ final class InstitutionIdentityController extends Controller
                 ->latest('application.id')
                 ->get([
                     'application.id', 'application.status', 'application.location', 'application.details',
+                    'application.document_path', 'application.document_name',
                     'application.decision_note', 'applicant.name as applicant', 'applicant.email as applicant_email',
                 ])
+                ->map(function ($row) {
+                    $row->has_document = ! empty($row->document_path);
+                    unset($row->document_path);
+
+                    return $row;
+                })
             : [];
 
         $paths = DB::table('incubation_paths as path')->join('ventures as venture', 'venture.id', '=', 'path.venture_id')

@@ -58,6 +58,8 @@ export interface HomepageContent {
   statistics: { label: string; value: string; tone: string }[];
   statisticsNote: string;
   useLiveStats?: boolean;
+  myStoryTitle?: string;
+  myStorySubtitle?: string;
   socialVideo: { url: string; title: string };
   featuredStories: string[];
   featuredBusinesses: string[];

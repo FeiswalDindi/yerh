@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 final class WorkspaceLifecycleTest extends TestCase
@@ -133,6 +135,84 @@ final class WorkspaceLifecycleTest extends TestCase
         $this->postJson($path, ['user_id' => $guest->id])->assertCreated()->assertJsonPath('data.role', 'mentor');
         $this->getJson($path.'/candidates?q=Candidate')->assertExactJson(['data' => []]);
         $this->assertSame('mentor', $guest->fresh()->role);
+    }
+
+    public function test_guest_applying_from_profile_with_matching_institution_domain_auto_approves(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $slug = $this->actingAs($admin)->postJson(self::WORKSPACE.'/institutions', [
+            'name' => 'KCA University',
+            'kind' => 'university',
+            'allowed_domains' => ['students.kcau.ac.ke'],
+        ])->assertCreated()->json('data.slug');
+        $this->postJson(self::WORKSPACE."/institutions/$slug/activate", [])->assertOk();
+
+        $guest = User::factory()->create([
+            'role' => 'guest',
+            'email' => 'founder@students.kcau.ac.ke',
+        ]);
+
+        $this->actingAs($guest)
+            ->postJson(self::WORKSPACE.'/applications', [
+                'institution' => $slug,
+                'location' => 'Nairobi',
+                'details' => 'Instant institutional domain affiliation from profile hub.',
+                'consent' => true,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.auto_approved', true);
+
+        $this->assertSame('entrepreneur', $guest->fresh()->role);
+        $this->assertDatabaseHas('institution_memberships', ['user_id' => $guest->id]);
+        $this->assertDatabaseCount('affiliation_applications', 0);
+    }
+
+    public function test_guest_can_upload_institutional_proof_document_and_authorized_reviewers_can_view_it(): void
+    {
+        Storage::fake('local');
+        $admin = User::factory()->create(['role' => 'admin']);
+        $coordinator = User::factory()->create(['role' => 'guest']);
+        $applicant = User::factory()->create(['role' => 'guest', 'email' => 'student@example.test']);
+        $stranger = User::factory()->create(['role' => 'guest']);
+        $slug = $this->createInstitution($admin, 'Coast Innovation Hub', 'hub');
+        $this->actingAs($admin)
+            ->postJson(self::WORKSPACE."/institutions/$slug/staff", [
+                'user_id' => $coordinator->id,
+                'access' => 'manage',
+            ])
+            ->assertOk();
+
+        // Missing proof document & details is rejected.
+        $this->actingAs($applicant)
+            ->postJson(self::WORKSPACE.'/applications', [
+                'institution' => $slug,
+                'location' => 'Mombasa',
+                'consent' => true,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('document');
+
+        $applicationId = $this->actingAs($applicant)
+            ->post(self::WORKSPACE.'/applications', [
+                'institution' => $slug,
+                'location' => 'Mombasa',
+                'consent' => '1',
+                'document' => UploadedFile::fake()->create('student-id.pdf', 32, 'application/pdf'),
+            ], ['Accept' => 'application/json'])
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->actingAs($applicant)
+            ->getJson(self::WORKSPACE.'/applications')
+            ->assertOk()
+            ->assertJsonPath('data.0.has_document', true)
+            ->assertJsonPath('data.0.document_name', 'student-id.pdf');
+
+        $documentUrl = self::WORKSPACE."/applications/$applicationId/document";
+        $this->actingAs($applicant)->get($documentUrl)->assertOk();
+        $this->actingAs($coordinator)->get($documentUrl)->assertOk();
+        $this->actingAs($admin)->get($documentUrl)->assertOk();
+        $this->actingAs($stranger)->get($documentUrl)->assertForbidden();
     }
 
     private function requestLogout(): void

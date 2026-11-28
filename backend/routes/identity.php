@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\IdentityController;
 use App\Http\Controllers\InstitutionIdentityController;
 use Illuminate\Http\Request;
@@ -9,9 +10,14 @@ Route::prefix('api/v1/auth')->group(function () {
     Route::get('/csrf', fn (Request $request) => response()->json([
         'csrf_token' => $request->session()->token(),
     ])->header('Cache-Control', 'no-store'));
-    Route::middleware('throttle:5,1')->group(function () {
-        Route::post('/register', [IdentityController::class, 'register']);
-        Route::post('/login', [IdentityController::class, 'login']);
+    Route::get('/providers', [GoogleAuthController::class, 'providers']);
+    Route::middleware('throttle:auth-oauth')->group(function () {
+        Route::get('/google/redirect', [GoogleAuthController::class, 'redirect']);
+        Route::get('/google/callback', [GoogleAuthController::class, 'callback']);
+    });
+    Route::post('/register', [IdentityController::class, 'register'])->middleware('throttle:auth-register');
+    Route::post('/login', [IdentityController::class, 'login'])->middleware('throttle:auth-login');
+    Route::middleware('throttle:auth-password-reset')->group(function () {
         Route::post('/forgot-password', [IdentityController::class, 'forgotPassword']);
         Route::post('/reset-password', [IdentityController::class, 'resetPassword']);
     });

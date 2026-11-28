@@ -4,25 +4,56 @@ namespace App\Http\Controllers;
 
 use App\Domain\Incubation\Curriculum;
 use App\Domain\Incubation\SchoolAccess;
+use App\Integrations\Moodle\MoodleClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 final class SchoolPortalController extends Controller
 {
     public function __construct(private SchoolAccess $schools) {}
 
-    public function index(Request $request, string $slug): JsonResponse
+    public function index(Request $request, string $slug, MoodleClient $moodle): JsonResponse
     {
         [$school, $access] = $this->schools->scope($request->user(), $slug);
+        $guide = DB::table('learning_courses')
+            ->where('status', 'published')
+            ->where(fn ($query) => $query->where('slug', 'high-school-facilitator-guide')
+                ->orWhere('moodle_shortname', 'YERH-SCHOOL-GUIDE'))
+            ->first(['title', 'description', 'moodle_course_id']);
+
+        $moodleGuide = null;
+        if ($guide && ! empty($guide->moodle_course_id) && $moodle->isConfigured()) {
+            $sections = $moodle->courseContents((int) $guide->moodle_course_id);
+            $progress = ['progress' => 0, 'completed' => false];
+            if (! empty($request->user()->moodle_user_id)) {
+                try {
+                    $stats = $moodle->courseProgress((int) $request->user()->moodle_user_id, (int) $guide->moodle_course_id);
+                    $progress = ['progress' => $stats['progress'], 'completed' => $stats['completed']];
+                } catch (Throwable) {
+                    // Keep default progress if Moodle is temporarily unreachable.
+                }
+            }
+
+            $moodleGuide = [
+                'title' => $guide->title,
+                'description' => $guide->description,
+                'launch_url' => '/api/v1/learning/moodle/launch?school_guide=1',
+                'progress' => $progress['progress'],
+                'completed' => $progress['completed'],
+                'sections' => $sections,
+            ];
+        }
 
         return response()->json(['data' => [
             'access' => $access,
             'cohorts' => DB::table('school_cohorts')->where('institution_id', $school->id)->latest('starts_on')->get(),
             'students' => DB::table('school_students')->where('institution_id', $school->id)->orderBy('name')->get(),
+            'moodle_guide' => $moodleGuide,
         ]])->header('Cache-Control', 'no-store');
     }
 

@@ -69,6 +69,14 @@ html:has(.account-dialog[open]) {
   padding: clamp(24px, 4.5vw, 56px);
 }
 
+.account-institution-form > img {
+  border-radius: 50%;
+  object-fit: cover;
+  background: #ffffff;
+  padding: 5px;
+  box-shadow: 0 4px 16px rgb(17 32 62 / 14%);
+}
+
 .account-institution-form h2 {
   font-size: clamp(24px, 2.4vw, 32px);
   letter-spacing: -0.6px;
@@ -186,7 +194,13 @@ html:has(.account-dialog[open]) {
 }
 
 .account-brand img {
-  object-fit: contain;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #ffffff;
+  padding: 5px;
+  box-shadow: 0 4px 16px rgb(17 32 62 / 14%);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -258,25 +272,94 @@ html:has(.account-dialog[open]) {
   margin-top: 14px;
 }
 
+.account-provider--top {
+  margin-top: 0;
+  margin-bottom: 18px;
+}
+
+.account-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  color: var(--yerh-muted);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.account-provider--top .account-divider {
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+.account-divider::before,
+.account-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--yerh-border);
+}
+
 .account-google-button {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 10px;
   width: 100%;
-  min-height: 44px;
-  padding: 8px 14px;
-  border: 1px solid #747775;
-  border-radius: 6px;
-  background: var(--yerh-white);
-  color: var(--yerh-ink);
-  font:
-    600 14px / 1.4 Arial,
-    sans-serif;
+  min-height: 48px;
+  padding: 9px 16px;
+  border: 1.5px solid #c5cfe0;
+  border-radius: 8px;
+  background: #f8fafd;
+  color: #11203e;
+  font-family: var(--yerh-font);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  box-shadow: 0 2px 6px rgb(17 32 62 / 7%);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 150ms ease,
+    color 180ms ease;
 }
 
-.account-google-button:hover {
-  background: var(--yerh-surface);
+.account-google-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgb(17 32 62 / 14%);
+  flex-shrink: 0;
+}
+
+.account-google-button:hover:not(:disabled) {
+  background: #e9f1ff;
+  border-color: var(--yerh-navy);
+  color: #0e1c36;
+  box-shadow: 0 6px 18px rgb(25 44 87 / 16%);
+  transform: translateY(-1px);
+}
+
+.account-google-button:active:not(:disabled) {
+  transform: translateY(0);
+  background: #dce8ff;
+  box-shadow: 0 2px 6px rgb(25 44 87 / 12%);
+}
+
+.account-google-button:focus-visible {
+  outline: 2px solid var(--yerh-gold);
+  outline-offset: 2px;
+}
+
+.account-google-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .account-provider-notice:not(:empty) {

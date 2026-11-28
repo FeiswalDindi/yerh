@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { ArrowUpRight, BookOpen, Play, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { laravelModeEnabled } from '../../config/laravel';
 import { useCatalog } from '../../app/useCatalog';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { PageIntro } from '../../shared/PageIntro';
 import { SectionHeading } from '../../shared/SectionHeading';
 import { ContentCard } from '../content/ContentCard';
+import { VideoDialog } from '../media/VideoDialog';
 export function ResourcesPage() {
   const { lessons, items, homepage } = useCatalog();
   const [query, setQuery] = useState('');
+  const [activeVideo, setActiveVideo] = useState<{ url: string; title: string } | null>(null);
   usePageTitle('Learning resources');
   const filtered = lessons.filter(
     (l) => l.track === 'startups' && l.title.toLowerCase().includes(query.toLowerCase().trim()),
@@ -46,7 +49,7 @@ export function ResourcesPage() {
               <span>
                 Original YERH learning collection
                 <br />
-                <small>Videos open on YouTube.</small>
+                <small>Videos play right here on YERH.</small>
               </span>
             </div>
           </div>
@@ -63,7 +66,12 @@ export function ResourcesPage() {
             </label>
             <div className="lesson-list">
               {filtered.map((lesson) => (
-                <a key={lesson.id} href={lesson.href} target="_blank" rel="noreferrer">
+                <button
+                  key={lesson.id}
+                  type="button"
+                  className="lesson-list-item"
+                  onClick={() => setActiveVideo({ url: lesson.href, title: lesson.title })}
+                >
                   <span className="lesson-number">
                     {String(lessons.indexOf(lesson) + 1).padStart(2, '0')}
                   </span>
@@ -74,7 +82,7 @@ export function ResourcesPage() {
                   <span className="play-button">
                     <Play size={15} />
                   </span>
-                </a>
+                </button>
               ))}
             </div>
             {!filtered.length && (
@@ -107,12 +115,19 @@ export function ResourcesPage() {
             <h2>You don’t have to figure it out alone.</h2>
             <p>Find out how mentorship and community can support your next step.</p>
           </div>
-          <Link className="button" to="/community">
+          <Link className="button" to={laravelModeEnabled ? '/forums' : '/community'}>
             Explore the community
             <ArrowUpRight size={18} />
           </Link>
         </div>
       </section>
+      {activeVideo && (
+        <VideoDialog
+          url={activeVideo.url}
+          title={activeVideo.title}
+          onClose={() => setActiveVideo(null)}
+        />
+      )}
     </>
   );
 }

@@ -1,9 +1,22 @@
 import { MobileNavigationDrawer } from './MobileNavigationDrawer';
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Globe, Loader2, LogOut, Menu, Search, X } from 'lucide-react';
+import {
+  BookOpen,
+  ChevronDown,
+  ChevronRight,
+  Globe,
+  LayoutDashboard,
+  Loader2,
+  LogOut,
+  Menu,
+  Search,
+  UserCircle,
+  X,
+} from 'lucide-react';
 import { type NavigationItem } from '../config/navigation';
-import { roleLabels } from '../domain/roles';
+import { laravelModeEnabled } from '../config/laravel';
+import { displayRoleLabel, roleLabels } from '../domain/roles';
 import { useCatalog } from '../app/useCatalog';
 import { useDemo } from '../app/useDemo';
 import { useLaravelSession } from '../app/useLaravelSession';
@@ -72,6 +85,15 @@ function NavigationBranch({ item, depth = 0 }: { item: NavigationItem; depth?: n
   );
 }
 
+function accountInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'Y';
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+}
+
 export function Header({
   dashboardMenu,
 }: {
@@ -85,17 +107,47 @@ export function Header({
   const accountHref =
     account?.role === 'guest' && !session?.profile?.staff.length ? '/account' : '/dashboard';
   const signingOut = Boolean(session?.signingOut);
+  const avatarUrl = session?.profile?.avatar ?? null;
   const [open, setOpen] = useState(false);
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [avatarImageFailed, setAvatarImageFailed] = useState(false);
   const [navigatingAccount, setNavigatingAccount] = useState(false);
   const navAttemptRef = useRef(0);
+  const avatarMenuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const toggle = useRef<HTMLButtonElement>(null);
 
-  // Close drawer on route change
+  useEffect(() => {
+    setAvatarImageFailed(false);
+  }, [avatarUrl]);
+
+  // Close drawer and avatar menu on route change
   useEffect(() => {
     setOpen(false);
+    setAvatarMenuOpen(false);
   }, [location.pathname, location.search, location.hash, account?.id, account?.role]);
+
+  // Close avatar dropdown on outside click or Escape
+  useEffect(() => {
+    if (!avatarMenuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!avatarMenuRef.current?.contains(event.target as Node)) {
+        setAvatarMenuOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setAvatarMenuOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [avatarMenuOpen]);
 
   // Clear pending navbar navigation state on route change or sign-out transitions
   useEffect(() => {
@@ -122,28 +174,32 @@ export function Header({
     return () => window.clearTimeout(timer);
   }, [account, session]);
 
-  function handleAccountClick(event: MouseEvent<HTMLAnchorElement>) {
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
+  function openAccountRoute(targetPath: string, event?: MouseEvent<HTMLAnchorElement>) {
+    if (
+      event &&
+      (event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)
+    ) {
       return;
     }
     if (signingOut || navigatingAccount) {
-      event.preventDefault();
+      event?.preventDefault();
       return;
     }
-    const alreadyAtAccount =
-      location.pathname.replace(/\/$/, '') === accountHref && !location.search;
-    if (alreadyAtAccount) {
-      event.preventDefault();
+    setAvatarMenuOpen(false);
+    const alreadyAtTarget =
+      location.pathname.replace(/\/$/, '') === targetPath && !location.search;
+    if (alreadyAtTarget) {
+      event?.preventDefault();
       document.getElementById('main-content')?.scrollTo({ top: 0, behavior: 'smooth' });
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    event.preventDefault();
+    event?.preventDefault();
     setNavigatingAccount(true);
     const attempt = ++navAttemptRef.current;
     void preloadAccountRoute(Boolean(session)).finally(() => {
       if (navAttemptRef.current !== attempt) return;
-      navigate(accountHref);
+      navigate(targetPath);
     });
   }
 
@@ -227,7 +283,8 @@ export function Header({
               <SiteThemeSwitch />
               {dashboardMenu ? (
                 dashboardMenu.notifications
-              ) : session?.profile?.email_verified ? (
+              ) : session?.profile?.email_verified &&
+                (session.profile.role !== 'guest' || session.profile.staff.length > 0) ? (
                 <LaravelNotificationsLink key={session.profile.id} />
               ) : (
                 <Link to="/search" className="icon-button" aria-label="Search the hub">
@@ -236,49 +293,142 @@ export function Header({
               )}
 
               {account ? (
-                <>
-                  <Link
-                    className={`header-login${navigatingAccount ? ' is-busy' : ''}`}
-                    to={accountHref}
-                    aria-busy={navigatingAccount || undefined}
-                    aria-disabled={navigatingAccount || signingOut || undefined}
-                    onMouseEnter={() => void preloadAccountRoute(Boolean(session))}
-                    onFocus={() => void preloadAccountRoute(Boolean(session))}
-                    onClick={handleAccountClick}
-                  >
-                    {navigatingAccount ? (
-                      <>
-                        <Loader2 size={14} className="header-action-spinner" aria-hidden="true" />
-                        OPENING…
-                      </>
-                    ) : (
-                      'MY ACCOUNT'
-                    )}
-                  </Link>
+                <div className="header-avatar-dropdown" ref={avatarMenuRef}>
                   <button
                     type="button"
-                    className="button button-gold button-small header-signout-btn"
-                    disabled={signingOut}
-                    aria-busy={signingOut || undefined}
-                    onClick={() => {
-                      if (signingOut) return;
-                      navAttemptRef.current += 1;
-                      setNavigatingAccount(false);
-                      if (session) void session.signOut();
-                      else execute({ type: 'logout' });
-                    }}
-                    title={signingOut ? 'Signing out…' : 'Sign out'}
+                    className={`header-avatar-trigger${navigatingAccount ? ' is-busy' : ''}`}
+                    aria-haspopup="menu"
+                    aria-expanded={avatarMenuOpen}
+                    aria-label={`${account.name} account menu`}
+                    title={account.name}
+                    onMouseEnter={() => void preloadAccountRoute(Boolean(session))}
+                    onFocus={() => void preloadAccountRoute(Boolean(session))}
+                    onClick={() => setAvatarMenuOpen((prev) => !prev)}
                   >
-                    {signingOut ? (
-                      <>
-                        <Loader2 size={14} className="header-action-spinner" aria-hidden="true" />
-                        SIGNING OUT…
-                      </>
-                    ) : (
-                      'SIGN OUT'
-                    )}
+                    <span className="header-avatar-circle" aria-hidden="true">
+                      {avatarUrl && !avatarImageFailed ? (
+                        <img
+                          src={avatarUrl}
+                          alt=""
+                          referrerPolicy="no-referrer"
+                          onError={() => setAvatarImageFailed(true)}
+                        />
+                      ) : (
+                        accountInitials(account.name)
+                      )}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      className={`header-avatar-chevron${avatarMenuOpen ? ' is-open' : ''}`}
+                      aria-hidden="true"
+                    />
                   </button>
-                </>
+
+                  {avatarMenuOpen && (
+                    <div className="header-avatar-menu" role="menu" aria-label="Account actions">
+                      <div className="header-avatar-header">
+                        <strong>{account.name}</strong>
+                        <span>{session?.profile?.email || account.headline || ''}</span>
+                        {account.role !== 'guest' && (
+                          <span className="header-avatar-role">
+                            {laravelModeEnabled
+                              ? displayRoleLabel(account.role)
+                              : roleLabels[account.role]}
+                          </span>
+                        )}
+                      </div>
+
+                      {accountHref === '/dashboard' ? (
+                        <>
+                          <Link
+                            to="/dashboard"
+                            role="menuitem"
+                            className="header-avatar-item"
+                            aria-disabled={navigatingAccount || signingOut || undefined}
+                            onClick={(event) => openAccountRoute('/dashboard', event)}
+                          >
+                            {navigatingAccount ? (
+                              <Loader2
+                                size={16}
+                                className="header-action-spinner"
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              <LayoutDashboard size={16} aria-hidden="true" />
+                            )}
+                            <span>{navigatingAccount ? 'Opening…' : 'My Account'}</span>
+                          </Link>
+
+                          <Link
+                            to="/dashboard/profile"
+                            role="menuitem"
+                            className="header-avatar-item"
+                            onClick={(event) => openAccountRoute('/dashboard/profile', event)}
+                          >
+                            <UserCircle size={16} aria-hidden="true" />
+                            <span>Profile &amp; security</span>
+                          </Link>
+                        </>
+                      ) : (
+                        <>
+                          <Link
+                            to="/account"
+                            role="menuitem"
+                            className="header-avatar-item"
+                            aria-disabled={navigatingAccount || signingOut || undefined}
+                            onClick={(event) => openAccountRoute('/account', event)}
+                          >
+                            {navigatingAccount ? (
+                              <Loader2
+                                size={16}
+                                className="header-action-spinner"
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              <UserCircle size={16} aria-hidden="true" />
+                            )}
+                            <span>{navigatingAccount ? 'Opening…' : 'Profile'}</span>
+                          </Link>
+
+                          <Link
+                            to="/learn"
+                            role="menuitem"
+                            className="header-avatar-item"
+                            onClick={(event) => openAccountRoute('/learn', event)}
+                          >
+                            <BookOpen size={16} aria-hidden="true" />
+                            <span>Browse courses</span>
+                          </Link>
+                        </>
+                      )}
+
+                      <div className="header-avatar-divider" role="separator" />
+
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="header-avatar-item header-avatar-item--danger"
+                        disabled={signingOut}
+                        aria-busy={signingOut || undefined}
+                        onClick={() => {
+                          if (signingOut) return;
+                          navAttemptRef.current += 1;
+                          setNavigatingAccount(false);
+                          setAvatarMenuOpen(false);
+                          if (session) void session.signOut();
+                          else execute({ type: 'logout' });
+                        }}
+                      >
+                        {signingOut ? (
+                          <Loader2 size={16} className="header-action-spinner" aria-hidden="true" />
+                        ) : (
+                          <LogOut size={16} aria-hidden="true" />
+                        )}
+                        <span>{signingOut ? 'Signing out…' : 'Sign out'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <>
                   <AccountLink className="header-login">LOGIN</AccountLink>

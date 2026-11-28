@@ -1,5 +1,5 @@
-/** Only known YouTube hosts and valid video IDs may become iframe destinations. */
-export function youtubeEmbedUrl(input: string): string | null {
+/** Extracts a validated 11-character YouTube video ID from a trusted HTTPS YouTube URL. */
+export function youtubeVideoId(input: string): string | null {
   try {
     const url = new URL(input);
     if (url.protocol !== 'https:') return null;
@@ -13,8 +13,14 @@ export function youtubeEmbedUrl(input: string): string | null {
           ? url.searchParams.get('v')
           : (url.pathname.match(/^\/(?:embed|shorts|v)\/([^/]+)$/)?.[1] ?? null);
     }
-    return id && /^[\w-]{11}$/.test(id) ? `https://www.youtube-nocookie.com/embed/${id}` : null;
+    return id && /^[\w-]{11}$/.test(id) ? id : null;
   } catch {
     return null;
   }
+}
+
+/** Only known YouTube hosts and valid video IDs may become iframe destinations. */
+export function youtubeEmbedUrl(input: string): string | null {
+  const id = youtubeVideoId(input);
+  return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
 }

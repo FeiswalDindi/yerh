@@ -22,7 +22,8 @@ import {
 import { WhatsAppIcon } from '../shared/WhatsAppIcon';
 import { CloseButton } from '../shared/CloseButton';
 import { useCatalog } from '../app/useCatalog';
-import { roleLabels } from '../domain/roles';
+import { laravelModeEnabled } from '../config/laravel';
+import { displayRoleLabel, roleLabels } from '../domain/roles';
 import type { SiteNavigation } from '../domain/site';
 import { useDemo } from '../app/useDemo';
 import { useLaravelSession } from '../app/useLaravelSession';
@@ -210,7 +211,15 @@ export function MobileNavigationDrawer({
                     <>
                       <div className="feiso-account-profile">
                         <div className="feiso-account-avatar">
-                          {account.name.charAt(0).toUpperCase()}
+                          {session?.profile?.avatar ? (
+                            <img
+                              src={session.profile.avatar}
+                              alt=""
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            account.name.charAt(0).toUpperCase()
+                          )}
                         </div>
                         <div className="feiso-account-details">
                           <p className="feiso-account-name">{account.name}</p>
@@ -219,7 +228,9 @@ export function MobileNavigationDrawer({
                           </p>
                         </div>
                       </div>
-                      <div className="feiso-account-role-badge">{roleLabels[account.role]}</div>
+                      {account.role !== 'guest' && (
+                        <div className="feiso-account-role-badge">{laravelModeEnabled ? displayRoleLabel(account.role) : roleLabels[account.role]}</div>
+                      )}
                       <div className="feiso-account-actions">
                         <Link
                           to={accountHref}
@@ -268,7 +279,7 @@ export function MobileNavigationDrawer({
                           ) : (
                             <>
                               <LayoutDashboard size={16} />
-                              {accountHref === '/account' ? 'Account' : 'My Workspace'}
+                              {accountHref === '/account' ? 'Profile & Account' : 'My Workspace'}
                             </>
                           )}
                         </Link>

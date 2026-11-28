@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { LoadingDots } from '../../../shared/SiteLoader';
 import { WorkspaceDialog } from '../workspace/WorkspaceControls';
 
 export function errorText(error: unknown) {
@@ -42,7 +43,12 @@ export function RecordsFeedback({ error, loading }: { error: string; loading: bo
         {error}
       </p>
     );
-  if (loading) return <p role="status">Loading…</p>;
+  if (loading)
+    return (
+      <p role="status" className="yerh-status-loading">
+        <LoadingDots label="Loading" />
+      </p>
+    );
   return null;
 }
 

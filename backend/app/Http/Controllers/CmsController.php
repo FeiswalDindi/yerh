@@ -10,7 +10,7 @@ use Illuminate\Validation\ValidationException;
 
 final class CmsController extends Controller
 {
-    public const SECTIONS = ['site', 'homepage', 'faqs', 'team', 'partners'];
+    public const SECTIONS = ['site', 'homepage', 'faqs', 'team', 'partners', 'terms', 'entrepreneurship', 'lessons', 'sidebar'];
 
     private const CACHE_KEY = 'yerh.cms.public.v2';
 
@@ -195,10 +195,27 @@ final class CmsController extends Controller
                 'created_at' => $now,
             ]);
 
+            if ($section === 'homepage') {
+                $publishedHomepage = json_decode($encoded, true, flags: JSON_THROW_ON_ERROR);
+                if (is_array($publishedHomepage) && array_key_exists('featuredStories', $publishedHomepage) && is_array($publishedHomepage['featuredStories'])) {
+                    $featuredIds = array_values(array_filter(array_map('strval', $publishedHomepage['featuredStories'])));
+                    DB::table('editorial_content')->where('kind', 'story')->update(['featured' => false]);
+                    if ($featuredIds !== []) {
+                        DB::table('editorial_content')
+                            ->where('kind', 'story')
+                            ->whereIn('content_id', $featuredIds)
+                            ->update(['featured' => true]);
+                    }
+                }
+            }
+
             return $nextVersion;
         }, 3);
 
         Cache::forget(self::CACHE_KEY);
+        if ($section === 'homepage') {
+            Cache::forget('yerh.editorial.public.v1');
+        }
 
         return response()->json([
             'data' => [

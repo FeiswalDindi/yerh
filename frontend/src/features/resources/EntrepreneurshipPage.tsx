@@ -1,13 +1,17 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowUpRight, Play } from 'lucide-react';
 import { useCatalog } from '../../app/useCatalog';
+import { laravelModeEnabled } from '../../config/laravel';
 import { PageIntro } from '../../shared/PageIntro';
 import { ContentCard } from '../content/ContentCard';
 import { NotFoundPage } from '../info/NotFoundPage';
 import { usePageTitle } from '../../shared/usePageTitle';
+import { VideoDialog } from '../media/VideoDialog';
 export function EntrepreneurshipPage() {
   const { topic } = useParams();
   const { topics, lessons, items, homepage } = useCatalog();
+  const [activeVideo, setActiveVideo] = useState<{ url: string; title: string } | null>(null);
   const current = topics.find((t) => t.id === topic);
   usePageTitle(current?.title ?? 'Entrepreneurship');
   if (!current) return <NotFoundPage />;
@@ -45,7 +49,7 @@ export function EntrepreneurshipPage() {
             </ul>
             <p className="source-note">{current.sourceNote}</p>
             <Link className="text-link" to="/learn">
-              Track your learning in the demo
+              {laravelModeEnabled ? 'Explore courses on YERH' : 'Track your learning in the demo'}
               <ArrowUpRight size={17} />
             </Link>
           </div>
@@ -53,14 +57,21 @@ export function EntrepreneurshipPage() {
             {videos.length > 0 ? (
               <div className="lesson-list">
                 {videos.map((lesson, i) => (
-                  <a key={lesson.id} href={lesson.href} target="_blank" rel="noreferrer">
+                  <button
+                    key={lesson.id}
+                    type="button"
+                    className="lesson-list-item"
+                    onClick={() => setActiveVideo({ url: lesson.href, title: lesson.title })}
+                  >
                     <span className="lesson-number">{String(i + 1).padStart(2, '0')}</span>
                     <div>
                       <small>ORIGINAL YERH VIDEO</small>
                       <h3>{lesson.title}</h3>
                     </div>
-                    <Play size={18} />
-                  </a>
+                    <span className="play-button">
+                      <Play size={15} />
+                    </span>
+                  </button>
                 ))}
               </div>
             ) : (
@@ -68,8 +79,8 @@ export function EntrepreneurshipPage() {
                 <div>
                   <h2>Build a support network.</h2>
                   <p>Share experiences and make time for the people who support your journey.</p>
-                  <Link className="button" to="/network">
-                    Explore the network
+                  <Link className="button" to={laravelModeEnabled ? '/forums' : '/network'}>
+                    {laravelModeEnabled ? 'Explore the forums' : 'Explore the network'}
                   </Link>
                 </div>
               </div>
@@ -99,6 +110,13 @@ export function EntrepreneurshipPage() {
           </div>
         )}
       </section>
+      {activeVideo && (
+        <VideoDialog
+          url={activeVideo.url}
+          title={activeVideo.title}
+          onClose={() => setActiveVideo(null)}
+        />
+      )}
     </>
   );
 }

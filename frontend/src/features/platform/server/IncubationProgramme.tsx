@@ -2,6 +2,7 @@ import { ExistingUserPicker } from './ExistingUserPicker';
 import { useCallback, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { passMark } from '../../../domain/incubation';
+import { learningRepository } from '../../../services/laravel-learning-repository';
 import {
   laravelProgramme,
   type Pathway,
@@ -232,6 +233,7 @@ export function ProgrammeMentors() {
 function PathwayDetail({ id, role }: { id: number; role: ProgrammeRole }) {
   const load = useCallback((signal: AbortSignal) => laravelProgramme.path(id, signal), [id]);
   const { records, error, reload } = useWorkspaceRecords(load);
+
   return (
     <>
       <p>
@@ -247,6 +249,31 @@ function PathwayDetail({ id, role }: { id: number; role: ProgrammeRole }) {
             <p>Awaiting mentor assignment.</p>
           )}
           {records.path.graduated_at && <p role="status">Incubation completed.</p>}
+          {records.path.moodle_course_id && (
+            <section className="profile-panel" aria-label="Moodle Incubation Classroom">
+              <p className="eyebrow">Moodle Incubation Classroom</p>
+              <p>
+                Progress: <strong>{records.path.moodle_progress ?? 0}%</strong>
+                {records.path.moodle_score !== null && records.path.moodle_score !== undefined
+                  ? ` · Score: ${records.path.moodle_score}%`
+                  : ''}
+                {records.path.moodle_group_id
+                  ? ` · Mentor group #${records.path.moodle_group_id}`
+                  : ''}
+              </p>
+              <p className="source-note">Progress and graduation sync automatically from Moodle.</p>
+              {records.path.moodle_launch_url && (
+                <div className="workspace-row-actions">
+                  <a
+                    className="button"
+                    href={learningRepository.toMoodleHandoffUrl(records.path.moodle_launch_url)}
+                  >
+                    Open Incubation Classroom in Moodle
+                  </a>
+                </div>
+              )}
+            </section>
+          )}
           {records.stages.map((stage, index) => (
             <StageWorkspace
               key={stage.definition.id}

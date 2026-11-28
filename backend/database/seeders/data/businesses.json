@@ -1,0 +1,132 @@
+[
+  {
+    "id": "comfort-worms-and-insects",
+    "slug": "comfort-worms-and-insects",
+    "kind": "business",
+    "title": "Comfort Worms and Insects",
+    "category": "Agribusiness",
+    "excerpt": "The business is into organic agriculture majorly production of organic fertilizer from earthworms, black soldier fly farming and azolla farming. Its target market are Organic farmers,…",
+    "image": "/media/comfort-worms-e046b580.jpg",
+    "imageAlt": "Comfort Worms and Insects",
+    "publishedAt": null,
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "The business is into organic agriculture majorly production of organic fertilizer from earthworms, black soldier fly farming and azolla farming. Its target market are Organic farmers, seedling propagators, urban gardeners and also livestock farmers. More to this, its structure is sole proprietorship, and its thematic areas is Agribusiness."
+      }
+    ],
+    "downloads": [],
+    "videos": [],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/shop/comfort-worms-and-insects/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/shop/comfort-worms-and-insects/",
+      "sha256": "50d8add896ef9cb715467dbc53c033b416a0870958195278edf2147c9511a425"
+    },
+    "contactLinks": [
+      {
+        "label": "Website:",
+        "text": "https://comfortworms.com",
+        "href": "https://comfortworms.com"
+      }
+    ]
+  },
+  {
+    "id": "joyride-medical-center",
+    "slug": "joyride-medical-center",
+    "kind": "business",
+    "title": "Joyride Medical Center",
+    "category": "Healthcare",
+    "excerpt": "Rural Medical center providing accessible and affordable preventive, curative and rehabilitation services to the community. Offers out and inpatient, maternity, lab and surgical…",
+    "image": "/media/health-c8d73354.png",
+    "imageAlt": "Joyride Medical Center",
+    "publishedAt": null,
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "Rural Medical center providing accessible and affordable preventive, curative and rehabilitation services to the community. Offers out and inpatient, maternity, lab and surgical services."
+      }
+    ],
+    "downloads": [],
+    "videos": [],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/shop/joyride-medical-center/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/shop/joyride-medical-center/",
+      "sha256": "de6ee31fb236dd6603fe8a1b67b8d3dc558a414cb461482a381c49f5ca6dde0a"
+    },
+    "contactLinks": [
+      {
+        "label": "Contact Information: -",
+        "text": "0728222201",
+        "href": "tel:0728222201"
+      }
+    ]
+  },
+  {
+    "id": "mowrahs-designs",
+    "slug": "mowrahs-designs",
+    "kind": "business",
+    "title": "Mowrah Designs",
+    "category": "Creative enterprise",
+    "excerpt": "Mowrahs Designs is located at Dagoretti in Nairobi. The company was established on 12 th December 2019. The business deals with Crafting and Sewing. It’s a Sole proprietorship type of…",
+    "image": "/media/mowrah-designs-900x599-cb3e579d.jpg",
+    "imageAlt": "Mowrah Designs",
+    "publishedAt": null,
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "Mowrahs Designs is located at Dagoretti in Nairobi. The company was established on 12 th December 2019. The business deals with Crafting and Sewing. It’s a Sole proprietorship type of business, and its thematic area is in Visual Art."
+      },
+      {
+        "type": "paragraph",
+        "text": "Instagram: Mowrah Designs"
+      },
+      {
+        "type": "paragraph",
+        "text": "Facebook: Mowrah Designs"
+      }
+    ],
+    "downloads": [],
+    "videos": [],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/shop/mowrahs-designs/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/shop/mowrahs-designs/",
+      "sha256": "6aadb402398d4cd1b862203f28d3b2f1c22986f2c85ddbfeed1555dd282fa5ae"
+    },
+    "contactLinks": [
+      {
+        "label": "Contact Information: -",
+        "text": "0707 998 027",
+        "href": "tel:0707998027"
+      }
+    ],
+    "socialLabels": ["Instagram / Mowrahs Designs", "Facebook / Mowrahs Designs"]
+  },
+  {
+    "id": "sued-watches",
+    "slug": "sued-watches",
+    "kind": "business",
+    "title": "SUED Watches",
+    "category": "Fashion & design",
+    "excerpt": "SUED is a Made in Kenya watch brand founded in 2015. They locally hand craft uniquely-beautiful and statemental Timepieces for both your accessorizing needs and time value. Promoting the…",
+    "image": "/media/sued-d02d98cf.webp",
+    "imageAlt": "SUED Watches",
+    "publishedAt": null,
+    "blocks": [
+      {
+        "type": "paragraph",
+        "text": "SUED is a Made in Kenya watch brand founded in 2015. They locally hand craft uniquely-beautiful and statemental Timepieces for both your accessorizing needs and time value. Promoting the rich African Culture and its contribution to civilization over time is at the heart of their brand."
+      },
+      {
+        "type": "paragraph",
+        "text": "Link to website: Shop for a SUED Watch"
+      }
+    ],
+    "downloads": [],
+    "videos": [],
+    "source": {
+      "path": "yerh-kenya.kcau.ac.ke/shop/sued-watches/index.html",
+      "url": "https://yerh-kenya.kcau.ac.ke/shop/sued-watches/",
+      "sha256": "7a324d003588f1fbd80e7d3696cac61b837018af3174dd9f9d84f74f9b3e1dec"
+    }
+  }
+]

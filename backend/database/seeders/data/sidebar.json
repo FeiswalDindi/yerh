@@ -1,0 +1,24 @@
+{
+    "featuredIds": [
+        "paul-wambua-entrepreneur-associate-at-brooklyn-farm",
+        "case-study-kenyas-leap-forward-creating-a-dynamic-youth-entrepreneurship-curriculum"
+    ],
+    "featuredCourseIds": [
+        "business-foundations",
+        "growing-your-business"
+    ],
+    "popularity": [],
+    "popularitySource": "Live reader likes on YERH.",
+    "comments": [],
+    "advertisements": [
+        {
+            "id": "hub-learning-promotion",
+            "title": "Give your next idea a strong foundation.",
+            "text": "Build practical business skills with the YERH learning pathways.",
+            "action": "Explore courses",
+            "href": "/learn",
+            "image": "/media/be-part-of-the-team-3382b8d1.jpg",
+            "imageAlt": "Young people learning together at computers"
+        }
+    ]
+}

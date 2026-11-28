@@ -2,6 +2,13 @@ import { apiUrl, laravelRequest } from './laravel-api';
 
 export type CmsSectionKey = 'site' | 'homepage' | 'faqs' | 'team' | 'partners';
 
+export type CmsPublicSectionKey =
+  | CmsSectionKey
+  | 'terms'
+  | 'entrepreneurship'
+  | 'lessons'
+  | 'sidebar';
+
 export interface CmsLiveStats {
   mentors: number;
   users: number;
@@ -53,7 +60,7 @@ export interface CmsMediaAsset {
 }
 
 export interface CmsPublicPayload {
-  documents: Partial<Record<CmsSectionKey, unknown>>;
+  documents: Partial<Record<CmsPublicSectionKey, unknown>>;
   liveStats: CmsLiveStats | null;
 }
 

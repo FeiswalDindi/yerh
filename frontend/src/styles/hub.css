@@ -24,7 +24,7 @@
 .desktop-tree > ul {
   display: flex;
   align-items: center;
-  gap: clamp(4px, 1vw, 12px);
+  gap: clamp(2px, 0.7vw, 8px);
 }
 .nav-branch {
   position: relative;
@@ -35,16 +35,17 @@
   justify-content: space-between;
 }
 .nav-entry > a {
-  padding: 17px 8px;
+  padding: 15px 6px;
   color: var(--yerh-navy);
-  font-weight: 650;
+  font-weight: 600;
   white-space: nowrap;
-  font-size: 15px;
+  font-size: 12px;
+  letter-spacing: 0.015em;
 }
 .nav-entry > button {
   display: grid;
   place-items: center;
-  padding: 10px 5px;
+  padding: 8px 3px;
   color: var(--yerh-muted);
   background: none;
   border: 0;
@@ -58,7 +59,7 @@
   position: absolute;
   top: 100%;
   left: 0;
-  width: 266px;
+  width: 248px;
   background: white;
   box-shadow: 0 12px 34px #192c5722;
   border: 1px solid var(--yerh-border);
@@ -69,9 +70,9 @@
 }
 .desktop-tree .nav-dropdown a {
   white-space: normal;
-  font-size: 14px;
+  font-size: 12.5px;
   flex: 1;
-  padding: 18px 10px;
+  padding: 13px 10px;
 }
 .desktop-tree .nav-dropdown .nav-dropdown {
   top: 0;
@@ -441,18 +442,21 @@ a.collection-card:hover {
   font-weight: 600;
 }
 @media (min-width: 1001px) {
+  .reference-brand {
+    flex: 0 1 200px;
+  }
   .reference-brand img {
-    width: clamp(176px, 16vw, 212px);
+    width: clamp(150px, 14vw, 186px);
     height: auto;
   }
 }
-@media (min-width: 1001px) and (max-width: 1200px) {
+@media (min-width: 1001px) and (max-width: 1240px) {
   .desktop-tree > ul {
     gap: 2px;
   }
   .desktop-tree > ul > .nav-branch > .nav-entry > a {
-    padding-inline: 3px;
-    font-size: 14px;
+    padding-inline: 4px;
+    font-size: 11px;
   }
 }
 @media (max-width: 1000px) {

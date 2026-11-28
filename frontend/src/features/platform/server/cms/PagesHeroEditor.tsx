@@ -55,7 +55,7 @@ function isPageCustomized(path: string, site: SiteContent): boolean {
     stored.title !== fallback.title ||
     stored.description !== fallback.description ||
     Boolean(stored.heroImage?.trim()) ||
-    stored.sections.length > 0
+    JSON.stringify(stored.sections) !== JSON.stringify(fallback.sections)
   );
 }
 
@@ -126,6 +126,7 @@ export function PagesHeroEditor({
       all: allPaths.length,
       customized: 0,
       core: 0,
+      careers: 0,
       resources: 0,
       publications: 0,
       benefits: 0,

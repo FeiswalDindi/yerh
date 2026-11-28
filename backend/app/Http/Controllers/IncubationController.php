@@ -4,21 +4,28 @@ namespace App\Http\Controllers;
 
 use App\Domain\Incubation\Curriculum;
 use App\Domain\Incubation\PathAccess;
+use App\Domain\Learning\CoursePlacements;
+use App\Integrations\Moodle\MoodleClient;
+use App\Integrations\Moodle\MoodleProgressSync;
 use App\Models\User;
 use App\Support\WorkspaceNotifier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 final class IncubationController extends Controller
 {
     public function __construct(private readonly PathAccess $access, private readonly Curriculum $curriculum) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, MoodleClient $moodle, MoodleProgressSync $sync): JsonResponse
     {
-        return response()->json(['data' => $this->access->visible($request->user())->addSelect(['graded_stages' => DB::table('incubation_stages')->selectRaw('count(*)')
+        $configured = $moodle->isConfigured();
+        $rows = $this->access->visible($request->user())->addSelect(['graded_stages' => DB::table('incubation_stages')->selectRaw('count(*)')
             ->whereColumn('path_id', 'path.id')
             ->whereNotNull('graded_at')
             ->where(function ($query): void {
@@ -26,12 +33,52 @@ final class IncubationController extends Controller
                     ->orWhere(function ($fallback): void {
                         $fallback->whereNull('passed')->where('score', '>=', Curriculum::PASS_MARK);
                     });
-            })])->latest('path.id')->get()]);
+            })])->latest('path.id')->get();
+
+        if ($configured) {
+            $syncedAny = false;
+            foreach ($rows as $row) {
+                if (! empty($row->moodle_course_id) && $row->graduated_at === null) {
+                    if ($sync->syncPathway((int) $row->id) !== null) {
+                        $syncedAny = true;
+                    }
+                }
+            }
+            if ($syncedAny) {
+                $rows = $this->access->visible($request->user())->addSelect(['graded_stages' => DB::table('incubation_stages')->selectRaw('count(*)')
+                    ->whereColumn('path_id', 'path.id')
+                    ->whereNotNull('graded_at')
+                    ->where(function ($query): void {
+                        $query->where('passed', true)
+                            ->orWhere(function ($fallback): void {
+                                $fallback->whereNull('passed')->where('score', '>=', Curriculum::PASS_MARK);
+                            });
+                    })])->latest('path.id')->get();
+            }
+        }
+
+        $rows = $rows->map(function ($row) use ($configured) {
+            $row->moodle_launch_url = ($configured && ! empty($row->moodle_course_id))
+                ? '/api/v1/learning/moodle/launch?path='.$row->id
+                : null;
+
+            return $row;
+        });
+
+        return response()->json(['data' => $rows]);
     }
 
-    public function show(Request $request, int $id): JsonResponse
+    public function show(Request $request, int $id, MoodleClient $moodle, MoodleProgressSync $sync): JsonResponse
     {
         $path = $this->access->find($request->user(), $id);
+        if ($moodle->isConfigured() && ! empty($path->moodle_course_id) && $path->graduated_at === null) {
+            if ($sync->syncPathway($id) !== null) {
+                $path = $this->access->find($request->user(), $id);
+            }
+        }
+        $path->moodle_launch_url = ($moodle->isConfigured() && ! empty($path->moodle_course_id))
+            ? '/api/v1/learning/moodle/launch?path='.$id
+            : null;
         $stages = DB::table('incubation_stages')->where('path_id', $id)->get()->map(function ($row) {
             $row->has_answer_attachment = ! empty($row->answer_attachment_path);
             unset($row->answer_attachment_path);
@@ -143,7 +190,7 @@ final class IncubationController extends Controller
         return response()->json(['data' => ['role' => 'mentor']], 201);
     }
 
-    public function assign(Request $request, int $id): JsonResponse
+    public function assign(Request $request, int $id, MoodleClient $moodle, CoursePlacements $placements): JsonResponse
     {
         abort_unless($request->user()->role === 'admin', 403);
         $data = $request->validate(['mentor_id' => ['required', 'integer']]);
@@ -157,6 +204,60 @@ final class IncubationController extends Controller
             return [$path, $mentor];
         }, 3);
 
+        $incubationKeys = $placements->incubationKeys();
+        $moodleCourseId = $path->moodle_course_id ?: ($incubationKeys === []
+            ? null
+            : DB::table('learning_courses')
+                ->where('status', 'published')
+                ->whereIn('placement', $incubationKeys)
+                ->whereNotNull('moodle_course_id')
+                ->orderBy('id')
+                ->value('moodle_course_id'));
+
+        if ($moodleCourseId && $moodle->isConfigured()) {
+            try {
+                $owner = User::query()->findOrFail($path->owner_id);
+                $ownerMoodleId = $moodle->ensureUser($owner);
+                $mentorMoodleId = $moodle->ensureUser($mentor);
+                $moodle->enrolUser($ownerMoodleId, (int) $moodleCourseId);
+                $moodle->enrolMentor($mentorMoodleId, (int) $moodleCourseId);
+                $groupId = $moodle->ensureCourseGroup(
+                    (int) $moodleCourseId,
+                    Str::limit("Venture: {$path->venture} (#{$id})", 254, ''),
+                    "yerh_path_{$id}",
+                );
+                $previousMentorId = $path->mentor_id ? (int) $path->mentor_id : null;
+                if ($previousMentorId && $previousMentorId !== (int) $mentor->id) {
+                    $prevMentor = User::query()->find($previousMentorId);
+                    if ($prevMentor && $prevMentor->moodle_user_id) {
+                        try {
+                            $moodle->removeGroupMembers($groupId, [(int) $prevMentor->moodle_user_id]);
+                        } catch (Throwable $cleanupException) {
+                            Log::warning('Could not remove previous mentor from Moodle incubation group.', [
+                                'path_id' => $id,
+                                'previous_mentor_id' => $previousMentorId,
+                                'group_id' => $groupId,
+                                'error' => $cleanupException->getMessage(),
+                            ]);
+                        }
+                    }
+                }
+                $moodle->addGroupMembers($groupId, [$ownerMoodleId, $mentorMoodleId]);
+                $now = now();
+                DB::table('incubation_paths')->where('id', $id)->update([
+                    'moodle_course_id' => (int) $moodleCourseId,
+                    'moodle_group_id' => $groupId,
+                    'updated_at' => $now,
+                ]);
+            } catch (Throwable $exception) {
+                Log::warning('Moodle Model A incubation provisioning failed.', [
+                    'path_id' => $id,
+                    'moodle_course_id' => $moodleCourseId,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
+
         WorkspaceNotifier::notifyUser(
             $mentor->id,
             "You have been assigned as mentor for {$path->venture}.",
@@ -169,5 +270,20 @@ final class IncubationController extends Controller
         );
 
         return response()->json(['data' => ['id' => $id]]);
+    }
+
+    public function syncMoodle(Request $request, int $id, MoodleClient $moodle, MoodleProgressSync $sync): JsonResponse
+    {
+        $actor = $request->user();
+        $path = $this->access->find($actor, $id);
+        abort_unless($path->moodle_course_id, 409, 'This pathway is not linked to a Moodle course.');
+        abort_unless($moodle->isConfigured(), 422, 'Moodle integration is not configured.');
+
+        $result = $sync->syncPathway($id, force: true);
+        if ($result === null) {
+            abort(502, 'Could not sync Moodle progress.');
+        }
+
+        return response()->json(['data' => $result]);
     }
 }

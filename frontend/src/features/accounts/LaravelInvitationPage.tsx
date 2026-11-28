@@ -8,6 +8,7 @@ import {
 } from '../../services/local-institution-repository';
 import { triggerCardErrorFeedback } from '../../shared/error-feedback';
 import { PageIntro } from '../../shared/PageIntro';
+import { LoadingDots } from '../../shared/SiteLoader';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { AccountLink } from './AccountLink';
 
@@ -91,7 +92,9 @@ export function LaravelInvitationPage() {
           style={{ maxWidth: '38rem', margin: '0 auto' }}
         >
           {loading ? (
-            <p role="status">Checking your invitation…</p>
+            <p role="status" className="yerh-status-loading">
+              <LoadingDots label="Checking your invitation" />
+            </p>
           ) : loadError || !preview ? (
             <>
               <p role="alert" className="account-error">

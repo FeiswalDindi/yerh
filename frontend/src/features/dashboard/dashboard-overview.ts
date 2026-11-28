@@ -6,14 +6,14 @@ import { dashboardOpportunityApplicationsPath } from './catalogue-paths';
 import { roleAccessPath } from '../accounts/role-requests';
 
 export const dashboardTitles: Record<Role, string> = {
-  guest: 'Guest dashboard',
-  entrepreneur: 'Entrepreneur dashboard',
-  mentor: 'Mentor dashboard',
-  content_manager: 'Content management dashboard',
-  investor: 'Investor dashboard',
-  partner: 'Partner dashboard',
-  admin: 'Administration dashboard',
-  school_admin: 'Institution dashboard',
+  guest: 'Guest',
+  entrepreneur: 'Entrepreneur',
+  mentor: 'Mentor',
+  content_manager: 'YERH Team',
+  investor: 'Investor',
+  partner: 'Partner',
+  admin: 'YERH Team',
+  school_admin: 'Institution',
 };
 
 type Metric = { label: string; value: string | number; to: string };

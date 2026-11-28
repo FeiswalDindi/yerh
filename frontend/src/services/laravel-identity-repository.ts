@@ -1,5 +1,5 @@
 import type { Role } from '../domain/roles';
-import { LaravelRequestError, laravelRequest } from './laravel-api';
+import { LaravelRequestError, apiUrl, laravelRequest } from './laravel-api';
 
 export type InstitutionChoice = {
   slug: string;
@@ -11,13 +11,19 @@ export type InstitutionChoice = {
 export interface LaravelProfile {
   id: number;
   name: string;
+  first_name?: string;
+  last_name?: string;
   email: string;
   location: string;
   headline: string;
   bio: string;
   email_verified: boolean;
   local_verification_available: boolean;
+  has_password?: boolean;
+  google_connected?: boolean;
+  avatar?: string | null;
   role: Role;
+  moodle_user_id?: number | null;
   affiliation: (InstitutionChoice & { status: string }) | null;
   requested_institution?: InstitutionChoice | null;
   staff: (InstitutionChoice & { access: 'manage' | 'view' })[];
@@ -30,7 +36,10 @@ type AccountInput = {
   location?: string;
   remember?: boolean;
   name?: string;
+  first_name?: string;
+  last_name?: string;
   password_confirmation?: string;
+  terms?: boolean;
 };
 
 export const localLaravelIdentity = {
@@ -41,6 +50,25 @@ export const localLaravelIdentity = {
       if (error instanceof LaravelRequestError && error.status === 401) return null;
       throw error;
     }
+  },
+
+  async providers(signal?: AbortSignal): Promise<{ google: boolean }> {
+    return (await laravelRequest<{ data: { google: boolean } }>('/auth/providers', { signal }))
+      .data;
+  },
+
+  googleAuthUrl(params: {
+    mode: 'login' | 'register';
+    institution?: string;
+    location?: string;
+    redirect?: string;
+  }): string {
+    const query = new URLSearchParams();
+    query.set('mode', params.mode);
+    if (params.institution) query.set('institution', params.institution);
+    if (params.location) query.set('location', params.location);
+    if (params.redirect) query.set('redirect', params.redirect);
+    return apiUrl(`/auth/google/redirect?${query.toString()}`);
   },
 
   async authenticate(mode: 'login' | 'register', data: AccountInput): Promise<LaravelProfile> {
@@ -73,7 +101,7 @@ export const localLaravelIdentity = {
   },
 
   async changePassword(data: {
-    current_password: string;
+    current_password?: string;
     password: string;
     password_confirmation: string;
   }): Promise<string> {
@@ -89,9 +117,17 @@ export const localLaravelIdentity = {
     return (await laravelRequest<{ data: InstitutionChoice[] }>('/institutions', { signal })).data;
   },
 
-  async updateProfile(data: Pick<LaravelProfile, 'name' | 'location' | 'headline' | 'bio'>) {
+  async updateProfile(data: {
+    first_name?: string;
+    last_name?: string;
+    name: string;
+    location: string;
+    headline: string;
+    bio: string;
+  }) {
     await laravelRequest('/auth/me', { method: 'PATCH', data });
   },
+
   async logout(): Promise<void> {
     await laravelRequest('/auth/logout', { method: 'POST' });
   },

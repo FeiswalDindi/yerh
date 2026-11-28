@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Eye, Link2, Play } from 'lucide-react';
+import { Eye, Link2, Linkedin, Play } from 'lucide-react';
 import { contentPath, type ContentItem } from '../../domain/content';
 import { SmartImage } from '../../shared/SmartImage';
 
@@ -119,6 +119,18 @@ export function StoryPortrait({
               >
                 <Eye size={18} />
               </Link>
+            )}
+            {story.linkedinUrl && (
+              <a
+                href={story.linkedinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="story-action-btn"
+                aria-label={`View ${story.title} on LinkedIn`}
+                tabIndex={open ? 0 : -1}
+              >
+                <Linkedin size={16} />
+              </a>
             )}
           </div>
           <div className="story-card-caption">

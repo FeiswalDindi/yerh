@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Check, Copy } from 'lucide-react';
+import { ReceiptPreviewModal } from './ReceiptPreviewModal';
+import { learningRepository } from '../../../services/laravel-learning-repository';
 import {
   laravelProgramme,
   type FeePurpose,
@@ -6,6 +9,7 @@ import {
 } from '../../../services/laravel-programme-repository';
 import { WorkspaceTable, WorkspaceTabs } from '../workspace/WorkspaceControls';
 import { StatusIndicator } from '../../../shared/StatusIndicator';
+import { CourseEnrolmentRegistry } from './CourseAdministration';
 import {
   fieldValue,
   RecordsFeedback,
@@ -25,6 +29,87 @@ export function formatKsh(amount: string | number) {
   return kenyaShillings.format(Number(amount));
 }
 
+async function copyText(value: string): Promise<boolean> {
+  if (!value) return false;
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch {
+    // Fallback below when Clipboard API is blocked or unavailable
+  }
+  if (typeof document === 'undefined') return false;
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  let copied = false;
+  try {
+    copied = document.execCommand('copy');
+  } catch {
+    copied = false;
+  }
+  document.body.removeChild(textarea);
+  return copied;
+}
+
+function CopyablePaymentDetail({
+  label,
+  displayValue,
+  copyValue,
+}: {
+  label: string;
+  displayValue: string;
+  copyValue?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<number | null>(null);
+  const target = (copyValue ?? displayValue).trim();
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  async function handleCopy() {
+    if (!(await copyText(target))) return;
+    setCopied(true);
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <button
+      type="button"
+      className={`mpesa-copy-tile${copied ? ' is-copied' : ''}`}
+      onClick={() => void handleCopy()}
+      aria-label={`Copy ${label}: ${target}`}
+      title={`Click to copy ${label}`}
+    >
+      <span className="mpesa-tile-top">
+        <span>{label}</span>
+        <span className="mpesa-copy-chip" aria-live="polite">
+          {copied ? (
+            <>
+              <Check size={12} aria-hidden="true" /> Copied
+            </>
+          ) : (
+            <>
+              <Copy size={12} aria-hidden="true" /> Copy
+            </>
+          )}
+        </span>
+      </span>
+      <strong>{displayValue}</strong>
+    </button>
+  );
+}
+
 export function MpesaInstructionsBox({
   amount,
   instructions,
@@ -34,17 +119,36 @@ export function MpesaInstructionsBox({
 }) {
   const loaded = useWorkspaceRecords(laravelProgramme.paymentInstructions, !instructions);
   const info = instructions ?? loaded.records;
-  if (!info) return null;
+  if (!info) {
+    return (
+      <div className="profile-panel" role="region" aria-label="Payment instructions">
+        <RecordsFeedback loading={loaded.records === null} error={loaded.error} />
+      </div>
+    );
+  }
   return (
     <div className="profile-panel" role="region" aria-label="Payment instructions">
-      <p>
-        <strong>{info.provider}</strong> · {info.recipient_name}
-      </p>
-      <p>
-        Paybill / Till: <strong>{info.paybill_number}</strong> · Account:{' '}
-        <strong>{info.account_number}</strong> · Amount: <strong>{formatKsh(amount)}</strong>
-      </p>
-      <p>{info.instructions}</p>
+      <div className="mpesa-details-grid">
+        <div>
+          <span>Payment channel</span>
+          <strong>{info.provider}</strong>
+        </div>
+        <CopyablePaymentDetail label="Paybill / Till number" displayValue={info.paybill_number} />
+        <CopyablePaymentDetail label="Account number" displayValue={info.account_number} />
+        <CopyablePaymentDetail label="Recipient" displayValue={info.recipient_name} />
+        <CopyablePaymentDetail
+          label="Amount due"
+          displayValue={formatKsh(amount)}
+          copyValue={String(amount)}
+        />
+      </div>
+      <p className="mpesa-instructions-copy">{info.instructions}</p>
+      {info.refund_notice && (
+        <div className="mpesa-refund-notice" role="note">
+          <strong>24-Hour Approval &amp; Refund Guarantee</strong>
+          <p>{info.refund_notice}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -88,10 +192,11 @@ export function RecordProgrammePayment({
         />
       </label>
       <label>
-        Payment receipt (optional · JPG, PNG, WebP or PDF, max 5 MB)
+        Payment receipt screenshot or PDF (required · JPG, PNG, WebP or PDF, max 5 MB)
         <input
           name="receipt"
           type="file"
+          required
           accept="image/jpeg,image/png,image/webp,application/pdf"
         />
       </label>
@@ -103,6 +208,10 @@ export function ProgrammePayments() {
   const settings = useWorkspaceRecords(laravelProgramme.fees);
   const instructions = useWorkspaceRecords(laravelProgramme.paymentInstructions);
   const payments = useWorkspaceRecords(laravelProgramme.payments);
+  const courseEnrolments = useWorkspaceRecords(learningRepository.registry);
+  const pendingCourseCount = courseEnrolments.records?.filter(
+    (entry) => entry.payment_status === 'pending',
+  ).length;
 
   return (
     <WorkspaceTabs
@@ -116,15 +225,31 @@ export function ProgrammePayments() {
               <RecordsFeedback error={instructions.error} loading={instructions.records === null} />
               {instructions.records && (
                 <div className="profile-panel">
-                  <p>
-                    <strong>{instructions.records.provider}</strong> ·{' '}
-                    {instructions.records.recipient_name}
-                  </p>
-                  <p>
-                    Paybill / Till: <strong>{instructions.records.paybill_number}</strong> ·
-                    Account: <strong>{instructions.records.account_number}</strong>
-                  </p>
-                  <p>{instructions.records.instructions}</p>
+                  <div className="mpesa-details-grid">
+                    <div>
+                      <span>Payment channel</span>
+                      <strong>{instructions.records.provider}</strong>
+                    </div>
+                    <CopyablePaymentDetail
+                      label="Paybill / Till number"
+                      displayValue={instructions.records.paybill_number}
+                    />
+                    <CopyablePaymentDetail
+                      label="Account number"
+                      displayValue={instructions.records.account_number}
+                    />
+                    <CopyablePaymentDetail
+                      label="Recipient"
+                      displayValue={instructions.records.recipient_name}
+                    />
+                  </div>
+                  <p className="mpesa-instructions-copy">{instructions.records.instructions}</p>
+                  {instructions.records.refund_notice && (
+                    <div className="mpesa-refund-notice" role="note">
+                      <strong>24-Hour Approval &amp; Refund Guarantee Notice</strong>
+                      <p>{instructions.records.refund_notice}</p>
+                    </div>
+                  )}
                   <WorkspaceAction
                     action="Edit payment instructions"
                     title="M-Pesa payment instructions"
@@ -136,6 +261,7 @@ export function ProgrammePayments() {
                         account_number: fieldValue(data, 'account_number'),
                         recipient_name: fieldValue(data, 'recipient_name'),
                         instructions: fieldValue(data, 'instructions'),
+                        refund_notice: fieldValue(data, 'refund_notice'),
                       });
                       instructions.reload();
                     }}
@@ -161,7 +287,7 @@ export function ProgrammePayments() {
                       />
                     </label>
                     <label>
-                      Account reference format
+                      Account number
                       <input
                         name="account_number"
                         required
@@ -189,6 +315,17 @@ export function ProgrammePayments() {
                         maxLength={1500}
                         rows={4}
                         defaultValue={instructions.records.instructions}
+                      />
+                    </label>
+                    <label>
+                      Approval &amp; refund guarantee notice
+                      <textarea
+                        name="refund_notice"
+                        required
+                        minLength={10}
+                        maxLength={1000}
+                        rows={3}
+                        defaultValue={instructions.records.refund_notice}
                       />
                     </label>
                   </WorkspaceAction>
@@ -288,13 +425,11 @@ export function ProgrammePayments() {
                       <>
                         <div>{payment.reference}</div>
                         {payment.has_receipt && (
-                          <a
-                            href={laravelProgramme.paymentReceiptUrl(payment.id)}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            View receipt
-                          </a>
+                          <ReceiptPreviewModal
+                            url={laravelProgramme.paymentReceiptUrl(payment.id)}
+                            title={`${payment.payer} · ${feeLabels[payment.purpose]}`}
+                            reference={payment.reference}
+                          />
                         )}
                       </>,
                       <>
@@ -312,6 +447,12 @@ export function ProgrammePayments() {
               )}
             </>
           ),
+        },
+        {
+          id: 'course-payments',
+          label: 'Course payments',
+          count: pendingCourseCount,
+          content: <CourseEnrolmentRegistry />,
         },
       ]}
     />

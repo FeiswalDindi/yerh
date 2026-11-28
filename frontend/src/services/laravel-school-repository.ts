@@ -64,12 +64,27 @@ function write(path: string, data: object, method = 'POST') {
   return laravelRequest(path, { method, data });
 }
 
+export type SchoolMoodleGuide = {
+  title: string;
+  description: string;
+  launch_url: string;
+  progress: number;
+  completed: boolean;
+  sections: {
+    title: string;
+    summary: string;
+    activities: { name: string; type: string }[];
+  }[];
+};
+
 export const schoolRepository = {
   directory: (slug: string, signal?: AbortSignal) =>
-    read<{ access: 'view' | 'manage'; students: SchoolStudent[]; cohorts: SchoolCohort[] }>(
-      school(slug),
-      signal,
-    ),
+    read<{
+      access: 'view' | 'manage';
+      students: SchoolStudent[];
+      cohorts: SchoolCohort[];
+      moodle_guide?: SchoolMoodleGuide | null;
+    }>(school(slug), signal),
   cohort: (slug: string, id: number, signal?: AbortSignal) =>
     read<SchoolCohortDetail>(cohort(slug, id), signal),
   saveStudent: (slug: string, data: object, id?: number) =>

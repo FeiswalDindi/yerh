@@ -74,5 +74,26 @@ final class DashboardParityTest extends TestCase
         $this->actingAs($member->fresh())->getJson('/api/v1/workspace/editorial')->assertOk();
         $this->actingAs($admin)->patchJson($url.$member->id, ['role' => 'content_manager', 'suspended' => true])->assertOk();
         $this->actingAs($member->fresh())->getJson('/api/v1/workspace/editorial')->assertForbidden();
+
+        $this->actingAs($admin)->getJson('/api/v1/workspace/users')
+            ->assertOk()
+            ->assertJsonStructure([
+                'data' => [
+                    '*' => [
+                        'id',
+                        'name',
+                        'email',
+                        'role',
+                        'google_connected',
+                        'has_password',
+                        'moodle_linked',
+                        'institution_id',
+                        'institution_name',
+                        'venture_count',
+                        'venture_status',
+                        'incubation_status',
+                    ],
+                ],
+            ]);
     }
 }

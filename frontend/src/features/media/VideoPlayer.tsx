@@ -6,16 +6,20 @@ export function VideoPlayer({
   title,
   className,
   onPreferences,
+  autoplay = false,
+  userInitiated = false,
 }: {
   url: string;
   title: string;
   className?: string;
   onPreferences?: () => void;
+  autoplay?: boolean;
+  userInitiated?: boolean;
 }) {
   const consent = useCookieConsent();
-  const src = youtubeEmbedUrl(url);
-  if (!src) return <p role="status">This video source is unavailable.</p>;
-  if (consent !== 'all')
+  const baseSrc = youtubeEmbedUrl(url);
+  if (!baseSrc) return <p role="status">This video source is unavailable.</p>;
+  if (!userInitiated && consent !== 'all')
     return (
       <div className="video-consent-placeholder">
         <p>Allow multimedia in cookie preferences to load this YouTube video.</p>
@@ -30,7 +34,7 @@ export function VideoPlayer({
           Manage preferences
         </button>
         <a
-          href={src
+          href={baseSrc
             .replace('/embed/', '/watch?v=')
             .replace('www.youtube-nocookie.com', 'www.youtube.com')}
           target="_blank"
@@ -40,13 +44,14 @@ export function VideoPlayer({
         </a>
       </div>
     );
+  const src = autoplay ? `${baseSrc}?autoplay=1&rel=0` : baseSrc;
   return (
     <iframe
       src={src}
       title={title}
       className={className}
       loading="lazy"
-      allow="encrypted-media; picture-in-picture"
+      allow="autoplay; encrypted-media; picture-in-picture"
       allowFullScreen
       referrerPolicy="strict-origin-when-cross-origin"
     />

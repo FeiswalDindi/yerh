@@ -445,6 +445,18 @@
   font-size: 15px;
   text-decoration: none !important;
 }
+button.video-link {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+button.video-link:hover {
+  border-color: var(--yerh-gold);
+  background: var(--yerh-gold-light);
+}
 .video-link > svg:last-child {
   margin-left: auto;
 }
@@ -497,12 +509,20 @@
 .lesson-list {
   margin-top: 15px;
 }
-.lesson-list > a {
+.lesson-list > a,
+.lesson-list > button {
   display: flex;
   gap: 23px;
   align-items: center;
+  width: 100%;
   padding: 25px 4px;
+  background: transparent;
+  border: 0;
   border-bottom: 1px solid var(--yerh-border);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
 }
 .lesson-number {
   color: var(--yerh-gold-text);
@@ -527,7 +547,8 @@
   flex-shrink: 0;
   color: var(--yerh-navy);
 }
-.lesson-list a:hover .play-button {
+.lesson-list a:hover .play-button,
+.lesson-list button:hover .play-button {
   background: var(--yerh-gold);
 }
 .resource-callout {
@@ -663,7 +684,8 @@
   .article-body {
     font-size: 16px;
   }
-  .lesson-list > a {
+  .lesson-list > a,
+  .lesson-list > button {
     gap: 14px;
   }
   .lesson-list h3 {

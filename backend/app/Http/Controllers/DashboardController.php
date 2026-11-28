@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Integrations\Moodle\MoodleClient;
+use App\Models\User;
 use App\Support\WorkspaceNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -10,7 +12,7 @@ use Illuminate\Support\Str;
 
 final class DashboardController extends Controller
 {
-    public function summary(Request $request): JsonResponse
+    public function summary(Request $request, MoodleClient $moodle): JsonResponse
     {
         $actor = $request->user();
         $metrics = match ($actor->role) {
@@ -25,6 +27,18 @@ final class DashboardController extends Controller
             'mentor' => [
                 'assigned' => DB::table('incubation_paths')->where('mentor_id', $actor->id)->whereNull('graduated_at')->count(),
                 'graduated' => DB::table('incubation_paths')->where('mentor_id', $actor->id)->whereNotNull('graduated_at')->count(),
+                'authoredCourses' => DB::table('learning_courses')->where('author_id', $actor->id)->count(),
+                'courseEnrolments' => DB::table('learning_enrolments as e')
+                    ->join('learning_courses as c', 'c.id', '=', 'e.course_id')
+                    ->where('c.author_id', $actor->id)
+                    ->where('e.payment_status', 'confirmed')
+                    ->count(),
+                'accruedRoyalties' => round((float) DB::table('learning_enrolments as e')
+                    ->join('learning_courses as c', 'c.id', '=', 'e.course_id')
+                    ->where('c.author_id', $actor->id)
+                    ->where('e.payment_status', 'confirmed')
+                    ->selectRaw('coalesce(sum(e.price_paid * e.royalty_rate) / 100.0, 0) as total')
+                    ->value('total'), 2),
             ],
             'content_manager' => [
                 'editorial' => DB::table('editorial_content')->count(),
@@ -32,6 +46,15 @@ final class DashboardController extends Controller
                 'events' => DB::table('engagement_events')->count(),
                 'opportunities' => DB::table('engagement_opportunities')->count(),
                 'enquiries' => DB::table('contact_messages')->where('status', 'new')->count(),
+            ],
+            'partner' => [
+                'myEvents' => DB::table('engagement_events')->where('organizer_id', $actor->id)->count(),
+                'publishedEvents' => DB::table('engagement_events')->where('organizer_id', $actor->id)->where('status', 'published')->count(),
+                'eventBookings' => DB::table('event_bookings as b')
+                    ->join('engagement_events as e', 'e.id', '=', 'b.event_id')
+                    ->where('e.organizer_id', $actor->id)
+                    ->count(),
+                'courseProposals' => DB::table('learning_courses')->where('author_id', $actor->id)->count(),
             ],
             default => [],
         };
@@ -54,21 +77,36 @@ final class DashboardController extends Controller
             ];
         }
 
-        return response()->json(['data' => ['metrics' => (object) $metrics, 'portals' => (object) $portals]])->header('Cache-Control', 'no-store');
+        return response()->json(['data' => [
+            'metrics' => (object) $metrics,
+            'portals' => (object) $portals,
+            'moodle_configured' => $moodle->isConfigured(),
+        ]])->header('Cache-Control', 'no-store');
     }
 
     private function administration(): array
     {
+        $pendingCoursePayments = DB::table('learning_enrolments')->where('payment_status', 'pending')->count();
+        $pendingPartnerEvents = DB::table('engagement_events')->where('status', 'pending_review')->count();
+        $pendingCourseProposals = DB::table('learning_courses')->where('status', 'proposed')->count();
+        $pendingCareerApplications = DB::table('career_applications')->where('status', 'pending')->count();
         $metrics = [
             'listings' => DB::table('venture_products')->where('moderation', 'pending')->count(),
             'roles' => DB::table('affiliation_applications')->where('status', 'pending')->count(),
             'onboarding' => DB::table('institution_onboarding_applications')->where('status', 'pending')->count(),
+            'careerRequests' => $pendingCareerApplications,
             'enquiries' => DB::table('contact_messages')->where('status', 'new')->count(),
             'accounts' => DB::table('users')->whereNull('suspended_at')->count(),
-            'payments' => DB::table('programme_payments')->where('status', 'pending')->count(),
+            'payments' => DB::table('programme_payments')->where('status', 'pending')->count() + $pendingCoursePayments,
             'institutions' => DB::table('institutions')->count(),
+            'partnerEvents' => $pendingPartnerEvents,
+            'courseProposals' => $pendingCourseProposals,
         ];
         $metrics['approvals'] = $metrics['roles'] + $metrics['listings'] + $metrics['onboarding']
+            + $pendingCareerApplications
+            + $pendingCoursePayments
+            + $pendingPartnerEvents
+            + $pendingCourseProposals
             + DB::table('venture_products')->where('evidence_status', 'pending')->count()
             + DB::table('ventures')->where('status', 'pending')->count()
             + DB::table('incubation_paths')->whereNull('mentor_id')->whereNull('graduated_at')->count();
@@ -76,7 +114,7 @@ final class DashboardController extends Controller
         return $metrics;
     }
 
-    public function updateAccess(Request $request, int $id): JsonResponse
+    public function updateAccess(Request $request, int $id, MoodleClient $moodle): JsonResponse
     {
         $actor = $request->user();
         abort_unless($actor->role === 'admin' && $actor->id !== $id, 403);
@@ -89,8 +127,8 @@ final class DashboardController extends Controller
             $member = $users->get($id);
             abort_unless($member, 404);
             if ($data['role'] !== $member->role) {
-                abort_unless(in_array($member->role, ['guest', 'content_manager', 'admin'], true)
-                    && in_array($data['role'], ['guest', 'content_manager', 'admin'], true)
+                abort_unless(in_array($member->role, ['guest', 'content_manager', 'partner', 'admin'], true)
+                    && in_array($data['role'], ['guest', 'content_manager', 'partner', 'admin'], true)
                     && $member->email_verified_at && ! $member->suspended_at
                     && ! DB::table('institution_access')->where('user_id', $id)->exists()
                     && ! DB::table('institution_memberships')->where('user_id', $id)->exists()
@@ -121,9 +159,15 @@ final class DashboardController extends Controller
             ];
         }, 3);
 
+        $targetUser = User::query()->find($id);
+        if ($targetUser) {
+            $moodle->syncUserProfile($targetUser);
+        }
+
         $roleLabel = match ($outcome['new_role']) {
             'admin' => 'Platform Administrator',
             'content_manager' => 'Content Manager',
+            'partner' => 'Partner',
             default => ucwords(str_replace('_', ' ', $outcome['new_role'])),
         };
 
@@ -165,6 +209,7 @@ final class DashboardController extends Controller
         abort_unless($request->user()->role === 'admin', 403);
 
         $slug = $request->validate(['institution' => ['nullable', 'string', 'regex:/^[a-z0-9-]+$/', 'max:120']])['institution'] ?? null;
+
         return response()->json(['data' => DB::table('workspace_activity as activity')
             ->when($slug, function ($query) use ($slug) {
                 $query->where(function ($scope) use ($slug) {
@@ -182,6 +227,89 @@ final class DashboardController extends Controller
     {
         abort_unless($request->user()->role === 'admin', 403);
 
-        return response()->json(['data' => DB::table('users')->orderBy('name')->get(['id', 'name', 'email', 'role', 'email_verified_at', 'suspended_at'])])->header('Cache-Control','no-store');
+        $users = DB::table('users')
+            ->orderBy('name')
+            ->get([
+                'id',
+                'name',
+                'first_name',
+                'last_name',
+                'email',
+                'role',
+                'location',
+                'email_verified_at',
+                'suspended_at',
+                'google_id',
+                'password',
+                'moodle_user_id',
+                'created_at',
+            ]);
+
+        $memberships = DB::table('institution_memberships as m')
+            ->join('institutions as i', 'i.id', '=', 'm.institution_id')
+            ->get(['m.user_id', 'i.id as institution_id', 'i.name as institution_name'])
+            ->keyBy('user_id');
+
+        $staff = DB::table('institution_access as a')
+            ->join('institutions as i', 'i.id', '=', 'a.institution_id')
+            ->get(['a.user_id', 'i.id as institution_id', 'i.name as institution_name'])
+            ->groupBy('user_id');
+
+        $ventures = DB::table('ventures')
+            ->get(['id', 'owner_id', 'status'])
+            ->groupBy('owner_id');
+
+        $incubationByVenture = DB::table('incubation_paths')
+            ->get(['venture_id', 'graduated_at'])
+            ->groupBy('venture_id');
+
+        $rows = $users->map(function ($u) use ($memberships, $staff, $ventures, $incubationByVenture) {
+            $affiliation = $memberships->get($u->id) ?? ($staff->get($u->id)?->first());
+            $userVentures = $ventures->get($u->id) ?? collect();
+
+            $ventureStatus = 'none';
+            if ($userVentures->contains(static fn ($v) => $v->status === 'approved')) {
+                $ventureStatus = 'approved';
+            } elseif ($userVentures->contains(static fn ($v) => $v->status === 'pending')) {
+                $ventureStatus = 'pending';
+            } elseif ($userVentures->contains(static fn ($v) => $v->status === 'rejected')) {
+                $ventureStatus = 'rejected';
+            }
+
+            $incubationStatus = 'none';
+            foreach ($userVentures as $v) {
+                $paths = $incubationByVenture->get($v->id) ?? collect();
+                if ($paths->contains(static fn ($p) => $p->graduated_at !== null)) {
+                    $incubationStatus = 'graduated';
+                    break;
+                }
+                if ($paths->isNotEmpty()) {
+                    $incubationStatus = 'active';
+                }
+            }
+
+            return [
+                'id' => (int) $u->id,
+                'name' => $u->name,
+                'first_name' => $u->first_name,
+                'last_name' => $u->last_name,
+                'email' => $u->email,
+                'role' => $u->role,
+                'location' => $u->location,
+                'email_verified_at' => $u->email_verified_at,
+                'suspended_at' => $u->suspended_at,
+                'google_connected' => ! empty($u->google_id),
+                'has_password' => is_string($u->password) && $u->password !== '',
+                'moodle_linked' => ! empty($u->moodle_user_id),
+                'institution_id' => $affiliation ? (int) $affiliation->institution_id : null,
+                'institution_name' => $affiliation?->institution_name,
+                'venture_count' => $userVentures->count(),
+                'venture_status' => $ventureStatus,
+                'incubation_status' => $incubationStatus,
+                'created_at' => $u->created_at,
+            ];
+        })->values();
+
+        return response()->json(['data' => $rows])->header('Cache-Control', 'no-store');
     }
 }

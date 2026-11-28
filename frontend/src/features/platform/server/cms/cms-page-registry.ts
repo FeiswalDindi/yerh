@@ -4,6 +4,7 @@ export type PageCategoryId =
   | 'all'
   | 'customized'
   | 'core'
+  | 'careers'
   | 'resources'
   | 'publications'
   | 'benefits'
@@ -22,6 +23,7 @@ export const PAGE_CATEGORIES: { id: PageCategoryId; label: string }[] = [
   { id: 'all', label: 'All pages' },
   { id: 'customized', label: 'Customized' },
   { id: 'core', label: 'Core & Info' },
+  { id: 'careers', label: 'Careers & Partnerships' },
   { id: 'resources', label: 'Resources & Learning' },
   { id: 'publications', label: 'Publications' },
   { id: 'benefits', label: 'Benefits & Directory' },
@@ -87,6 +89,127 @@ export const SYSTEM_PAGE_REGISTRY: SystemPageEntry[] = [
       description:
         'Apply to register your institution on the platform so your students and founders can affiliate, launch ventures, and access incubation pathways.',
       sections: [],
+    },
+  },
+  {
+    path: '/careers',
+    label: 'Careers & Collaboration Hub',
+    category: 'careers',
+    defaultPage: {
+      eyebrow: 'Careers & Collaboration',
+      title: 'Build the future of youth enterprise with us.',
+      description:
+        'Whether you represent an institution, partner organization, experienced mentor, or impact investor, discover how you can shape young entrepreneurs across Kenya.',
+      sections: [
+        {
+          title: 'Why collaborate with YERH',
+          body: 'YERH connects verified institutions, ecosystem partners, seasoned mentors, and catalytic capital directly with youth founders ready to build resilient, market-tested ventures.',
+        },
+        {
+          title: 'Clear pathways and direct review',
+          body: 'Every institutional onboarding request and career collaboration application is reviewed directly by our platform administrators so you receive a tailored, accountable response.',
+        },
+      ],
+    },
+  },
+  {
+    path: '/careers/institutions',
+    label: 'Register Your Institution (High Schools, Universities & Hubs)',
+    category: 'careers',
+    defaultPage: {
+      eyebrow: 'Careers · Register Your Institution',
+      title: 'Onboard your high school, university, or innovation hub.',
+      description:
+        'Bring structured entrepreneurship learning, verified student affiliation, cohort tracking, and Moodle classroom integration to your campus or hub.',
+      sections: [
+        {
+          title: 'High Schools: Practical Enterprise & Facilitator Tools',
+          body: 'Equip entrepreneurship clubs and business studies classes with structured venture teams, cohort milestone tracking, Moodle Teaching & Grading Guides, and verified YERH certificates.',
+        },
+        {
+          title: 'Universities: Seamless Campus Verification & Incubation',
+          body: 'Onboard student founders automatically via official university email domains, monitor student ventures from an institutional portal, and connect teams with external YERH mentors.',
+        },
+        {
+          title: 'Innovation Hubs: Cohort Oversight & Demo Readiness',
+          body: 'Manage incubated founders across multiple cohorts, track marketplace product approvals, verify fees cleanly, and showcase hub enterprises across the national ecosystem.',
+        },
+      ],
+    },
+  },
+  {
+    path: '/careers/partnerships',
+    label: 'Partnerships',
+    category: 'careers',
+    defaultPage: {
+      eyebrow: 'Careers · Partnerships',
+      title: 'Partner with YERH to accelerate young founders.',
+      description:
+        'Co-host transformative events, sponsor ecosystem programmes, propose training themes, and connect directly with emerging youth-led enterprises.',
+      sections: [
+        {
+          title: 'Host Events, Clinics & Bootcamps',
+          body: 'Approved partners receive a dedicated Partner Dashboard to organize virtual or physical events, manage presenter lineups, and view verified attendee registrations.',
+        },
+        {
+          title: 'Propose Training & Ecosystem Initiatives',
+          body: 'Submit course proposals to our platform administrators, sponsor cohort challenges, and bridge market access gaps alongside Kenya’s youth enterprise community.',
+        },
+        {
+          title: 'Visibility Across the Hub',
+          body: 'Partner organizations are featured across our live homepage partner strip, event catalogues, and institutional outreach channels.',
+        },
+      ],
+    },
+  },
+  {
+    path: '/careers/mentorship',
+    label: 'Mentorship',
+    category: 'careers',
+    defaultPage: {
+      eyebrow: 'Careers · Mentorship',
+      title: 'Guide the next generation of Kenyan founders.',
+      description:
+        'Share your operational wisdom, coach incubated ventures through structured stages, and build measurable entrepreneurial capability.',
+      sections: [
+        {
+          title: 'Structured Venture Coaching & Moodle Access',
+          body: 'Receive assigned ventures across high schools, universities, and hubs inside a single unified Mentor Dashboard and synced Moodle classroom.',
+        },
+        {
+          title: 'Assess Incubation Stages & Propose Courses',
+          body: 'Review student milestones, grade structured venture stages, answer questions in public forums as a recognized Mentor, and propose specialized courses to earn royalties.',
+        },
+        {
+          title: 'Measurable Impact & Community Leadership',
+          body: 'Track active and graduated ventures you have guided while building standing on the YERH Mentor Leaderboard.',
+        },
+      ],
+    },
+  },
+  {
+    path: '/careers/invest',
+    label: 'Invest with Us',
+    category: 'careers',
+    defaultPage: {
+      eyebrow: 'Careers · Invest with Us',
+      title: 'Back vetted, incubation-ready youth enterprises.',
+      description:
+        'Partner with YERH to discover high-potential ventures completing structured milestones, market testing, and compliance readiness.',
+      sections: [
+        {
+          title: 'Pipeline of Incubation-Vetted Founders',
+          body: 'Access young entrepreneurs who have progressed through validated business planning, mentor grading, and real customer engagement on the YERH Shop.',
+        },
+        {
+          title: 'Co-Design Grants, Fellowships & Capital Vehicles',
+          body: 'Launch targeted funding challenges, seed prizes, or impact investment showcases supported by transparent cohort metrics and milestone verification.',
+        },
+        {
+          title: 'Trusted Institutional Governance',
+          body: 'Every venture, institution, and transaction on YERH is audited and overseen by platform administrators for transparency and long-term impact.',
+        },
+      ],
     },
   },
   {

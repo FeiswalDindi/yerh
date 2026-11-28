@@ -27,7 +27,15 @@ function passwordStrength(password: string): {
   return { level, label: labels[level] };
 }
 
-function PasswordUpdateFormFields({ onCancel }: { onCancel?: () => void }) {
+function PasswordUpdateFormFields({
+  hasPassword = true,
+  onUpdated,
+  onCancel,
+}: {
+  hasPassword?: boolean;
+  onUpdated?: () => Promise<void> | void;
+  onCancel?: () => void;
+}) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -46,10 +54,13 @@ function PasswordUpdateFormFields({ onCancel }: { onCancel?: () => void }) {
   const strength = passwordStrength(newPassword);
   const hasMinLength = newPassword.length >= 6;
   const differsFromCurrent =
-    newPassword.length > 0 && currentPassword.length > 0 && newPassword !== currentPassword;
+    hasPassword &&
+    newPassword.length > 0 &&
+    currentPassword.length > 0 &&
+    newPassword !== currentPassword;
   const passwordsMatch = newPassword.length >= 6 && confirmPassword === newPassword;
   const hasMix = /[a-zA-Z]/.test(newPassword) && /[\d\W_]/.test(newPassword);
-  const canSubmit = currentPassword.length > 0 && hasMinLength && passwordsMatch;
+  const canSubmit = (!hasPassword || currentPassword.length > 0) && hasMinLength && passwordsMatch;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -63,7 +74,7 @@ function PasswordUpdateFormFields({ onCancel }: { onCancel?: () => void }) {
     setNotice('');
     try {
       const message = await localLaravelIdentity.changePassword({
-        current_password: currentPassword,
+        ...(hasPassword ? { current_password: currentPassword } : {}),
         password: newPassword,
         password_confirmation: confirmPassword,
       });
@@ -71,6 +82,7 @@ function PasswordUpdateFormFields({ onCancel }: { onCancel?: () => void }) {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      await onUpdated?.();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not update your password.');
       shakeCard();
@@ -89,22 +101,25 @@ function PasswordUpdateFormFields({ onCancel }: { onCancel?: () => void }) {
       <div className="password-security-banner">
         <ShieldCheck size={18} aria-hidden="true" />
         <span>
-          Changing your password updates your credentials immediately and signs out other active
-          devices.
+          {hasPassword
+            ? 'Changing your password updates your credentials immediately and signs out other active devices.'
+            : 'Your account uses Google sign-in. Setting a local password lets you also sign in with email and password.'}
         </span>
       </div>
 
-      <PasswordField
-        label="Current password"
-        name="current_password"
-        autoComplete="current-password"
-        value={currentPassword}
-        onChange={setCurrentPassword}
-        placeholder="Enter your current password"
-      />
+      {hasPassword && (
+        <PasswordField
+          label="Current password"
+          name="current_password"
+          autoComplete="current-password"
+          value={currentPassword}
+          onChange={setCurrentPassword}
+          placeholder="Enter your current password"
+        />
+      )}
 
       <PasswordField
-        label="New password"
+        label={hasPassword ? 'New password' : 'Password'}
         name="password"
         autoComplete="new-password"
         value={newPassword}
@@ -126,12 +141,12 @@ function PasswordUpdateFormFields({ onCancel }: { onCancel?: () => void }) {
       </div>
 
       <PasswordField
-        label="Confirm new password"
+        label={hasPassword ? 'Confirm new password' : 'Confirm password'}
         name="password_confirmation"
         autoComplete="new-password"
         value={confirmPassword}
         onChange={setConfirmPassword}
-        placeholder="Re-enter your new password"
+        placeholder="Re-enter your password"
       />
 
       <ul className="password-checklist" aria-label="Password requirements">
@@ -143,21 +158,23 @@ function PasswordUpdateFormFields({ onCancel }: { onCancel?: () => void }) {
           )}
           <span>At least 6 characters</span>
         </li>
-        <li data-met={differsFromCurrent}>
-          {differsFromCurrent ? (
-            <Check size={14} aria-hidden="true" />
-          ) : (
-            <Circle size={14} aria-hidden="true" />
-          )}
-          <span>Different from your current password</span>
-        </li>
+        {hasPassword && (
+          <li data-met={differsFromCurrent}>
+            {differsFromCurrent ? (
+              <Check size={14} aria-hidden="true" />
+            ) : (
+              <Circle size={14} aria-hidden="true" />
+            )}
+            <span>Different from your current password</span>
+          </li>
+        )}
         <li data-met={passwordsMatch}>
           {passwordsMatch ? (
             <Check size={14} aria-hidden="true" />
           ) : (
             <Circle size={14} aria-hidden="true" />
           )}
-          <span>New passwords match</span>
+          <span>Passwords match</span>
         </li>
         <li data-met={hasMix}>
           {hasMix ? (
@@ -187,14 +204,20 @@ function PasswordUpdateFormFields({ onCancel }: { onCancel?: () => void }) {
           </button>
         )}
         <button className="button" type="submit" disabled={busy || !canSubmit}>
-          {busy ? 'Updating…' : 'Update password'}
+          {busy ? 'Saving…' : hasPassword ? 'Update password' : 'Set password'}
         </button>
       </div>
     </form>
   );
 }
 
-export function ChangePasswordDialog() {
+export function ChangePasswordDialog({
+  hasPassword = true,
+  onUpdated,
+}: {
+  hasPassword?: boolean;
+  onUpdated?: () => Promise<void> | void;
+}) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
@@ -219,7 +242,7 @@ export function ChangePasswordDialog() {
           onClick={() => setOpen(true)}
         >
           <KeyRound size={16} aria-hidden="true" />
-          Update password
+          {hasPassword ? 'Update password' : 'Set a password'}
         </button>
       </div>
 
@@ -236,7 +259,7 @@ export function ChangePasswordDialog() {
           }}
         >
           <header className="workspace-dialog-heading">
-            <h2 id={titleId}>Password &amp; security</h2>
+            <h2 id={titleId}>{hasPassword ? 'Password & security' : 'Set a local password'}</h2>
             <CloseButton
               aria-label="Close password & security modal"
               iconSize={19}
@@ -244,7 +267,11 @@ export function ChangePasswordDialog() {
             />
           </header>
           <div className="workspace-dialog-body">
-            <PasswordUpdateFormFields onCancel={closeDialog} />
+            <PasswordUpdateFormFields
+              hasPassword={hasPassword}
+              onUpdated={onUpdated}
+              onCancel={closeDialog}
+            />
           </div>
         </dialog>
       )}
@@ -252,14 +279,22 @@ export function ChangePasswordDialog() {
   );
 }
 
-export function ChangePasswordForm() {
+export function ChangePasswordForm({
+  hasPassword = true,
+  onUpdated,
+}: {
+  hasPassword?: boolean;
+  onUpdated?: () => Promise<void> | void;
+}) {
   return (
     <section
       className="profile-panel dashboard-profile-card"
       aria-labelledby="security-password-title"
     >
-      <h2 id="security-password-title">Password &amp; security</h2>
-      <PasswordUpdateFormFields />
+      <h2 id="security-password-title">
+        {hasPassword ? 'Password & security' : 'Set a local password'}
+      </h2>
+      <PasswordUpdateFormFields hasPassword={hasPassword} onUpdated={onUpdated} />
     </section>
   );
 }

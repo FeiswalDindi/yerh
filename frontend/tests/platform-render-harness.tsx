@@ -763,7 +763,7 @@ export async function checkPlatformRendering() {
     now,
   });
   const approvedOverview = render('/dashboard', memberId, undefined, approved);
-  assert.ok(approvedOverview.includes('Mentor dashboard'));
+  assert.ok(approvedOverview.includes(dashboardTitles.mentor));
   assert.ok(approvedOverview.includes('tab=mentees'));
   assert.ok(approvedOverview.includes('Approved for the mentoring programme.'));
   assert.ok(approvedOverview.includes('Role request decisions'));

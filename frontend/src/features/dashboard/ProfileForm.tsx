@@ -1,20 +1,44 @@
 import { useState, type FormEvent } from 'react';
-type ProfileFields = { name: string; location: string; headline: string; bio: string };
+type ProfileFields = {
+  first_name?: string;
+  last_name?: string;
+  name: string;
+  location: string;
+  headline: string;
+  bio: string;
+};
+
+function splitDisplayName(fullName: string): { first_name: string; last_name: string } {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  return {
+    first_name: parts[0] ?? '',
+    last_name: parts.slice(1).join(' '),
+  };
+}
 
 export function ProfileForm({
   person,
+  splitName = false,
   save,
 }: {
   person: ProfileFields & { email: string };
+  splitName?: boolean;
   save: (fields: ProfileFields) => Promise<boolean> | boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [changes, setChanges] = useState<Partial<ProfileFields>>({});
   const [saved, setSaved] = useState(false);
+  const initialSplit = splitDisplayName(person.name);
+  const baseFirst = person.first_name ?? initialSplit.first_name;
+  const baseLast = person.last_name ?? initialSplit.last_name;
+  const firstName = changes.first_name ?? baseFirst;
+  const lastName = changes.last_name ?? baseLast;
   const { name, location, headline, bio } = { ...person, ...changes };
   const dirty =
-    name.trim() !== person.name ||
+    (splitName
+      ? firstName.trim() !== baseFirst.trim() || lastName.trim() !== baseLast.trim()
+      : name.trim() !== person.name) ||
     location.trim() !== person.location ||
     headline.trim() !== person.headline ||
     bio.trim() !== person.bio;
@@ -30,7 +54,17 @@ export function ProfileForm({
     setBusy(true);
     setError('');
     try {
-      if (await save({ name, location, headline, bio })) {
+      const payload: ProfileFields = splitName
+        ? {
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+            location,
+            headline,
+            bio,
+          }
+        : { name, location, headline, bio };
+      if (await save(payload)) {
         setChanges({});
         setSaved(true);
       }
@@ -53,17 +87,44 @@ export function ProfileForm({
           <dd>{person.email}</dd>
         </dl>
         <div className="workspace-form dashboard-profile-fields">
-          <label>
-            Full name
-            <input
-              autoComplete="name"
-              required
-              minLength={2}
-              maxLength={80}
-              value={name}
-              onChange={(e) => update('name', e.target.value)}
-            />
-          </label>
+          {splitName ? (
+            <>
+              <label>
+                First name
+                <input
+                  autoComplete="given-name"
+                  required
+                  minLength={1}
+                  maxLength={80}
+                  value={firstName}
+                  onChange={(e) => update('first_name', e.target.value)}
+                />
+              </label>
+              <label>
+                Last name
+                <input
+                  autoComplete="family-name"
+                  required
+                  minLength={1}
+                  maxLength={80}
+                  value={lastName}
+                  onChange={(e) => update('last_name', e.target.value)}
+                />
+              </label>
+            </>
+          ) : (
+            <label>
+              Full name
+              <input
+                autoComplete="name"
+                required
+                minLength={2}
+                maxLength={80}
+                value={name}
+                onChange={(e) => update('name', e.target.value)}
+              />
+            </label>
+          )}
           <label>
             City or county
             <input

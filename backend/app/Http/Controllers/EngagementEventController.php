@@ -19,8 +19,9 @@ final class EngagementEventController extends Controller
         $admin = (bool) ($request->route()->defaults['admin'] ?? false);
         $user = $request->user();
         $isStaff = $user && in_array($user->role, ['admin', 'content_manager'], true);
+        $isPartner = $user && $user->role === 'partner';
         if ($admin) {
-            abort_unless($isStaff, 403);
+            abort_unless($isStaff || $isPartner, 403);
         }
 
         $bookedMap = $user
@@ -34,6 +35,7 @@ final class EngagementEventController extends Controller
 
         $events = $this->events()
             ->when(! $admin, fn (Builder $query) => $query->where('event.status', 'published'))
+            ->when($admin && $isPartner, fn (Builder $query) => $query->where('event.organizer_id', $user->id))
             ->orderBy('event.starts_at')
             ->get()
             ->map(function (object $record) use ($admin, $isStaff, $bookedMap) {
@@ -78,7 +80,11 @@ final class EngagementEventController extends Controller
 
     public function save(Request $request, ?int $id = null): JsonResponse
     {
-        abort_unless(in_array($request->user()->role, ['admin', 'content_manager'], true), 403);
+        $user = $request->user();
+        $isStaff = in_array($user->role, ['admin', 'content_manager'], true);
+        $isPartner = $user->role === 'partner';
+        abort_unless($isStaff || $isPartner, 403);
+
         $data = $request->validate([
             'title' => ['required', 'string', 'max:140'],
             'summary' => ['required', 'string', 'max:5000'],
@@ -90,7 +96,7 @@ final class EngagementEventController extends Controller
             'ends_at' => ['required', 'date_format:Y-m-d\TH:i', 'after:starts_at'],
             'deadline' => ['nullable', 'date_format:Y-m-d\TH:i', 'before_or_equal:starts_at'],
             'capacity' => ['nullable', 'integer', 'between:1,200000'],
-            'status' => ['required', 'in:draft,published'],
+            'status' => ['required', $isPartner ? Rule::in(['draft', 'pending_review']) : Rule::in(['draft', 'pending_review', 'published', 'rejected'])],
             'presenters' => ['nullable', 'array', 'max:20'],
             'presenters.*.name' => ['required', 'string', 'max:100'],
             'presenters.*.profession' => ['required', 'string', 'max:100'],
@@ -165,15 +171,25 @@ final class EngagementEventController extends Controller
         $data['presenters'] = json_encode(array_values($presenters), JSON_THROW_ON_ERROR);
         $data['updated_at'] = now();
 
-        $id = DB::transaction(function () use ($id, $data) {
+        if ($isPartner && $data['status'] === 'pending_review') {
+            $data['review_notes'] = null;
+        }
+
+        $id = DB::transaction(function () use ($id, $data, $isPartner, $user) {
             if ($id === null) {
                 return DB::table('engagement_events')->insertGetId($data + [
+                    'organizer_id' => $isPartner ? $user->id : null,
+                    'review_notes' => null,
                     'slug' => Publishing::slug($data['title'], 'event'),
                     'created_at' => now(),
                 ]);
             }
             $query = DB::table('engagement_events')->where('id', $id);
-            abort_unless((clone $query)->lockForUpdate()->first(), 404);
+            $existing = (clone $query)->lockForUpdate()->first() ?? abort(404);
+            if ($isPartner) {
+                abort_unless((int) $existing->organizer_id === $user->id, 403);
+                abort_if($existing->status === 'published', 409, 'Published events can only be edited by YERH staff.');
+            }
             if ($data['capacity'] !== null && $this->bookings($id)->count() > $data['capacity']) {
                 throw ValidationException::withMessages(['capacity' => 'Capacity cannot be lower than the number of current bookings.']);
             }
@@ -182,7 +198,83 @@ final class EngagementEventController extends Controller
             return $id;
         });
 
+        if ($isPartner && $data['status'] === 'pending_review') {
+            WorkspaceNotifier::notifyAdmins(
+                "{$user->name} submitted a partner event for review: {$data['title']}.",
+                '/dashboard/workspace?tab=approvals&view=events',
+            );
+        }
+
         return response()->json(['data' => ['id' => $id]]);
+    }
+
+    public function review(Request $request, int $id): JsonResponse
+    {
+        abort_unless(in_array($request->user()->role, ['admin', 'content_manager'], true), 403);
+        $data = $request->validate([
+            'decision' => ['required', 'in:published,rejected'],
+            'note' => ['required_if:decision,rejected', 'nullable', 'string', 'max:1500'],
+        ]);
+
+        $event = DB::table('engagement_events')
+            ->where('id', $id)
+            ->where('status', 'pending_review')
+            ->first(['id', 'organizer_id', 'title']);
+        abort_unless($event, 409, 'This event submission has already been reviewed.');
+
+        $changed = DB::table('engagement_events')
+            ->where('id', $id)
+            ->where('status', 'pending_review')
+            ->update([
+                'status' => $data['decision'],
+                'review_notes' => $data['note'] ?? null,
+                'updated_at' => now(),
+            ]);
+        abort_unless($changed, 409, 'This event submission has already been reviewed.');
+
+        if ($event->organizer_id) {
+            $statusWord = $data['decision'] === 'published' ? 'approved and published' : 'declined';
+            $noteSuffix = ! empty($data['note']) ? ' Note: '.$data['note'] : '';
+            WorkspaceNotifier::notifyUser(
+                (int) $event->organizer_id,
+                "Your event \"{$event->title}\" was {$statusWord}.{$noteSuffix}",
+                '/dashboard/events',
+            );
+        }
+
+        return response()->json(['data' => ['saved' => true]]);
+    }
+
+    public function attendees(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        $event = DB::table('engagement_events')->where('id', $id)->first(['id', 'organizer_id']) ?? abort(404);
+        $isStaff = in_array($user->role, ['admin', 'content_manager'], true);
+        $isOwner = $user->role === 'partner' && (int) $event->organizer_id === $user->id;
+        abort_unless($isStaff || $isOwner, 403);
+
+        $rows = DB::table('event_bookings as b')
+            ->join('users as u', 'u.id', '=', 'b.user_id')
+            ->where('b.event_id', $id)
+            ->orderByDesc('b.created_at')
+            ->get([
+                'u.id as user_id',
+                'u.name',
+                'u.email',
+                'u.location',
+                'b.created_at as booked_at',
+            ])
+            ->map(static fn ($row, $idx) => [
+                'id' => $idx + 1,
+                'user_id' => (int) $row->user_id,
+                'name' => $row->name,
+                'email' => $row->email,
+                'location' => $row->location,
+                'booked_at' => (string) $row->booked_at,
+            ])
+            ->values();
+
+        return response()->json(['data' => $rows])->header('Cache-Control', 'no-store');
     }
 
     public function reserve(Request $request, string $slug): JsonResponse
@@ -268,7 +360,8 @@ final class EngagementEventController extends Controller
     {
         return DB::table('engagement_events as event')
             ->join('event_categories as category', 'category.id', '=', 'event.category_id')
-            ->select('event.*', 'category.name as category')
+            ->leftJoin('users as organizer', 'organizer.id', '=', 'event.organizer_id')
+            ->select('event.*', 'category.name as category', 'organizer.name as organizer_name')
             ->selectSub(DB::table('event_bookings')->whereColumn('event_id', 'event.id')->selectRaw('count(*)'), 'bookings');
     }
 

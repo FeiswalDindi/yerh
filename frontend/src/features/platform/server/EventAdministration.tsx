@@ -1,18 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
-import { ImagePlus, Trash2, UploadCloud, Video, MapPin } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ImagePlus, Trash2, UploadCloud, Users, Video, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cmsRepository } from '../../../services/laravel-cms-repository';
 import {
   engagementRepository,
+  type EventAttendee,
   type EventCategory,
   type EventRecord,
   type Presenter,
 } from '../../../services/laravel-engagement-repository';
-import { WorkspaceTable, WorkspaceTabs } from '../workspace/WorkspaceControls';
+import { WorkspaceDialog, WorkspaceTable, WorkspaceTabs } from '../workspace/WorkspaceControls';
 import { StatusIndicator } from '../../../shared/StatusIndicator';
 import { EventPresenterAvatar } from '../../resources/EventPresenters';
 import { EventCatalogue } from './EventCatalogue';
 import {
+  DecisionAction,
   fieldValue,
   RecordsFeedback,
   useWorkspaceRecords,
@@ -255,14 +257,81 @@ function PresenterFields({ record }: { record?: EventRecord }) {
   );
 }
 
+function EventAttendeesModal({ event }: { event: EventRecord }) {
+  const [attendees, setAttendees] = useState<EventAttendee[] | null>(null);
+  const [error, setError] = useState('');
+
+  const loadAttendees = useCallback(async () => {
+    setError('');
+    setAttendees(null);
+    try {
+      const rows = await engagementRepository.eventAttendees(event.id);
+      setAttendees(rows);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not load attendees.');
+    }
+  }, [event.id]);
+
+  return (
+    <WorkspaceDialog
+      action={`Attendees (${event.bookings})`}
+      title={`Registrations · ${event.title}`}
+      renderTrigger={(open) => (
+        <button
+          type="button"
+          className="button button-outline workspace-action"
+          onClick={() => {
+            open();
+            void loadAttendees();
+          }}
+        >
+          <Users size={14} aria-hidden="true" />
+          Attendees ({event.bookings})
+        </button>
+      )}
+    >
+      {(finish) => (
+        <>
+          <RecordsFeedback error={error} loading={attendees === null && !error} />
+          {attendees && (
+            <WorkspaceTable
+              label="event attendees"
+              columns={['Name', 'Email', 'Location', 'Registered at']}
+              empty="No registrations recorded for this event yet."
+              exportLabel="Export attendees CSV"
+              exportName={`${event.slug}-attendees.csv`}
+              rows={attendees.map((row) => ({
+                id: String(row.user_id),
+                search: [row.name, row.email, row.location ?? ''].join(' '),
+                cells: [row.name, row.email, row.location || '—', row.booked_at],
+              }))}
+            />
+          )}
+          <div className="workspace-row-actions">
+            <button
+              type="button"
+              className="button button-outline"
+              onClick={() => finish(true)}
+            >
+              Close
+            </button>
+          </div>
+        </>
+      )}
+    </WorkspaceDialog>
+  );
+}
+
 function EventEditor({
   categories,
   reload,
   record,
+  partner = false,
 }: {
   categories: EventCategory[];
   reload: () => void;
   record?: EventRecord;
+  partner?: boolean;
 }) {
   const [venueType, setVenueType] = useState<'physical' | 'virtual'>(
     record?.venue_type ?? 'physical',
@@ -375,10 +444,23 @@ function EventEditor({
           </select>
         </label>
         <label>
-          Publication
-          <select name="status" defaultValue={record?.status ?? 'draft'}>
+          {partner ? 'Submission status' : 'Publication'}
+          <select
+            name="status"
+            defaultValue={
+              partner
+                ? record?.status === 'pending_review'
+                  ? 'pending_review'
+                  : 'draft'
+                : (record?.status ?? 'draft')
+            }
+          >
             <option value="draft">Draft</option>
-            <option value="published">Published</option>
+            <option value="pending_review">
+              {partner ? 'Submit for YERH review' : 'Pending review'}
+            </option>
+            {!partner && <option value="published">Published</option>}
+            {!partner && <option value="rejected">Rejected</option>}
           </select>
         </label>
         <label>
@@ -432,7 +514,7 @@ function CategoryEditor({ category, reload }: { category?: EventCategory; reload
   );
 }
 
-export function EventAdministration() {
+export function EventAdministration({ partner = false }: { partner?: boolean } = {}) {
   const { records, error, reload } = useWorkspaceRecords(engagementRepository.manageEvents);
   const events = (archived: boolean) =>
     records && (
@@ -440,20 +522,21 @@ export function EventAdministration() {
         label={archived ? 'archived events' : 'upcoming events'}
         columns={[
           'Event',
+          ...(!partner ? ['Organiser'] : []),
           'Format & venue',
           'Category',
           'Starts (EAT)',
           'Ends (EAT)',
-          'Publication',
+          'Status',
           'Bookings',
           'Actions',
         ]}
         actions={
           !archived &&
           (records.categories.length ? (
-            <EventEditor categories={records.categories} reload={reload} />
+            <EventEditor categories={records.categories} reload={reload} partner={partner} />
           ) : (
-            <span>Add a category to create an event.</span>
+            <span>Ask YERH administration to add an event category first.</span>
           ))
         }
         rows={records.events
@@ -466,9 +549,16 @@ export function EventAdministration() {
               record.status,
               record.venue,
               record.venue_type,
+              record.organizer_name ?? '',
             ].join(' '),
             cells: [
-              record.title,
+              <>
+                <strong>{record.title}</strong>
+                {record.review_notes && (
+                  <div className="workspace-detail-copy">Review note: {record.review_notes}</div>
+                )}
+              </>,
+              ...(!partner ? [record.organizer_name || 'YERH'] : []),
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                 {record.venue_type === 'virtual' ? (
                   <Video size={14} aria-hidden="true" />
@@ -483,44 +573,112 @@ export function EventAdministration() {
               <StatusIndicator status={record.status} />,
               record.bookings,
               <div className="workspace-row-actions">
-                <EventEditor record={record} categories={records.categories} reload={reload} />
+                {(!partner || record.status !== 'published') && (
+                  <EventEditor
+                    record={record}
+                    categories={records.categories}
+                    reload={reload}
+                    partner={partner}
+                  />
+                )}
+                {!partner && record.status === 'pending_review' && (
+                  <DecisionAction
+                    name={record.title}
+                    decide={async (decision, note) => {
+                      await engagementRepository.reviewEvent(
+                        record.id,
+                        decision === 'approved' ? 'published' : 'rejected',
+                        note,
+                      );
+                      reload();
+                    }}
+                  />
+                )}
+                {record.status === 'published' && <EventAttendeesModal event={record} />}
                 {record.status === 'published' && <Link to={'/sessions/' + record.slug}>View</Link>}
               </div>,
             ],
           }))}
       />
     );
+
+  const pendingSubmissions = records?.events.filter((e) => e.status === 'pending_review') ?? [];
+
   return (
     <>
       <RecordsFeedback error={error} loading={records === null} />
       {records && (
         <WorkspaceTabs
           label="Event management"
-          views={[
-            { id: 'upcoming', label: 'Upcoming', content: events(false) },
-            { id: 'archive', label: 'Archived', content: events(true) },
-            {
-              id: 'categories',
-              label: 'Categories',
-              content: (
-                <WorkspaceTable
-                  label="event categories"
-                  columns={['Category', 'Events', 'Action']}
-                  actions={<CategoryEditor reload={reload} />}
-                  rows={records.categories.map((category) => ({
-                    id: String(category.id),
-                    search: category.name,
-                    cells: [
-                      category.name,
-                      records.events.filter((record) => record.category_id === category.id).length,
-                      <CategoryEditor category={category} reload={reload} />,
-                    ],
-                  }))}
-                />
-              ),
-            },
-            { id: 'preview', label: 'Preview', content: <EventCatalogue embedded /> },
-          ]}
+          views={
+            partner
+              ? [
+                  { id: 'upcoming', label: 'Upcoming & drafts', content: events(false) },
+                  { id: 'archive', label: 'Past events', content: events(true) },
+                ]
+              : [
+                  { id: 'upcoming', label: 'Upcoming', content: events(false) },
+                  {
+                    id: 'submissions',
+                    label: 'Partner submissions',
+                    count: pendingSubmissions.length,
+                    content: (
+                      <WorkspaceTable
+                        label="partner event submissions"
+                        columns={['Event', 'Partner', 'Format & venue', 'Starts (EAT)', 'Action']}
+                        empty="No partner events are awaiting review."
+                        rows={pendingSubmissions.map((record) => ({
+                          id: String(record.id),
+                          search: [record.title, record.organizer_name ?? '', record.venue].join(' '),
+                          cells: [
+                            <>
+                              <strong>{record.title}</strong>
+                              <div className="workspace-detail-copy">{record.summary}</div>
+                            </>,
+                            record.organizer_name || 'Partner',
+                            record.venue,
+                            record.starts_at.replace('T', ' '),
+                            <DecisionAction
+                              name={record.title}
+                              decide={async (decision, note) => {
+                                await engagementRepository.reviewEvent(
+                                  record.id,
+                                  decision === 'approved' ? 'published' : 'rejected',
+                                  note,
+                                );
+                                reload();
+                              }}
+                            />,
+                          ],
+                        }))}
+                      />
+                    ),
+                  },
+                  { id: 'archive', label: 'Archived', content: events(true) },
+                  {
+                    id: 'categories',
+                    label: 'Categories',
+                    content: (
+                      <WorkspaceTable
+                        label="event categories"
+                        columns={['Category', 'Events', 'Action']}
+                        actions={<CategoryEditor reload={reload} />}
+                        rows={records.categories.map((category) => ({
+                          id: String(category.id),
+                          search: category.name,
+                          cells: [
+                            category.name,
+                            records.events.filter((record) => record.category_id === category.id)
+                              .length,
+                            <CategoryEditor category={category} reload={reload} />,
+                          ],
+                        }))}
+                      />
+                    ),
+                  },
+                  { id: 'preview', label: 'Preview', content: <EventCatalogue embedded /> },
+                ]
+          }
         />
       )}
     </>

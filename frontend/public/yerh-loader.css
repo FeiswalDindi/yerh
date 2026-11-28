@@ -16,6 +16,34 @@ body:has(#root > .yerh-loader--screen) {
   background: #f6f7fb;
 }
 
+.yerh-loader__stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  padding-inline: 16px;
+}
+
+.yerh-loader__wait {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #192c57;
+}
+
+.yerh-loading-dots {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.yerh-dots {
+  display: inline-flex;
+  min-width: 1.55em;
+  letter-spacing: 0.08em;
+}
+
 .yerh-loader__emblem {
   position: relative;
   display: grid;
@@ -75,6 +103,62 @@ body:has(#root > .yerh-loader--screen) {
   }
   .yerh-loader__emblem img {
     animation: yerh-loader-bounce 1.55s cubic-bezier(0.45, 0, 0.28, 1) infinite;
+  }
+  .yerh-dots span:nth-child(1) {
+    animation: yerh-dot-1 1.6s steps(1, end) infinite;
+  }
+  .yerh-dots span:nth-child(2) {
+    animation: yerh-dot-2 1.6s steps(1, end) infinite;
+  }
+  .yerh-dots span:nth-child(3) {
+    animation: yerh-dot-3 1.6s steps(1, end) infinite;
+  }
+  .yerh-dots span:nth-child(4) {
+    animation: yerh-dot-4 1.6s steps(1, end) infinite;
+  }
+}
+
+@keyframes yerh-dot-1 {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  15%,
+  94% {
+    opacity: 1;
+  }
+}
+
+@keyframes yerh-dot-2 {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  35%,
+  94% {
+    opacity: 1;
+  }
+}
+
+@keyframes yerh-dot-3 {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  55%,
+  94% {
+    opacity: 1;
+  }
+}
+
+@keyframes yerh-dot-4 {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  75%,
+  94% {
+    opacity: 1;
   }
 }
 

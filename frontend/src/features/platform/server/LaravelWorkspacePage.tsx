@@ -5,17 +5,20 @@ import { laravelWorkspace } from '../../../services/laravel-workspace-repository
 import { ApprovalQueue } from './ApprovalQueue';
 import { AdminVentures } from './AdminVentures';
 import { WorkspaceOverview, ActivityReport, AccountDirectory } from './WorkspaceOverview';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useLaravelSession } from '../../../app/useLaravelSession';
 import { localLaravelIdentity } from '../../../services/laravel-identity-repository';
-import { roleLabels } from '../../../domain/roles';
+import { displayRoleLabel } from '../../../domain/roles';
 import { Header } from '../../../layout/Header';
 import { AccountLink } from '../../accounts/AccountLink';
-import { AffiliationWorkspace } from './AffiliationWorkspace';
 import { InstitutionDirectory, InstitutionPortal } from './InstitutionWorkspace';
 import { SchoolCertificateQueue } from './SchoolResults';
-import { CourseAdministration, CourseEnrolmentRegistry } from './CourseAdministration';
+import {
+  CourseAdministration,
+  CourseEnrolmentRegistry,
+  MentorEarningsWorkspace,
+} from './CourseAdministration';
 import { EventAdministration } from './EventAdministration';
 import { EditorialWorkspace } from './EditorialWorkspace';
 import { CommunicationsWorkspace } from './CommunicationsWorkspace';
@@ -25,111 +28,39 @@ import { VentureWorkspace } from './VentureWorkspace';
 import { IncubationProgramme, ProgrammeMentors } from './IncubationProgramme';
 import { ProductsWorkspace } from './ProductsWorkspace';
 import { ProgrammePayments, VentureCertificates } from './ProgrammeFinance';
-import { errorText, RecordsFeedback, useWorkspaceRecords } from './WorkspaceActions';
+import { RecordsFeedback, useWorkspaceRecords } from './WorkspaceActions';
 import { LaravelDashboardFrame } from './LaravelDashboardFrame';
 import { LearningWorkspace } from './LearningWorkspace';
 import { EventCatalogue, LaravelEventPage } from './EventCatalogue';
+import { GuestAccountHub } from './GuestAccountHub';
+import { CommunityWorkspace } from './CommunityWorkspace';
 import './server-workspace.css';
 
 export function LaravelAccountPage() {
   const session = useLaravelSession();
   const [params] = useSearchParams();
-  const [notice, setNotice] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
   if (!session) return null;
   const { profile, refresh } = session;
   if (profile?.email_verified && (profile.role !== 'guest' || profile.staff.length > 0)) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  async function verifyLocally() {
-    setBusy(true);
-    setError('');
-    try {
-      window.location.assign(await localLaravelIdentity.localVerificationLink());
-    } catch (failure) {
-      setError(errorText(failure));
-      setBusy(false);
-    }
-  }
-
-  async function resend() {
-    setBusy(true);
-    setError('');
-    setNotice('');
-    try {
-      await localLaravelIdentity.resendVerification();
-      setNotice('A new verification email has been queued.');
-    } catch (failure) {
-      setError(errorText(failure));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   return (
-    <section className="container section server-account">
-      <h1>Account</h1>
-      {params.get('verification') === 'invalid' && !profile?.email_verified && (
-        <p role="alert" className="form-error">
-          This verification link has expired or is invalid. Sign in and choose Resend verification
-          to get a new link.
-        </p>
-      )}
+    <section className="container section server-account guest-account-page">
       <RecordsFeedback loading={session.loading} error={session.error} />
       {!session.loading && !profile && !session.error && (
-        <AccountLink className="button">Sign in</AccountLink>
+        <div className="profile-panel guest-signedout-card">
+          <h1>Your YERH profile</h1>
+          <p>Sign in to manage your security settings, public profile, and institution affiliation.</p>
+          <AccountLink className="button button-gold">Sign in or register</AccountLink>
+        </div>
       )}
       {profile && (
-        <>
-          <p>
-            {profile.name} · {profile.email}
-          </p>
-          {!profile.email_verified ? (
-            <>
-              <p>
-                {profile.requested_institution
-                  ? `Verify your email to complete affiliation with ${profile.requested_institution.name}.`
-                  : 'Verify your email to apply for incubation or join an institution.'}
-              </p>
-              {profile.local_verification_available && (
-                <button
-                  type="button"
-                  className="button"
-                  disabled={busy}
-                  onClick={() => void verifyLocally()}
-                >
-                  Verify email address
-                </button>
-              )}
-              <button
-                type="button"
-                className="button button-outline"
-                disabled={busy}
-                onClick={() => void resend()}
-              >
-                Resend verification
-              </button>
-              {notice && <p role="status">{notice}</p>}
-              {error && (
-                <p role="alert" className="form-error">
-                  {error}
-                </p>
-              )}
-            </>
-          ) : (
-            <>
-              <p role="status">Email verified.</p>
-              <h2>Incubation applications</h2>
-              <AffiliationWorkspace refresh={refresh} />
-              <Link to="/learn">Browse general courses</Link>
-            </>
-          )}
-          <button type="button" className="button button-outline" onClick={() => void refresh()}>
-            Refresh account
-          </button>
-        </>
+        <GuestAccountHub
+          profile={profile}
+          refresh={refresh}
+          verificationNotice={params.get('verification') === 'invalid'}
+        />
       )}
     </section>
   );
@@ -185,6 +116,9 @@ function SessionDashboard() {
   const canEditContent = admin || contentManager;
   const founder = profile.role === 'entrepreneur';
   const mentor = profile.role === 'mentor';
+  const partner = profile.role === 'partner';
+  const hasCommunityAccess =
+    admin || contentManager || founder || mentor || profile.staff.length > 0;
   const programmeRole = admin ? 'admin' : founder ? 'entrepreneur' : mentor ? 'mentor' : null;
   const portal = (admin ? (institutions ?? []) : profile.staff).find(
     (institution) => institution.slug === params.get('institution'),
@@ -250,6 +184,7 @@ function SessionDashboard() {
             ['Content Studio', '/dashboard/cms'],
             ['Events', '/dashboard/events'],
             ['Opportunities', '/dashboard/opportunities'],
+            ['Community', workspace('community')],
           ]),
           section('Communications', [['Emails', workspace('communications')]]),
         ]
@@ -262,6 +197,7 @@ function SessionDashboard() {
             ['Incubation', workspace('incubation')],
             ['Courses', '/dashboard/learning'],
             ['Opportunities', '/dashboard/opportunities'],
+            ['Community', workspace('community')],
           ]),
         ]
       : []),
@@ -270,6 +206,16 @@ function SessionDashboard() {
           section('Mentorship', [
             ['Assigned pathways', workspace('incubation')],
             ['Product evidence', workspace('products')],
+            ['Course proposals', workspace('courses')],
+            ['Earnings & royalties', workspace('earnings')],
+            ['Community', workspace('community')],
+          ]),
+        ]
+      : []),
+    ...(partner
+      ? [
+          section('Partner workspace', [
+            ['My events', '/dashboard/events'],
             ['Course proposals', workspace('courses')],
           ]),
         ]
@@ -281,6 +227,7 @@ function SessionDashboard() {
             ['Events', '/dashboard/events'],
             ['Opportunities', '/dashboard/opportunities'],
             ['Shop categories', workspace('sectors')],
+            ['Community', workspace('community')],
           ]),
           section('Communications', [['Emails', workspace('communications')]]),
         ]
@@ -302,6 +249,9 @@ function SessionDashboard() {
     }),
     section('Account', [
       ['Profile', '/dashboard/profile'],
+      ...(profile.staff.length > 0 && !admin && !contentManager && !founder && !mentor && !partner
+        ? [['Community', workspace('community')]]
+        : []),
       ...(founder || mentor ? [['Events', '/dashboard/events']] : []),
       ...(founder ? [['Certificates', '/dashboard/certificates']] : []),
     ]),
@@ -321,7 +271,13 @@ function SessionDashboard() {
               ? 'Incubation Pathway'
               : 'Portal';
   const title =
-    (view === 'school' ? institutionTitle : dashboardEventMatch ? 'Event details' : undefined) ??
+    (view === 'school'
+      ? institutionTitle
+      : view === 'learning'
+        ? 'Courses'
+        : dashboardEventMatch
+          ? 'Event details'
+          : undefined) ??
     navGroups
       .flatMap((group) => group.links)
       .find((link) => link.to === currentPath || link.to === workspace(view))?.label ??
@@ -336,7 +292,7 @@ function SessionDashboard() {
         [workspace('communications')]: summary.records?.metrics.enquiries ?? 0,
       }}
       title={title}
-      role={roleLabels[profile.role]}
+      role={displayRoleLabel(profile.role)}
       accountId={profile.id}
       signOut={session.signOut}
       record={view === 'institutions' ? records : undefined}
@@ -362,14 +318,18 @@ function SessionDashboard() {
                     .toUpperCase()}
                 </span>
                 <h2>{profile.name}</h2>
-                <span className="dashboard-profile-role">{roleLabels[profile.role]}</span>
+                <span className="dashboard-profile-role">{displayRoleLabel(profile.role)}</span>
                 <p>{profile.affiliation?.name ?? profile.staff.map((s) => s.name).join(', ')}</p>
-                <ChangePasswordDialog />
+                <ChangePasswordDialog
+                  hasPassword={profile.has_password !== false}
+                  onUpdated={() => session.refresh()}
+                />
               </div>
             </aside>
             <div>
               <ProfileForm
                 person={profile}
+                splitName
                 save={async (fields) => {
                   await localLaravelIdentity.updateProfile(fields);
                   await session.refresh();
@@ -423,11 +383,13 @@ function SessionDashboard() {
         <CommunicationsWorkspace />
       ) : view === 'sectors' && canEditContent ? (
         <MarketplaceSectorAdmin />
-      ) : dashboardEventMatch?.[1] && (canEditContent || founder || mentor) ? (
+      ) : dashboardEventMatch?.[1] && (canEditContent || partner || founder || mentor) ? (
         <LaravelEventPage dashboard slugOverride={decodeURIComponent(dashboardEventMatch[1])} />
-      ) : view === 'events' && (canEditContent || founder || mentor) ? (
+      ) : view === 'events' && (canEditContent || partner || founder || mentor) ? (
         canEditContent ? (
           <EventAdministration />
+        ) : partner ? (
+          <EventAdministration partner />
         ) : (
           <EventCatalogue embedded />
         )
@@ -435,8 +397,12 @@ function SessionDashboard() {
         <LearningWorkspace />
       ) : view === 'opportunities' && (canEditContent || founder) ? (
         <OpportunityWorkspace admin={canEditContent} canReviewSubmissions={admin} />
-      ) : view === 'courses' && (admin || mentor) ? (
-        <CourseAdministration admin={admin} />
+      ) : view === 'courses' && (admin || mentor || partner) ? (
+        <CourseAdministration admin={admin} partner={partner} />
+      ) : view === 'community' && hasCommunityAccess ? (
+        <CommunityWorkspace canModerate={canEditContent} />
+      ) : view === 'earnings' && (admin || mentor) ? (
+        <MentorEarningsWorkspace admin={admin} />
       ) : view === 'mentors' && admin ? (
         <>
           <ProgrammeMentors />

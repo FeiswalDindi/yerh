@@ -18,6 +18,7 @@ import { ResetPasswordPage } from '../features/accounts/ResetPasswordPage';
 import { roleAccessPath } from '../features/accounts/role-requests';
 import { BreadcrumbProvider } from '../shared/BreadcrumbProvider';
 import { SiteLoader } from '../shared/SiteLoader';
+import { useLaravelSession } from './useLaravelSession';
 import { RouteLoadError } from './RouteLoadError';
 import { laravelModeEnabled } from '../config/laravel';
 import { loadDashboardLayout, loadLaravelWorkspace } from './route-preload';
@@ -99,6 +100,11 @@ const LearningWorkspace = lazy(() =>
     default: m.LearningWorkspace,
   })),
 );
+const MoodleLaunchPage = lazy(() =>
+  import('../features/platform/server/MoodleLaunchPage').then((m) => ({
+    default: m.MoodleLaunchPage,
+  })),
+);
 const LearningPage = lazy(() =>
   import('../features/resources/LearningPage').then((m) => ({ default: m.LearningPage })),
 );
@@ -109,6 +115,9 @@ const EventCollectionPage = lazy(() =>
 );
 const AboutPage = lazy(() =>
   import('../features/info/AboutPage').then((m) => ({ default: m.AboutPage })),
+);
+const TeamMemberPage = lazy(() =>
+  import('../features/info/TeamMemberPage').then((m) => ({ default: m.TeamMemberPage })),
 );
 const FaqPage = lazy(() =>
   import('../features/info/FaqPage').then((m) => ({ default: m.FaqPage })),
@@ -132,6 +141,9 @@ const InstitutionOnboardingPage = lazy(() =>
   import('../features/institutions/InstitutionOnboardingPage').then((m) => ({
     default: m.InstitutionOnboardingPage,
   })),
+);
+const CareersPage = lazy(() =>
+  import('../features/careers/CareersPage').then((m) => ({ default: m.CareersPage })),
 );
 const ApplicationsPage = lazy(() =>
   import('../features/accounts/ApplicationsPage').then((m) => ({ default: m.ApplicationsPage })),
@@ -182,6 +194,9 @@ const MemberProfilePage = lazy(() =>
 const GroupPage = lazy(() =>
   import('../features/community/GroupPage').then((m) => ({ default: m.GroupPage })),
 );
+const GroupsPage = lazy(() =>
+  import('../features/community/GroupsPage').then((m) => ({ default: m.GroupsPage })),
+);
 const SessionPage = lazy(() =>
   import('../features/resources/SessionPage').then((m) => ({ default: m.SessionPage })),
 );
@@ -229,6 +244,27 @@ function ApplicationEntry() {
     <ApplicationsPage />
   );
 }
+function GroupRedirect() {
+  const { groupId } = useParams();
+  return <Navigate to={groupId ? `/groups/${encodeURIComponent(groupId)}` : '/groups'} replace />;
+}
+function LaravelCommunityRedirect({ tab, view }: { tab?: string; view?: string }) {
+  const session = useLaravelSession();
+  const { groupId } = useParams();
+  const profile = session?.profile;
+  if (session?.loading) return <SiteLoader screen />;
+  const isDashboardUser =
+    Boolean(profile?.email_verified) &&
+    (profile?.role !== 'guest' || (profile?.staff.length ?? 0) > 0);
+  if (!isDashboardUser) {
+    return <Navigate to="/forums" replace />;
+  }
+  const qs = new URLSearchParams({ tab: tab ?? 'community' });
+  if (view) qs.set('view', view);
+  if (groupId) qs.set('group', groupId);
+  return <Navigate to={`/dashboard/workspace?${qs.toString()}`} replace />;
+}
+
 /** Compose under the host router; DemoProvider and ContentProvider are supplied at the app boundary. */
 export function createYerhRoutes(): RouteObject[] {
   return [
@@ -265,6 +301,8 @@ function siteRoutes(): RouteObject[] {
       children: [
         { index: true, element: <HomePage /> },
         { path: 'about', element: <AboutPage /> },
+        { path: 'about/team/:memberId', element: <TeamMemberPage /> },
+        { path: 'team/:memberId', element: <TeamMemberPage /> },
         { path: 'faq', element: <FaqPage /> },
         { path: 'resources', element: <ResourcesPage /> },
         { path: 'entrepreneurship/:topic', element: <EntrepreneurshipPage /> },
@@ -320,16 +358,18 @@ function siteRoutes(): RouteObject[] {
           path: 'learn/:courseId',
           element: laravelModeEnabled ? <LearningWorkspace /> : <LearningPage />,
         },
-        {
-          path: 'dashboard/learning/:courseId',
-          element: laravelModeEnabled ? (
-            <LearningWorkspace />
-          ) : (
-            <RequireDemo workspace capabilities={dashboardAccess.learning}>
-              <LearningPage dashboard />
-            </RequireDemo>
-          ),
-        },
+        ...(laravelModeEnabled
+          ? []
+          : [
+              {
+                path: 'dashboard/learning/:courseId',
+                element: (
+                  <RequireDemo workspace capabilities={dashboardAccess.learning}>
+                    <LearningPage dashboard />
+                  </RequireDemo>
+                ),
+              },
+            ]),
         {
           path: 'account',
           element: laravelModeEnabled ? (
@@ -361,19 +401,61 @@ function siteRoutes(): RouteObject[] {
         },
         { path: 'forums', element: <ForumsPage /> },
         { path: 'forums/:threadId', element: <ThreadPage /> },
-        { path: 'network', element: <NetworkPage /> },
+        { path: 'groups', element: <GroupsPage /> },
+        { path: 'groups/:groupId', element: <GroupsPage /> },
+        {
+          path: 'network',
+          element: laravelModeEnabled ? <Navigate to="/groups" replace /> : <NetworkPage />,
+        },
+        { path: 'members/:memberId', element: <MemberProfilePage /> },
         { path: 'network/members/:memberId', element: <MemberProfilePage /> },
-        { path: 'network/groups/:groupId', element: <GroupPage /> },
+        {
+          path: 'network/groups/:groupId',
+          element: laravelModeEnabled ? <GroupRedirect /> : <GroupPage />,
+        },
         {
           path: 'sessions/:sessionId',
           element: laravelModeEnabled ? <LaravelEventPage /> : <SessionPage />,
         },
-        { path: 'leaderboard', element: <Navigate to="/network?tab=leaderboard" replace /> },
-        { path: 'yem/mentors', element: <MentorshipPage /> },
-        { path: 'yem/mentees', element: <MentorshipPage mode="mentees" /> },
-        { path: 'community', element: <Navigate to="/network" replace /> },
+        {
+          path: 'leaderboard',
+          element: laravelModeEnabled ? (
+            <LaravelCommunityRedirect view="leaderboard" />
+          ) : (
+            <Navigate to="/network?tab=leaderboard" replace />
+          ),
+        },
+        {
+          path: 'yem/mentors',
+          element: laravelModeEnabled ? (
+            <Navigate to="/join?role=mentor" replace />
+          ) : (
+            <MentorshipPage />
+          ),
+        },
+        {
+          path: 'yem/mentees',
+          element: laravelModeEnabled ? (
+            <Navigate to="/join?role=entrepreneur" replace />
+          ) : (
+            <MentorshipPage mode="mentees" />
+          ),
+        },
+        {
+          path: 'community',
+          element: laravelModeEnabled ? (
+            <Navigate to="/groups" replace />
+          ) : (
+            <Navigate to="/network" replace />
+          ),
+        },
         { path: 'join', element: <JoinPage /> },
         { path: 'institutions/apply', element: <InstitutionOnboardingPage /> },
+        { path: 'careers', element: <CareersPage /> },
+        { path: 'careers/institutions', element: <CareersPage /> },
+        { path: 'careers/partnerships', element: <CareersPage /> },
+        { path: 'careers/mentorship', element: <CareersPage /> },
+        { path: 'careers/invest', element: <CareersPage /> },
         { path: 'register', element: <AccountEntryRedirect mode="register" /> },
         { path: 'login', element: <AccountEntryRedirect /> },
         { path: 'demo', element: <DemoLoginPage /> },
@@ -461,6 +543,9 @@ function siteRoutes(): RouteObject[] {
             </RequireDemo>
           ),
         },
+        ...(laravelModeEnabled
+          ? [{ path: 'learning/:courseId', element: <LearningWorkspace /> }]
+          : []),
         {
           path: 'opportunities',
           element: (
@@ -497,6 +582,14 @@ function siteRoutes(): RouteObject[] {
         { path: 'marketplace/:slug', element: <ContentDetail dashboard /> },
         { path: '*', element: <NotFoundPage /> },
       ],
+    },
+    {
+      path: 'moodle/launch',
+      element: (
+        <Suspense fallback={<SiteLoader screen heartbeat message="Opening YERH Learning…" />}>
+          <MoodleLaunchPage />
+        </Suspense>
+      ),
     },
   ];
 }

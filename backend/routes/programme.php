@@ -25,6 +25,7 @@ Route::prefix('api/v1/workspace')
         Route::get('/incubation/{id}', [IncubationController::class, 'show'])->whereNumber('id');
         Route::post('/ventures/{ventureId}/launch', [IncubationController::class, 'launch'])->whereNumber('ventureId');
         Route::post('/incubation/{id}/mentor', [IncubationController::class, 'assign'])->whereNumber('id');
+        Route::post('/incubation/{id}/sync-moodle', [IncubationController::class, 'syncMoodle'])->whereNumber('id');
         Route::post('/incubation/{id}/stages/{stage}/{action}', [IncubationStageController::class, 'update'])->whereNumber('id');
         Route::get('/incubation/{id}/stages/{stage}/evidence/{step}/attachment', [IncubationStageController::class, 'evidenceAttachment'])->whereNumber('id');
         Route::get('/incubation/{id}/stages/{stage}/exam-attachment', [IncubationStageController::class, 'examAttachment'])->whereNumber('id');

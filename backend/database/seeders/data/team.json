@@ -1,0 +1,83 @@
+{
+  "title": "Our Team",
+  "intro": "Meet the people who lead the hub, support entrepreneurs and build the YERH platform.",
+  "sourceUrl": "",
+  "groupPhoto": {
+    "image": "https://bxkeegvzuzbkykluaxzp.supabase.co/storage/v1/object/public/public-images/cms/yerh-eldoret-92-1790240495090.jpg",
+    "alt": "Members of the YERH team in Eldoret"
+  },
+  "members": [
+    {
+      "id": "abraham-rotich",
+      "name": "Dr. Abraham Rotich",
+      "role": "Director, Innovation, Incubation & Linkages",
+      "positioning": "Strategic Director & Ecosystem Visionary",
+      "bio": "Dr. Rotich leads KCA University’s work to empower young entrepreneurs through innovation. He connects university initiatives with industry partners and guides YERH’s alignment with Kenya’s economic priorities and international partnerships.",
+      "image": "https://bxkeegvzuzbkykluaxzp.supabase.co/storage/v1/object/public/public-images/cms/yerh-eldoret-6-1790241044618.jpg",
+      "linkedinUrl": ""
+    },
+    {
+      "id": "alexander-njuguna-kamau",
+      "name": "Alexander Njuguna Kamau",
+      "role": "YERH Project Manager & Hub Supervisor",
+      "positioning": "Lead Project Manager & Student Engagement Director",
+      "bio": "Alexander manages YERH’s delivery, tracks project milestones and oversees grant requirements. He supervises how the Student Engagement Program fits into the university’s incubation centre.",
+      "image": "https://bxkeegvzuzbkykluaxzp.supabase.co/storage/v1/object/public/public-images/cms/yerh-eldoret-31-1790240644667.jpg",
+      "linkedinUrl": ""
+    },
+    {
+      "id": "patience-githinji",
+      "name": "Patience Githinji",
+      "role": "Hub Administrator / Content Manager",
+      "positioning": "Ecosystem Coordinator & Operations Lead",
+      "bio": "Patience manages the incubation centre’s activity records and coordinates with student development teams. She helps keep the hub’s on-site work and online activities in sync.",
+      "image": "https://bxkeegvzuzbkykluaxzp.supabase.co/storage/v1/object/public/public-images/cms/screenshot-2026-09-24-012203-1790242093898.png",
+      "linkedinUrl": ""
+    },
+    {
+      "id": "anthony-ochieng",
+      "name": "Anthony Ochieng",
+      "role": "Community Manager",
+      "positioning": "Community & Partnerships Strategist",
+      "bio": "Anthony connects entrepreneurs and partners across the YERH network. He brings feedback and priorities from young entrepreneurs into the planning of hub initiatives.",
+      "image": "https://bxkeegvzuzbkykluaxzp.supabase.co/storage/v1/object/public/public-images/cms/yerh-kisumu-124-1790241190760.jpg",
+      "linkedinUrl": ""
+    },
+    {
+      "id": "sam-moturi",
+      "name": "Sam Moturi",
+      "role": "Code Reviewer & Dev Team Lead",
+      "positioning": "Lead Systems Architect & QA Head",
+      "bio": "Sam leads development sprints, reviews proposed code and oversees merges. His work helps the team maintain the platform’s architecture, security and ability to grow.",
+      "image": "",
+      "linkedinUrl": ""
+    },
+    {
+      "id": "feiswal-dindi-onyango",
+      "name": "Feiswal Dindi Onyango",
+      "role": "Developer & Incubation Club Chairperson",
+      "positioning": "Front-End Lead Engineer & Product Lead Manager",
+      "bio": "Feiswal turns student needs into product and interface improvements. He works with Vue, React and Laravel on YERH’s core interface, marketplace storefronts and homepage.",
+      "image": "https://bxkeegvzuzbkykluaxzp.supabase.co/storage/v1/object/public/public-images/cms/yerh-kisumu-223-1790241527250.jpg",
+      "linkedinUrl": "https://www.linkedin.com/in/feiswal-dindi-onyango/"
+    },
+    {
+      "id": "stephen-macharia",
+      "name": "Stephen Macharia",
+      "role": "Developer",
+      "positioning": "E-Learning & Interactive Systems Engineer",
+      "bio": "Stephen develops YERH’s learning tools. His work includes virtual incubation modules, course layouts and automated verification for entrepreneurs using the platform.",
+      "image": "https://bxkeegvzuzbkykluaxzp.supabase.co/storage/v1/object/public/public-images/cms/screenshot-2026-09-24-012514-1790241938156.png",
+      "linkedinUrl": ""
+    },
+    {
+      "id": "andrew",
+      "name": "Andrew",
+      "role": "Developer",
+      "positioning": "Security & Infrastructure Engineer",
+      "bio": "Andrew maintains the project’s repository infrastructure and works on sign-in and account access. He helps protect user data and maintain the platform’s role permissions.",
+      "image": "https://bxkeegvzuzbkykluaxzp.supabase.co/storage/v1/object/public/public-images/cms/yerh-kisumu-220-1790241468673.jpg",
+      "linkedinUrl": ""
+    }
+  ]
+}

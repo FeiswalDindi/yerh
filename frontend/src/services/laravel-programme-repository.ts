@@ -15,6 +15,13 @@ export interface Pathway {
   owner: string;
   mentor: string | null;
   graduated_at: string | null;
+  moodle_course_id?: number | null;
+  moodle_group_id?: number | null;
+  moodle_progress?: number | null;
+  moodle_score?: number | null;
+  moodle_completed_at?: string | null;
+  moodle_synced_at?: string | null;
+  moodle_launch_url?: string | null;
 }
 
 export interface Stage {
@@ -110,6 +117,7 @@ export interface PaymentInstructions {
   account_number: string;
   recipient_name: string;
   instructions: string;
+  refund_notice: string;
 }
 
 interface Payment {
@@ -159,6 +167,12 @@ export const laravelProgramme = {
     get<{ id: number; name: string }[]>('mentors/candidates?' + new URLSearchParams({ q }), signal),
   addMentor: (user_id: number) => write('mentors', { user_id }),
   assignMentor: (id: number, mentor_id: number) => write(`incubation/${id}/mentor`, { mentor_id }),
+  syncMoodle: async (id: number) =>
+    (
+      await (write(`incubation/${id}/sync-moodle`, {}) as Promise<{
+        data: { progress: number; score: number | null; completed: boolean; graduated: boolean };
+      }>)
+    ).data,
   updateStage: (id: number, stage: StageKey, action: string, data: object | FormData = {}) =>
     write(`incubation/${id}/stages/${stage}/${action}`, data),
   evidenceAttachmentUrl: (id: number, stage: StageKey, step: string) =>

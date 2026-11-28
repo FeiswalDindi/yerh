@@ -146,4 +146,70 @@ final class IdentityTest extends TestCase
         $this->actingAs($account)->getJson($url.'&unexpected=1')->assertForbidden();
         $this->assertNull($account->fresh()->email_verified_at);
     }
+
+    public function test_affiliated_user_can_log_in_without_institution_and_wrong_institution_keeps_pending_verification(): void
+    {
+        $user = User::factory()->unverified()->create(['role' => 'entrepreneur']);
+        $schoolId = \Illuminate\Support\Facades\DB::table('institutions')->insertGetId([
+            'slug' => 'kca-hub',
+            'name' => 'KCA Hub',
+            'kind' => 'hub',
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        \Illuminate\Support\Facades\DB::table('institution_memberships')->insert([
+            'user_id' => $user->id,
+            'institution_id' => $schoolId,
+            'location' => 'Nairobi',
+            'consented_at' => now(),
+        ]);
+
+        $url = $this->verificationUrl($user);
+        $this->get($url)->assertRedirect('/login?verification=continue');
+
+        // Explicit wrong institution fails, but keeps PENDING_VERIFICATION intact.
+        $this->postJson(self::API.'/login', [
+            'email' => $user->email,
+            'password' => 'password',
+            'institution' => 'wrong-hub',
+        ])->assertUnprocessable()->assertJsonValidationErrors('institution');
+        $this->assertGuest();
+
+        // Retrying without forcing an institution succeeds and completes verification.
+        $this->postJson(self::API.'/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ])->assertOk()
+            ->assertJsonPath('data.email_verified', true)
+            ->assertJsonPath('data.affiliation.slug', 'kca-hub');
+    }
+
+    public function test_register_validates_terms_when_present_accepts_single_char_names_and_keeps_6_char_password(): void
+    {
+        Notification::fake();
+
+        $this->postJson(self::API.'/register', [
+            'first_name' => 'J',
+            'last_name' => 'K',
+            'email' => 'jk@example.test',
+            'password' => 'abc123',
+            'password_confirmation' => 'abc123',
+            'terms' => false,
+        ])->assertUnprocessable()->assertJsonValidationErrors('terms');
+
+        $this->postJson(self::API.'/register', [
+            'first_name' => 'J',
+            'last_name' => 'K',
+            'email' => 'jk@example.test',
+            'password' => 'abc123',
+            'password_confirmation' => 'abc123',
+            'terms' => true,
+        ])->assertCreated()
+            ->assertJsonPath('data.first_name', 'J')
+            ->assertJsonPath('data.last_name', 'K');
+
+        $created = User::query()->where('email', 'jk@example.test')->sole();
+        $this->assertNotNull($created->terms_accepted_at);
+    }
 }

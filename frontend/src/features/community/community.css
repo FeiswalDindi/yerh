@@ -100,6 +100,30 @@
   gap: 32px;
   align-items: start;
 }
+.community-member-inline {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.community-member-link {
+  font-weight: 700;
+  color: var(--yerh-navy);
+  text-decoration: none;
+}
+.community-member-link:hover,
+.community-member-link:focus-visible {
+  color: #887017;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+:root[data-dashboard-theme='dark'] .community-member-link {
+  color: #e7edf8;
+}
+:root[data-dashboard-theme='dark'] .community-member-link:hover,
+:root[data-dashboard-theme='dark'] .community-member-link:focus-visible {
+  color: #ffe296;
+}
 .member-profile-main,
 .member-profile-aside,
 .session-layout > * {

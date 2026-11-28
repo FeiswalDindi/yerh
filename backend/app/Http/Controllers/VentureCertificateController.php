@@ -41,8 +41,10 @@ final class VentureCertificateController extends Controller
         $records = [];
         foreach ($paths as $path) {
             $completed = collect($stages->get($path->id))->pluck('stage')->all();
+            $moodleGraduated = ! empty($path->moodle_completed_at) && ! empty($path->graduated_at);
             foreach (Curriculum::CREDENTIALS as $kind) {
-                if (array_diff($this->curriculum->credentialStages($kind), $completed)) {
+                $eligibleByMoodle = $kind === 'venture' && $moodleGraduated;
+                if (! $eligibleByMoodle && array_diff($this->curriculum->credentialStages($kind), $completed)) {
                     continue;
                 }
                 $credential = collect($issued->get($path->id))->firstWhere('kind', $kind);

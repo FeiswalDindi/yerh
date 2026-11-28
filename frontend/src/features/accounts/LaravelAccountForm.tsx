@@ -7,7 +7,10 @@ import {
   type InstitutionChoice,
 } from '../../services/laravel-identity-repository';
 import { TermsDialog } from '../legal/TermsDialog';
+import { accountDestination } from './account-navigation';
+import { GoogleAccountButton } from './GoogleAccountButton';
 import { PasswordField } from './PasswordField';
+import { LoadingDots } from '../../shared/SiteLoader';
 
 function errorMessage(error: unknown): string {
   if (error instanceof TypeError)
@@ -15,14 +18,30 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Your request could not be completed.';
 }
 
+const oauthErrorMessages: Record<string, string> = {
+  'not-configured':
+    'Google sign-in is not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to backend/.env.',
+  cancelled: 'Google sign-in was cancelled.',
+  'state-mismatch':
+    'Your sign-in session expired or did not match this browser origin. Make sure you open http://localhost:8000 and try again.',
+  suspended: 'This account has been suspended. Please contact YERH support.',
+  'unverified-email':
+    'Your Google account email must be verified by Google before signing in to YERH.',
+  'account-conflict':
+    'This email is already linked to another Google account. Sign in with your password or contact support.',
+  'missing-email': 'Google did not provide an email address for this account.',
+  failed: 'Could not complete Google sign-in. Please try again.',
+};
+
 export function LaravelAccountForm({
   title,
   register,
   institution,
   institutionLabel,
+  search = '',
   verification,
   onComplete,
-  onChangeInstitution,
+  onClearInstitution,
   onErrorFeedback,
   onSwitch,
 }: {
@@ -30,9 +49,10 @@ export function LaravelAccountForm({
   register: boolean;
   institution: string;
   institutionLabel?: string;
+  search?: string;
   verification: string | null;
   onComplete: () => void;
-  onChangeInstitution: () => void;
+  onClearInstitution?: () => void;
   onErrorFeedback?: () => void;
   onSwitch: () => void;
 }) {
@@ -40,15 +60,24 @@ export function LaravelAccountForm({
   const navigate = useNavigate();
   const profile = session?.profile;
   const loading = session?.loading;
+  const queryParams = new URLSearchParams(search);
+  const oauthErrorCode = queryParams.get('oauth_error') ?? '';
+  const redirectTarget = queryParams.get('redirect') ?? undefined;
   const [busy, setBusy] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => oauthErrorMessages[oauthErrorCode] ?? '');
   const [notice, setNotice] = useState('');
   const [choices, setChoices] = useState<InstitutionChoice[]>([]);
   const [selectedInstitution, setSelectedInstitution] = useState(
     institution && institution !== 'yerh' ? institution : '',
   );
+  const [location, setLocation] = useState('');
+  const [googleEnabled, setGoogleEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setError(oauthErrorMessages[oauthErrorCode] ?? '');
+  }, [oauthErrorCode]);
 
   useEffect(() => {
     if (!register || profile) return;
@@ -65,6 +94,20 @@ export function LaravelAccountForm({
       });
     return () => controller.abort();
   }, [register, profile]);
+
+  useEffect(() => {
+    if (profile) return;
+    const controller = new AbortController();
+    void localLaravelIdentity
+      .providers(controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) setGoogleEnabled(result.google);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setGoogleEnabled(null);
+      });
+    return () => controller.abort();
+  }, [profile]);
 
   const activeChoice = choices.find((item) => item.slug === selectedInstitution);
   const verifiedDomains = activeChoice?.allowed_domains ?? [];
@@ -104,32 +147,47 @@ export function LaravelAccountForm({
     }
 
     const credentials = { email: field('email').trim(), password: field('password') };
+    const firstName = field('first_name').trim();
+    const lastName = field('last_name').trim();
     void perform(async () => {
       const signedIn = await localLaravelIdentity.authenticate(
         register ? 'register' : 'login',
         register
           ? {
               ...credentials,
-              name: field('name').trim(),
-              location: field('location').trim() || undefined,
+              first_name: firstName,
+              last_name: lastName,
+              name: `${firstName} ${lastName}`.trim(),
+              location: location.trim() || undefined,
               institution: selectedInstitution || undefined,
               password_confirmation: field('password_confirmation'),
+              terms: data.get('terms') === 'on',
             }
           : {
               ...credentials,
-              institution: institution || 'yerh',
+              ...(institution ? { institution } : {}),
               remember: data.get('remember') === 'on',
             },
       );
       session?.setProfile(signedIn);
       onComplete();
-      navigate(
+      const fallback =
         signedIn.email_verified && (signedIn.role !== 'guest' || signedIn.staff.length > 0)
           ? '/dashboard'
-          : '/account',
-      );
+          : '/account';
+      navigate(accountDestination(search, fallback));
     });
   }
+
+  const googleHref =
+    googleEnabled === false
+      ? undefined
+      : localLaravelIdentity.googleAuthUrl({
+          mode: register ? 'register' : 'login',
+          institution: register ? selectedInstitution || undefined : institution || undefined,
+          location: register ? location.trim() || undefined : undefined,
+          redirect: redirectTarget,
+        });
 
   const feedbackBanner = (
     <>
@@ -169,8 +227,8 @@ export function LaravelAccountForm({
           )}
       </header>
       {loading ? (
-        <p className="account-status" role="status">
-          Checking your session…
+        <p className="account-status yerh-status-loading" role="status">
+          <LoadingDots label="Checking your session" />
         </p>
       ) : profile ? (
         <div className="account-form">
@@ -180,19 +238,35 @@ export function LaravelAccountForm({
           </p>
           <p>Email verification: {profile.email_verified ? 'verified' : 'pending'}.</p>
           {!profile.email_verified && (
-            <button
-              type="button"
-              className="account-link"
-              disabled={busy}
-              onClick={() =>
-                void perform(async () => {
-                  await localLaravelIdentity.resendVerification();
-                  setNotice('A new verification email has been sent. Check your inbox.');
-                })
-              }
-            >
-              Resend verification email
-            </button>
+            <>
+              {profile.local_verification_available && (
+                <button
+                  type="button"
+                  className="button account-submit"
+                  disabled={busy}
+                  onClick={() =>
+                    void perform(async () => {
+                      window.location.assign(await localLaravelIdentity.localVerificationLink());
+                    })
+                  }
+                >
+                  Verify email address
+                </button>
+              )}
+              <button
+                type="button"
+                className="account-link"
+                disabled={busy}
+                onClick={() =>
+                  void perform(async () => {
+                    await localLaravelIdentity.resendVerification();
+                    setNotice('A new verification email has been sent. Check your inbox.');
+                  })
+                }
+              >
+                Resend verification email
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -255,22 +329,53 @@ export function LaravelAccountForm({
         </>
       ) : (
         <>
+          {feedbackBanner}
+          <GoogleAccountButton
+            divider
+            dividerPosition="bottom"
+            disabled={busy}
+            href={googleHref}
+            unavailableMessage="Google sign-in is wired up, but GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are not set in backend/.env yet."
+            onUnavailable={() => onErrorFeedback?.()}
+          />
           <form
             className="account-form"
             onSubmit={submit}
             onInvalidCapture={() => onErrorFeedback?.()}
           >
-            {!register && (
-              <button type="button" className="account-link" onClick={onChangeInstitution}>
-                {institutionLabel ? `${institutionLabel} · ` : ''}Change institution
-              </button>
+            {!register && institution && (
+              <p className="account-status" role="status">
+                Signing in for <strong>{institutionLabel || institution}</strong>.{' '}
+                {onClearInstitution && (
+                  <button type="button" className="account-link" onClick={onClearInstitution}>
+                    Sign in without filter
+                  </button>
+                )}
+              </p>
             )}
-            {feedbackBanner}
             {register && (
-              <label className="account-field">
-                Full name
-                <input name="name" autoComplete="name" required minLength={2} maxLength={120} />
-              </label>
+              <>
+                <label className="account-field">
+                  First name
+                  <input
+                    name="first_name"
+                    autoComplete="given-name"
+                    required
+                    minLength={1}
+                    maxLength={80}
+                  />
+                </label>
+                <label className="account-field">
+                  Last name
+                  <input
+                    name="last_name"
+                    autoComplete="family-name"
+                    required
+                    minLength={1}
+                    maxLength={80}
+                  />
+                </label>
+              </>
             )}
             <label className="account-field">
               Email address
@@ -293,7 +398,7 @@ export function LaravelAccountForm({
                     value={selectedInstitution}
                     onChange={(event) => setSelectedInstitution(event.target.value)}
                   >
-                    <option value="">No institution (Guest / YERH)</option>
+                    <option value="">No Institution</option>
                     {choices.map((school) => (
                       <option key={school.slug} value={school.slug}>
                         {school.name}
@@ -316,6 +421,8 @@ export function LaravelAccountForm({
                     minLength={2}
                     maxLength={120}
                     required={Boolean(selectedInstitution)}
+                    value={location}
+                    onChange={(event) => setLocation(event.target.value)}
                     placeholder="e.g. Nairobi"
                   />
                 </label>
@@ -383,6 +490,14 @@ export function LaravelAccountForm({
               {register ? 'Sign in' : 'Create an account'}
             </button>
           </p>
+          {!register && (
+            <p className="account-switch">
+              School, university, or hub administrator?{' '}
+              <Link className="account-link" to="/institutions/apply" onClick={onComplete}>
+                Register your institution
+              </Link>
+            </p>
+          )}
         </>
       )}
       {termsOpen && <TermsDialog onClose={() => setTermsOpen(false)} />}

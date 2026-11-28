@@ -1,7 +1,8 @@
 import { Bell } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import './laravel-notifications.css';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
+import { useLaravelSession } from '../../app/useLaravelSession';
 import { laravelRequest } from '../../services/laravel-api';
 import { WorkspaceTable } from '../platform/workspace/WorkspaceControls';
 import {
@@ -42,8 +43,19 @@ export function LaravelNotificationsLink() {
 }
 
 export function LaravelNotifications() {
-  const { records, reload, error } = useWorkspaceRecords(inbox);
+  const session = useLaravelSession();
+  const isGuestOnly = Boolean(
+    session?.profile && session.profile.role === 'guest' && session.profile.staff.length === 0,
+  );
+  const { records, reload, error } = useWorkspaceRecords(
+    inbox,
+    Boolean(session?.profile?.email_verified && !isGuestOnly),
+  );
   const [busy, setBusy] = useState(false);
+
+  if (isGuestOnly) {
+    return <Navigate to="/account" replace />;
+  }
 
   async function markAllRead() {
     setBusy(true);

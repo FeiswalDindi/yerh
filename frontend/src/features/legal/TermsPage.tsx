@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
+import { laravelModeEnabled } from '../../config/laravel';
 import { useCatalog } from '../../app/useCatalog';
 import { usePageTitle } from '../../shared/usePageTitle';
 import { PageIntro } from '../../shared/PageIntro';
@@ -45,10 +46,12 @@ export function TermsPage() {
             </section>
           ))}
         </div>
-        <p className="source-note">
-          These are the YERH platform terms from Feiso. This frontend's demo actions are local;
-          platform services described above require the connected backend.
-        </p>
+        {!laravelModeEnabled && (
+          <p className="source-note">
+            These are the YERH platform terms from Feiso. This frontend's demo actions are local;
+            platform services described above require the connected backend.
+          </p>
+        )}
         <Link className="text-link" to="/contact">
           Contact the YERH team →
         </Link>

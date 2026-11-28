@@ -1,9 +1,20 @@
 import { isPublishedSession } from '../../domain/events';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { MapPin, CalendarDays, Trophy, Users } from 'lucide-react';
+import {
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  MapPin,
+  MessageSquare,
+  ThumbsUp,
+  Trophy,
+  Users,
+} from 'lucide-react';
+import { laravelModeEnabled } from '../../config/laravel';
 import { useDemo } from '../../app/useDemo';
 import { useCatalog } from '../../app/useCatalog';
+import { useLaravelSession } from '../../app/useLaravelSession';
 import {
   communityFeed,
   friendIds,
@@ -17,7 +28,11 @@ import { DemoNotice } from '../demo/DemoNotice';
 import { NotFoundPage } from '../info/NotFoundPage';
 import { ContentCard } from '../content/ContentCard';
 import { ActivityTimeline } from './ActivityTimeline';
-import { roleLabels } from '../../domain/roles';
+import { displayRoleLabel, roleLabels } from '../../domain/roles';
+import {
+  communityRepository,
+  type CommunityMemberProfilePayload,
+} from '../../services/laravel-community-repository';
 import {
   FeedList,
   FriendshipActions,
@@ -30,8 +45,446 @@ import {
 } from './CommunityCards';
 
 const memberBreadcrumbParents = [{ label: 'Members', to: '/network?tab=members' }];
+const liveBreadcrumbParents = [{ label: 'Forums', to: '/forums' }];
 
-export function MemberProfilePage() {
+function memberInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'Y';
+  return parts
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? '')
+    .join('');
+}
+
+function LaravelMemberProfilePage() {
+  const { memberId = '' } = useParams();
+  const session = useLaravelSession();
+  const profile = session?.profile;
+  const [params, setParams] = useSearchParams();
+
+  const [data, setData] = useState<CommunityMemberProfilePayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [error, setError] = useState('');
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      setLoading(true);
+      setError('');
+      setNotFound(false);
+      setAvatarFailed(false);
+      try {
+        const res = await communityRepository.memberProfile(memberId, signal);
+        if (!signal?.aborted) setData(res);
+      } catch (cause) {
+        if (signal?.aborted) return;
+        const msg = cause instanceof Error ? cause.message : 'Member profile not found.';
+        if (/not found|404/i.test(msg)) setNotFound(true);
+        else setError(msg);
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [memberId],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
+  }, [load]);
+
+  usePageTitle(data ? `${data.member.name} · Community` : notFound ? 'Member not found' : 'Member');
+
+  if (notFound) return <NotFoundPage />;
+
+  if (loading && !data) {
+    return (
+      <section className="container section member-profile">
+        <p className="source-note">Loading community profile…</p>
+      </section>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <section className="container section member-profile">
+        <p className="form-error" role="alert">
+          {error || 'Could not load this member profile.'}
+        </p>
+        <Link className="text-link" to="/forums">
+          ← Back to forums
+        </Link>
+      </section>
+    );
+  }
+
+  const { member, stats, leaderboard: lb, groups, threads, replies, comments, ventures, activity } =
+    data;
+  const isOwn = Boolean(profile && profile.id === member.id);
+  const editProfileHref =
+    profile?.role === 'guest' && !profile.staff.length ? '/account' : '/dashboard/profile';
+  const tabs = [
+    { id: 'activity', label: 'Activity', count: activity.length },
+    { id: 'forums', label: 'Forums', count: stats.threads_count + stats.replies_count },
+    { id: 'groups', label: 'Groups', count: stats.groups_count },
+    { id: 'comments', label: 'Comments', count: stats.comments_count },
+    { id: 'profile', label: 'Profile' },
+  ];
+  const tab = tabs.some((t) => t.id === params.get('tab')) ? params.get('tab')! : 'activity';
+  const allPoints = lb.all?.points ?? 0;
+  const allRank = lb.all?.rank;
+
+  return (
+    <section className="container section member-profile">
+      <Breadcrumb current={member.name} parents={liveBreadcrumbParents} />
+
+      <header className="member-cover">
+        <div className="member-cover-decoration" aria-hidden="true">
+          <Users size={140} strokeWidth={0.7} />
+        </div>
+        <div className="member-identity">
+          <span className="member-avatar member-avatar-large" aria-hidden="true">
+            {member.avatar && !avatarFailed ? (
+              <img
+                src={member.avatar}
+                alt=""
+                referrerPolicy="no-referrer"
+                onError={() => setAvatarFailed(true)}
+              />
+            ) : (
+              memberInitials(member.name)
+            )}
+          </span>
+          <div>
+            <p className="eyebrow">{displayRoleLabel(member.role)}</p>
+            <h1>{member.name}</h1>
+            {(member.headline || member.institution?.name) && (
+              <p>
+                {member.headline || member.institution?.name}
+                {member.headline && member.institution?.name ? ` · ${member.institution.name}` : ''}
+              </p>
+            )}
+            <div className="member-facts">
+              {member.location && (
+                <span>
+                  <MapPin size={15} aria-hidden="true" />
+                  {member.location}
+                </span>
+              )}
+              {member.institution && (
+                <span>
+                  <Building2 size={15} aria-hidden="true" />
+                  {member.institution.name}
+                </span>
+              )}
+              <span>
+                <Trophy size={15} aria-hidden="true" />
+                {allRank
+                  ? `${allPoints} points · Rank #${allRank}`
+                  : `${stats.threads_count + stats.replies_count + stats.comments_count} public contributions`}
+              </span>
+            </div>
+          </div>
+        </div>
+        {isOwn && (
+          <div className="member-cover-actions">
+            <Link className="button button-gold" to={editProfileHref}>
+              Edit my profile
+            </Link>
+          </div>
+        )}
+      </header>
+
+      <nav className="section-tabs profile-tabs" aria-label="Member sections">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            aria-pressed={tab === t.id}
+            onClick={() => setParams({ tab: t.id })}
+          >
+            {t.label}
+            {t.count !== undefined && <span className="tab-count">{t.count}</span>}
+          </button>
+        ))}
+      </nav>
+
+      <div className="member-profile-layout">
+        <div className="member-profile-main">
+          {tab === 'activity' && (
+            <>
+              <h2>Recent community activity</h2>
+              {activity.length > 0 ? (
+                <div className="discussion-list">
+                  {activity.map((item) => (
+                    <article className="discussion-row" key={item.id}>
+                      <MessageSquare size={22} aria-hidden="true" />
+                      <div>
+                        <span className="eyebrow">
+                          {item.kind === 'thread'
+                            ? 'Forum topic'
+                            : item.kind === 'reply'
+                              ? 'Forum reply'
+                              : item.kind === 'comment'
+                                ? 'Article comment'
+                                : 'Group circle'}
+                        </span>
+                        <h3>
+                          <Link to={item.href}>{item.title}</Link>
+                        </h3>
+                        <p>{item.summary}</p>
+                        <time dateTime={item.created_at}>
+                          {new Date(item.created_at).toLocaleDateString('en-KE', {
+                            dateStyle: 'medium',
+                            timeZone: 'Africa/Nairobi',
+                          })}
+                        </time>
+                      </div>
+                      <Link className="text-link" to={item.href}>
+                        Open →
+                      </Link>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-state">No public community activity recorded yet.</p>
+              )}
+            </>
+          )}
+
+          {tab === 'forums' && (
+            <div className="community-panel-stack">
+              <div className="community-toolbar">
+                <h2>Forum topics · {threads.length}</h2>
+                <Link className="text-link" to="/forums">
+                  Explore forums →
+                </Link>
+              </div>
+              {threads.length > 0 ? (
+                <div className="discussion-list">
+                  {threads.map((t) => (
+                    <article className="discussion-row" key={t.id}>
+                      <MessageSquare size={22} aria-hidden="true" />
+                      <div>
+                        <span className="eyebrow">
+                          {t.forum_name}
+                          {t.accepted_reply_id ? ' · Solved' : ''}
+                        </span>
+                        <h3>
+                          <Link to={`/forums/${t.id}`}>{t.title}</Link>
+                        </h3>
+                        <p>
+                          {t.reply_count} {t.reply_count === 1 ? 'reply' : 'replies'}
+                        </p>
+                      </div>
+                      <Link className="text-link" to={`/forums/${t.id}`}>
+                        Read →
+                      </Link>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-state">No forum discussions started yet.</p>
+              )}
+
+              <h2>Forum replies · {replies.length}</h2>
+              {replies.length > 0 ? (
+                <div className="community-panel-stack">
+                  {replies.map((r) => (
+                    <article
+                      className={`discussion-post${r.is_solution ? ' is-solution' : ''}`}
+                      key={r.id}
+                    >
+                      <span className="eyebrow">
+                        {r.forum_name}
+                        {r.is_solution && (
+                          <>
+                            {' · '}
+                            <CheckCircle2
+                              size={12}
+                              style={{ display: 'inline', verticalAlign: 'middle' }}
+                            />{' '}
+                            Accepted solution
+                          </>
+                        )}{' '}
+                        · <ThumbsUp size={12} style={{ display: 'inline', verticalAlign: 'middle' }} />{' '}
+                        {r.votes_count} helpful
+                      </span>
+                      <h3>
+                        <Link to={`/forums/${r.thread_id}#reply-${r.id}`}>{r.thread_title}</Link>
+                      </h3>
+                      <p>{r.body}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-state">No forum replies yet.</p>
+              )}
+            </div>
+          )}
+
+          {tab === 'groups' && (
+            <>
+              <div className="community-toolbar">
+                <h2>Groups joined · {groups.length}</h2>
+                <Link className="text-link" to="/groups">
+                  Browse all groups →
+                </Link>
+              </div>
+              {groups.length > 0 ? (
+                <div className="community-groups-grid">
+                  {groups.map((g) => (
+                    <article className="profile-panel community-group-card" key={g.id}>
+                      <p className="eyebrow">
+                        {g.category} · {g.member_count}{' '}
+                        {g.member_count === 1 ? 'member' : 'members'}
+                      </p>
+                      <h3>
+                        <Link to={`/groups/${encodeURIComponent(g.slug)}`}>{g.name}</Link>
+                      </h3>
+                      <Link className="text-link" to={`/groups/${encodeURIComponent(g.slug)}`}>
+                        Open circle →
+                      </Link>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-state">No community groups joined yet.</p>
+              )}
+            </>
+          )}
+
+          {tab === 'comments' && (
+            <>
+              <h2>Article &amp; story comments · {comments.length}</h2>
+              {comments.length > 0 ? (
+                <div className="community-panel-stack">
+                  {comments.map((c) => (
+                    <article className="discussion-post" key={c.id}>
+                      <span className="eyebrow">
+                        <Link to={c.href}>{c.article_title}</Link>
+                      </span>
+                      <p>{c.body}</p>
+                      <time dateTime={c.created_at}>
+                        {new Date(c.created_at).toLocaleDateString('en-KE', {
+                          dateStyle: 'medium',
+                          timeZone: 'Africa/Nairobi',
+                        })}
+                      </time>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-state">No article comments yet.</p>
+              )}
+            </>
+          )}
+
+          {tab === 'profile' && (
+            <div className="community-panel-stack">
+              <article className="profile-card">
+                <h2>About {member.name.split(' ')[0]}</h2>
+                <p>{member.bio || 'No bio added yet.'}</p>
+                {member.institution && (
+                  <p className="source-note">
+                    Affiliated institution: <strong>{member.institution.name}</strong>
+                  </p>
+                )}
+              </article>
+
+              {ventures.length > 0 && (
+                <article className="profile-card">
+                  <h2>Approved ventures · {ventures.length}</h2>
+                  <div className="discussion-list">
+                    {ventures.map((v) => (
+                      <div className="discussion-row" key={v.id}>
+                        <Building2 size={20} aria-hidden="true" />
+                        <div>
+                          <h3>{v.name}</h3>
+                          <p>
+                            {v.sector} · {v.location}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              )}
+            </div>
+          )}
+        </div>
+
+        <aside className="member-profile-aside">
+          <section className="profile-panel">
+            <h2>Profile info</h2>
+            <p className="session-meta">
+              <CalendarDays size={16} aria-hidden="true" />
+              Joined{' '}
+              {new Date(member.joined_at).toLocaleDateString('en-KE', {
+                month: 'long',
+                year: 'numeric',
+                timeZone: 'Africa/Nairobi',
+              })}
+            </p>
+            <p>{member.bio || `${member.name} is a ${displayRoleLabel(member.role)} on YERH.`}</p>
+            <Link className="text-link" to={`/members/${member.id}?tab=profile`}>
+              View full profile →
+            </Link>
+          </section>
+
+          <section className="profile-panel">
+            <h2>Community standing</h2>
+            {lb.month || lb.all ? (
+              <div className="community-panel-stack">
+                {lb.month && (
+                  <p>
+                    <strong>This month:</strong> Rank #{lb.month.rank} · {lb.month.points} pts
+                  </p>
+                )}
+                {lb.all && (
+                  <p>
+                    <strong>All time:</strong> Rank #{lb.all.rank} · {lb.all.points} pts
+                  </p>
+                )}
+                <p className="source-note">
+                  {stats.solutions_count} accepted solutions · {stats.helpful_votes_received}{' '}
+                  helpful votes
+                </p>
+              </div>
+            ) : (
+              <p className="source-note">
+                {stats.threads_count} forum topics · {stats.replies_count} replies ·{' '}
+                {stats.comments_count} article comments
+              </p>
+            )}
+          </section>
+
+          <section className="profile-panel">
+            <h2>Groups · {groups.length}</h2>
+            {groups.length > 0 ? (
+              groups.map((g) => (
+                <Link
+                  className="profile-sidebar-link"
+                  key={g.id}
+                  to={`/groups/${encodeURIComponent(g.slug)}`}
+                >
+                  {g.name}
+                  <small>{g.member_count} members</small>
+                </Link>
+              ))
+            ) : (
+              <p>No groups joined yet.</p>
+            )}
+          </section>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function DemoMemberProfilePage() {
   const { memberId } = useParams();
   const { state, account } = useDemo();
   const { items } = useCatalog();
@@ -314,4 +767,8 @@ export function MemberProfilePage() {
       </div>
     </section>
   );
+}
+
+export function MemberProfilePage() {
+  return laravelModeEnabled ? <LaravelMemberProfilePage /> : <DemoMemberProfilePage />;
 }
